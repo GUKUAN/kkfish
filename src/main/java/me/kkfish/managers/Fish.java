@@ -20,6 +20,9 @@ import java.util.logging.Logger;
 
 import me.kkfish.kkfish;
 import me.kkfish.competition.CompetitionConfig;
+import me.kkfish.fishing.HookMechanic;
+import me.kkfish.fishing.HookMechanicFactory;
+import me.kkfish.fishing.WaterType;
 import me.kkfish.managers.Compete;
 import me.kkfish.managers.Config;
 import me.kkfish.managers.ItemValue;
@@ -53,6 +56,12 @@ public class Fish {
     
     private final Map<UUID, BiteHintData> biteHintDataMap = new ConcurrentHashMap<>();
     
+    private final Map<UUID, WaterType> playerWaterType = new ConcurrentHashMap<>();
+    
+    private final Map<UUID, HookMechanic> playerHookMechanic = new ConcurrentHashMap<>();
+    
+    private HookMechanicFactory hookMechanicFactory;
+    
     private final Random random = new Random();
     private final StringBuilder stringBuilder = new StringBuilder();
     private final Vector tempVector = new Vector();
@@ -82,6 +91,7 @@ public class Fish {
         this.messageManager = kkfish.getInstance().getMessageManager();
         this.config = plugin.getCustomConfig();
         this.minigameManager = plugin.getMinigameManager();
+        this.hookMechanicFactory = new HookMechanicFactory(plugin);
     }
 
     public Map<UUID, ChargeProgressTask> getActiveChargeTasks() {
@@ -92,7 +102,22 @@ public class Fish {
         Config config = plugin.getCustomConfig();
         FileConfiguration fishConfig = config.getFishConfig();
         
-        List<String> fishList = config.getAllFishNames();
+        WaterType waterType = playerWaterType.get(player.getUniqueId());
+        
+        List<String> fishList;
+        if (waterType != null) {
+            String biome = player.getLocation().getBlock().getBiome().name();
+            String weather = player.getWorld().hasStorm() ? "RAIN" : "CLEAR";
+            long time = player.getWorld().getTime();
+            String season = null;
+            if (plugin.isRealisticSeasonsEnabled()) {
+                season = plugin.getCurrentSeason();
+            }
+            fishList = config.getAvailableFishFromPool(waterType, biome, weather, time, season);
+        } else {
+            fishList = config.getAllFishNames();
+        }
+        
         if (fishList.isEmpty()) {
             return new String[] {"cod", "30.0", "common"};
         }
@@ -199,11 +224,11 @@ public class Fish {
         chargeStartTime.put(playerId, System.currentTimeMillis());
         plugin.getSoundManager().playPrepareSound(player.getLocation());
         startChargeProgressTask(player, rodName);
-        config.debugLog(messageManager.getMessageWithoutPrefix("debug_fishing_charge_start", "玩家%s蓄力开始，最大蓄力时间调整为: %f", player.getName(), config.getMainConfig().getInt("max-charge-time", 3000) / config.getRodChargeSpeed(rodName)));
+        config.debugLog(messageManager.getMessageWithoutPrefix("debug_fishing_charge_start", "玩家%s蓄力开始，最大蓄力时间调整为: %f", player.getName(), config.getMainConfig().getInt("fishing-settings.max-charge-time", 3000) / config.getRodChargeSpeed(rodName)));
     }
 
     private void startChargeProgressTask(Player player, String rodName) {
-        int maxChargeTime = config.getMainConfig().getInt("max-charge-time", 3000);
+        int maxChargeTime = config.getMainConfig().getInt("fishing-settings.max-charge-time", 3000);
         
         double chargeSpeedMultiplier = config.getRodChargeSpeed(rodName);
         if (chargeSpeedMultiplier != 1.0) {
@@ -297,7 +322,7 @@ public class Fish {
         }
 
         long chargeTime = System.currentTimeMillis() - chargeStartTime.get(playerId);
-        int maxChargeTime = config.getMainConfig().getInt("max-charge-time", 3000);
+        int maxChargeTime = config.getMainConfig().getInt("fishing-settings.max-charge-time", 3000);
         double chargePercentage = Math.min(chargeTime * 100.0 / maxChargeTime, 100.0);
 
         chargeStartTime.remove(playerId);
@@ -556,6 +581,8 @@ public class Fish {
             private int ticks = 0;
             private final Vector velocity = direction.clone();
             private final double gravity = 0.06 - (chargePercentage / 100.0 * 0.03);
+            private boolean endVoidCountdownStarted = false;
+            private int endVoidCountdownTicks = 0;
             
             @Override
             public void run() {
@@ -568,53 +595,40 @@ public class Fish {
                 
                 hookEntity.teleport(currentLoc);
                 
-                Block block = currentLoc.getBlock();
-                boolean isWater = block.getType() == Material.WATER;
-                
-                try {
-                    Material stationaryWater = Material.valueOf("STATIONARY_WATER");
-                    if (stationaryWater != null) {
-                        isWater = isWater || block.getType() == stationaryWater;
-                    }
-                } catch (Exception e) {
-                }
-                
-                try {
-                    Material bubbleColumn = XSeriesUtil.getMaterial("BUBBLE_COLUMN");
-                    if (bubbleColumn != null) {
-                        isWater = isWater || block.getType() == bubbleColumn;
-                    }
-                } catch (Exception e) {
-                }
-                try {
-                    Object blockData = block.getBlockData();
-                    if (!isWater && blockData != null) {
-                        Class<?> waterloggedClass = Class.forName("org.bukkit.block.data.Waterlogged");
-                        if (waterloggedClass.isInstance(blockData)) {
-                            java.lang.reflect.Method isWaterloggedMethod = waterloggedClass.getMethod("isWaterlogged");
-                            boolean waterlogged = (Boolean) isWaterloggedMethod.invoke(blockData);
-                            if (waterlogged) {
-                                isWater = true;
-                            }
-                        }
-                    }
-                } catch (NoSuchMethodError e) {
-                } catch (ClassNotFoundException e) {
-                } catch (Exception e) {
-                }
+                WaterType waterType = hookMechanicFactory.detectWaterType(currentLoc, player);
                 
                 boolean isOnGround = checkIfHookOnGround(currentLoc.getBlock());
                 
-                if (isWater || isOnGround || ticks > 100) {
+                if (waterType == null && hookMechanicFactory.isEndVoidCandidate(currentLoc, player)) {
+                    if (!endVoidCountdownStarted) {
+                        endVoidCountdownStarted = true;
+                        endVoidCountdownTicks = 0;
+                    }
+                    endVoidCountdownTicks++;
+                    
+                    if (endVoidCountdownTicks >= config.getEndCountdownTicks()) {
+                        waterType = WaterType.VOID;
+                        endVoidCountdownStarted = false;
+                    }
+                } else {
+                    endVoidCountdownStarted = false;
+                }
+                
+                boolean shouldCheckEscape = ticks > 100 && config.isFishEscapeBeforeMinigameEnabled();
+                
+                if (waterType != null || isOnGround || shouldCheckEscape) {
                     if (taskRef[0] != null) {
                         taskRef[0].cancel();
                     }
                     
-                    if (isWater) {
-                        handleHookInWater(player, hookEntity, currentLoc, velocity, chargePercentage, baitName);
+                    if (waterType != null) {
+                        playerWaterType.put(player.getUniqueId(), waterType);
+                        HookMechanic mechanic = hookMechanicFactory.create(waterType);
+                        playerHookMechanic.put(player.getUniqueId(), mechanic);
+                        mechanic.onHookLand(player, hookEntity, currentLoc, velocity, chargePercentage, baitName);
                     } else if (isOnGround) {
                         handleHookOnGround(player, hookEntity, currentLoc, velocity);
-                    } else {
+                    } else if (config.isFishEscapeBeforeMinigameEnabled()) {
                         handleHookFailure(player);
                     }
                 }
@@ -628,51 +642,37 @@ public class Fish {
             if (isPassableMethod != null) {
                 boolean isPassable = (Boolean) isPassableMethod.invoke(block);
                 if (!isPassable) {
-                    String blockTypeName = block.getType().name();
-                    
-                    return !(blockTypeName.equals("TORCH") || 
-                          blockTypeName.equals("REDSTONE_TORCH") || 
-                          blockTypeName.equals("LANTERN") || 
-                          blockTypeName.equals("SEA_LANTERN") || 
-                          blockTypeName.equals("GLOWSTONE") || 
-                          blockTypeName.equals("REDSTONE_LAMP") || 
-                          blockTypeName.equals("REDSTONE_LAMP_OFF") || 
-                          blockTypeName.equals("CAMPFIRE") || 
-                          blockTypeName.equals("SOUL_CAMPFIRE") || 
-                          blockTypeName.equals("SOUL_TORCH") || 
-                          blockTypeName.equals("WALL_TORCH") || 
-                          blockTypeName.equals("SOUL_WALL_TORCH") || 
-                          blockTypeName.equals("LIGHT_BLOCK") || 
-                          blockTypeName.equals("SOUL_LANTERN") || 
-                          blockTypeName.equals("WALL_LANTERN") || 
-                          blockTypeName.equals("SOUL_WALL_LANTERN"));
+                    return !isHookPassableBlock(block);
                 }
                 return false;
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
         
         if (block.getType().isSolid()) {
-            String blockTypeName = block.getType().name();
-            
-            return !(blockTypeName.equals("TORCH") || 
-                  blockTypeName.equals("REDSTONE_TORCH") || 
-                  blockTypeName.equals("LANTERN") || 
-                  blockTypeName.equals("SEA_LANTERN") || 
-                  blockTypeName.equals("GLOWSTONE") || 
-                  blockTypeName.equals("REDSTONE_LAMP") || 
-                  blockTypeName.equals("REDSTONE_LAMP_OFF") || 
-                  blockTypeName.equals("CAMPFIRE") || 
-                  blockTypeName.equals("SOUL_CAMPFIRE") || 
-                  blockTypeName.equals("SOUL_TORCH") || 
-                  blockTypeName.equals("WALL_TORCH") || 
-                  blockTypeName.equals("SOUL_WALL_TORCH") || 
-                  blockTypeName.equals("LIGHT_BLOCK") || 
-                  blockTypeName.equals("SOUL_LANTERN") || 
-                  blockTypeName.equals("WALL_LANTERN") || 
-                  blockTypeName.equals("SOUL_WALL_LANTERN"));
+            return !isHookPassableBlock(block);
         }
         return false;
+    }
+
+    private boolean isHookPassableBlock(Block block) {
+        String name = block.getType().name();
+        return name.equals("TORCH") || 
+               name.equals("REDSTONE_TORCH") || 
+               name.equals("LANTERN") || 
+               name.equals("SEA_LANTERN") || 
+               name.equals("GLOWSTONE") || 
+               name.equals("REDSTONE_LAMP") || 
+               name.equals("REDSTONE_LAMP_OFF") || 
+               name.equals("CAMPFIRE") || 
+               name.equals("SOUL_CAMPFIRE") || 
+               name.equals("SOUL_TORCH") || 
+               name.equals("WALL_TORCH") || 
+               name.equals("SOUL_WALL_TORCH") || 
+               name.equals("LIGHT_BLOCK") || 
+               name.equals("SOUL_LANTERN") || 
+               name.equals("WALL_LANTERN") || 
+               name.equals("SOUL_WALL_LANTERN");
     }
     
     private void handleHookInWater(Player player, ArmorStand hookEntity, Location currentLoc, Vector velocity, double chargePercentage, String baitName) {
@@ -951,10 +951,86 @@ public class Fish {
         plugin.getSoundManager().playWaterSplashSound(location);
     }
     
-    private void scheduleBiteCheck(Player player, double chargePercentage, String baitName) {
+    private void createLavaSplashEffect(Location location) {
+        if (!config.isHookWaterSplashParticleEnabled()) return;
+        
+        String particleType = config.getHookWaterSplashParticleType();
+        int count = config.getHookWaterSplashParticleCount();
+        double spread = config.getHookWaterSplashParticleSpreadX();
+        
+        try {
+            Particle flameParticle = getSafeParticle("FLAME", null);
+            if (flameParticle != null) {
+                plugin.getEntityBatchProcessor().addParticle(flameParticle, location, count, spread, spread, spread, 0.2, null);
+            }
+            
+            Particle lavaParticle = getSafeParticle("LAVA", null);
+            if (lavaParticle != null) {
+                plugin.getEntityBatchProcessor().addParticle(lavaParticle, location, count / 2, spread * 0.8, spread * 0.8, spread * 0.8, 0.1, null);
+            }
+            
+            Particle smokeParticle = getSafeParticle("SMOKE", null);
+            if (smokeParticle != null) {
+                plugin.getEntityBatchProcessor().addParticle(smokeParticle, location, count / 3, spread * 0.7, spread * 0.7, spread * 0.7, 0.05, null);
+            }
+        } catch (Exception e) {
+            Particle flameParticle = getSafeParticle("FLAME", null);
+            if (flameParticle != null) {
+                plugin.getEntityBatchProcessor().addParticle(flameParticle, location, count, spread, spread, spread, 0.2, null);
+            }
+        }
+        
+        plugin.getSoundManager().playWaterSplashSound(location);
+    }
+    
+    private void createVoidSplashEffect(Location location) {
+        if (!config.isHookWaterSplashParticleEnabled()) return;
+        
+        int count = config.getHookWaterSplashParticleCount();
+        double spread = config.getHookWaterSplashParticleSpreadX();
+        
+        try {
+            Particle endRodParticle = getSafeParticle("END_ROD", null);
+            if (endRodParticle != null) {
+                plugin.getEntityBatchProcessor().addParticle(endRodParticle, location, count, spread, spread, spread, 0.1, null);
+            }
+            
+            Particle dragonBreathParticle = getSafeParticle("DRAGON_BREATH", null);
+            if (dragonBreathParticle != null) {
+                plugin.getEntityBatchProcessor().addParticle(dragonBreathParticle, location, count / 2, spread * 0.8, spread * 0.8, spread * 0.8, 0.05, null);
+            }
+            
+            Particle portalParticle = getSafeParticle("PORTAL", null);
+            if (portalParticle != null) {
+                plugin.getEntityBatchProcessor().addParticle(portalParticle, location, count / 3, spread * 0.7, spread * 0.7, spread * 0.7, 0.1, null);
+            }
+        } catch (Exception e) {
+            Particle endRodParticle = getSafeParticle("END_ROD", null);
+            if (endRodParticle != null) {
+                plugin.getEntityBatchProcessor().addParticle(endRodParticle, location, count, spread, spread, spread, 0.1, null);
+            }
+        }
+        
+        plugin.getSoundManager().playWaterSplashSound(location);
+    }
+    
+    public void scheduleBiteCheck(Player player, double chargePercentage, String baitName) {
         FileConfiguration mainConfig = config.getMainConfig();
-        int minDelay = mainConfig.getInt("fishing-settings.bite-check-delay-min", 2000);
-        int maxDelay = mainConfig.getInt("fishing-settings.bite-check-delay-max", 5000);
+        
+        WaterType waterType = playerWaterType.get(player.getUniqueId());
+        int minDelay;
+        int maxDelay;
+        
+        if (waterType == WaterType.LAVA) {
+            minDelay = config.getLavaBiteTimeMin() * 50;
+            maxDelay = config.getLavaBiteTimeMax() * 50;
+        } else if (waterType == WaterType.VOID) {
+            minDelay = config.getVoidBiteTimeMin() * 50;
+            maxDelay = config.getVoidBiteTimeMax() * 50;
+        } else {
+            minDelay = mainConfig.getInt("fishing-settings.bite-check-delay-min", 5000);
+            maxDelay = mainConfig.getInt("fishing-settings.bite-check-delay-max", 15000);
+        }
 
         int delay = (int) (minDelay + Math.random() * (maxDelay - minDelay) * (1 - chargePercentage / 200));
         
@@ -983,7 +1059,7 @@ public class Fish {
         
         logBiteProbabilities(player, chargePercentage, baitName, biteRate);
         
-        if (random.nextDouble() < biteRate) {
+        if (!config.isFishEscapeBeforeMinigameEnabled() || random.nextDouble() < biteRate) {
             showBiteHint(player, chargePercentage, baitName, rareFishChance);
         } else {
             handleFishEscape(player);
@@ -995,6 +1071,13 @@ public class Fish {
         double maxBiteChance = config.getMainConfig().getDouble("fishing-settings.max-bite-chance", 1.0);
         
         double biteRate = baseBiteChance + chargePercentage / 100 * (maxBiteChance - baseBiteChance);
+        
+        WaterType waterType = playerWaterType.get(player.getUniqueId());
+        if (waterType == WaterType.LAVA) {
+            biteRate *= config.getLavaBiteChanceMultiplier();
+        } else if (waterType == WaterType.VOID) {
+            biteRate *= config.getVoidBiteChanceMultiplier();
+        }
         
         String rodName = minigameManager.getRodNameByPlayer(player);
         
@@ -1060,6 +1143,12 @@ public class Fish {
     private void handleFishEscape(Player player) {
         me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("fish_escape", "鱼儿跑掉了..."), 40, MessageType.FISHING);
         plugin.getSoundManager().playFailSound(player.getLocation());
+        
+        HookMechanic mechanic = playerHookMechanic.get(player.getUniqueId());
+        if (mechanic != null) {
+            mechanic.playEscapeEffect(player, player.getLocation());
+        }
+        
         endSession(player);
     }
     
@@ -1076,6 +1165,11 @@ public class Fish {
         }
         
         plugin.getSoundManager().playBiteSound(hookLocation);
+        
+        HookMechanic mechanic = playerHookMechanic.get(playerId);
+        if (mechanic != null) {
+            mechanic.playBiteEffect(player, hookLocation);
+        }
         
         String hintText = messageManager.getMessageWithoutPrefix("fishing_hint", "!");
         
@@ -1320,6 +1414,13 @@ public class Fish {
         BukkitRunnable biteTask = biteCheckTasks.remove(playerId);
         if (biteTask != null) {
             biteTask.cancel();
+        }
+        
+        playerWaterType.remove(playerId);
+        HookMechanic mechanic = playerHookMechanic.remove(playerId);
+        if (mechanic != null) {
+            ArmorStand hookEntity = armorStand;
+            mechanic.cleanup(player, hookEntity);
         }
         
         if (minigameManager != null) {
@@ -1569,23 +1670,11 @@ public class Fish {
             
             double baseValue = fishConfig.getDouble("fish." + fishName + ".value", 10.0);
             double rarityMultiplier = 1.0;
-            ChatColor rarityColor = ChatColor.WHITE;
+            String rarityDisplayName = fishLevel;
             
-            FileConfiguration mainConfig = config.getMainConfig();
-            
-            if (fishLevel.contains("legendary")) {
-                rarityMultiplier = mainConfig.getDouble("fishing-settings.rarity-multipliers.legendary", 5.0);
-                rarityColor = ChatColor.GOLD;
-            } else if (fishLevel.contains("epic")) {
-                rarityMultiplier = mainConfig.getDouble("fishing-settings.rarity-multipliers.epic", 3.0);
-                rarityColor = ChatColor.DARK_PURPLE;
-            } else if (fishLevel.contains("rare")) {
-                rarityMultiplier = mainConfig.getDouble("fishing-settings.rarity-multipliers.rare", 2.0);
-                rarityColor = ChatColor.BLUE;
-            } else {
-                rarityMultiplier = mainConfig.getDouble("fishing-settings.rarity-multipliers.common", 1.5);
-                rarityColor = ChatColor.GREEN;
-            }
+            String rarityName = config.getRarityNameByLevel(fishLevel);
+            rarityMultiplier = config.getRarityValueMultiplier(rarityName);
+            rarityDisplayName = config.getRarityDisplayName(rarityName);
             
             double finalValue = baseValue * fishSize / maxSize * rarityMultiplier * valueBonus;
             
@@ -1633,7 +1722,7 @@ public class Fish {
             replacements.put("%size%", ChatColor.GREEN + String.format("%.0f", fishSize));
             replacements.put("%size_quality%", ChatColor.GREEN + sizeQuality);
             replacements.put("%value%", ChatColor.RED + String.valueOf(value));
-            replacements.put("%rarity%", rarityColor + displayLevel);
+            replacements.put("%rarity%", ChatColor.translateAlternateColorCodes('&', rarityDisplayName));
             replacements.put("%separator%", ChatColor.GRAY + messageManager.getMessageWithoutPrefix("separator", "-------------------"));
             
             StringBuilder effectsInfo = new StringBuilder();
@@ -1674,7 +1763,9 @@ public class Fish {
             meta.setLore(lore);
             
             boolean enchantGlow = fishConfig.getBoolean("fish." + fishName + ".enchant-glow", false);
-            if (enchantGlow || rarity >= 3) {
+            if (enchantGlow) {
+                meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
             }
             
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
@@ -1814,7 +1905,7 @@ public class Fish {
         void onAnimationComplete();
     }
     
-    public void animateFishToPlayer(Player player, Location fishStartLocation, Location hookLocation, ItemStack fishItem, double fishValue, AnimationCompleteCallback callback) {
+    public void animateFishToPlayer(Player player, Location fishStartLocation, Location hookLocation, ItemStack fishItem, double fishValue, WaterType waterType, AnimationCompleteCallback callback) {
         if (!config.isFishAnimationEnabled()) {
             if (callback != null) {
                 callback.onAnimationComplete();
@@ -1842,6 +1933,17 @@ public class Fish {
         fishEntity.setPickupDelay(Integer.MAX_VALUE);
         
         try {
+            java.lang.reflect.Method setInvulnerableMethod = fishEntity.getClass().getMethod("setInvulnerable", boolean.class);
+            setInvulnerableMethod.invoke(fishEntity, true);
+        } catch (Exception e) {
+        }
+        
+        try {
+            fishEntity.setFireTicks(0);
+        } catch (Exception e) {
+        }
+        
+        try {
             java.lang.reflect.Method setGlowingMethod = fishEntity.getClass().getMethod("setGlowing", boolean.class);
             setGlowingMethod.invoke(fishEntity, true);
         } catch (Exception e) {
@@ -1855,7 +1957,13 @@ public class Fish {
         
         fishEntity.setVelocity(new Vector(0, 0, 0));
         
-        createWaterSplashEffect(hookLocation);
+        if (waterType == WaterType.LAVA) {
+            createLavaSplashEffect(hookLocation);
+        } else if (waterType == WaterType.VOID) {
+            createVoidSplashEffect(hookLocation);
+        } else {
+            createWaterSplashEffect(hookLocation);
+        }
         spawnParticleEffects(hookLocation);
         
         double distance = hookLocation.distance(player.getLocation());
@@ -2288,7 +2396,7 @@ public class Fish {
     }
     
     public void animateFishToPlayer(Player player, Location fishStartLocation, ItemStack fishItem, double fishValue) {
-        animateFishToPlayer(player, fishStartLocation, fishStartLocation, fishItem, fishValue, null);
+        animateFishToPlayer(player, fishStartLocation, fishStartLocation, fishItem, fishValue, WaterType.WATER, null);
     }
     
     public void recordFishCatch(Player player, String fishName, ItemStack fishItem) {
@@ -2497,6 +2605,13 @@ public class Fish {
             return null;
         }
         return activeSessions.get(player.getUniqueId());
+    }
+    
+    public WaterType getWaterType(Player player) {
+        if (player == null) {
+            return null;
+        }
+        return playerWaterType.get(player.getUniqueId());
     }
     
     private interface FishingSession {

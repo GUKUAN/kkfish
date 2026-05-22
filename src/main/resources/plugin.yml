@@ -32,3 +32,9 @@ permissions:
   kkfish.hook.*:
     description: Allow using all hook materials
     default: false
+  kkfish.fishing.lava:
+    description: Allow lava fishing
+    default: false
+  kkfish.fishing.void:
+    description: Allow void fishing
+    default: false

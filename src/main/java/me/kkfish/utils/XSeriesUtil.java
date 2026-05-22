@@ -1,7 +1,9 @@
 package me.kkfish.utils;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.Location;
 
@@ -13,6 +15,7 @@ public class XSeriesUtil {
     private static boolean initialized = false;
     private static Class<?> xMaterialClass;
     private static Class<?> xSoundClass;
+    private static Class<?> xParticleClass;
 
     private static void initialize() {
         if (!initialized) {
@@ -21,6 +24,7 @@ public class XSeriesUtil {
                     ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
                     xMaterialClass = contextClassLoader.loadClass("com.cryptomorin.xseries.XMaterial");
                     xSoundClass = contextClassLoader.loadClass("com.cryptomorin.xseries.XSound");
+                    xParticleClass = contextClassLoader.loadClass("com.cryptomorin.xseries.XParticle");
                     initialized = true;
                     return;
                 } catch (ClassNotFoundException e) {
@@ -29,6 +33,7 @@ public class XSeriesUtil {
                 try {
                     xMaterialClass = Class.forName("com.cryptomorin.xseries.XMaterial");
                     xSoundClass = Class.forName("com.cryptomorin.xseries.XSound");
+                    xParticleClass = Class.forName("com.cryptomorin.xseries.XParticle");
                     initialized = true;
                     return;
                 } catch (ClassNotFoundException e) {
@@ -265,5 +270,193 @@ public class XSeriesUtil {
     public static boolean isXSeriesLoaded() {
         initialize();
         return initialized;
+    }
+
+    public static void spawnParticle(Location location, String particleName, int count, double spreadX, double spreadY, double spreadZ, double extra) {
+        if (location == null || location.getWorld() == null) return;
+        
+        initialize();
+        
+        if (xParticleClass != null) {
+            try {
+                Method matchMethod = xParticleClass.getMethod("matchXParticle", String.class);
+                Object optionalXParticle = matchMethod.invoke(null, particleName);
+                
+                Method isPresentMethod = optionalXParticle.getClass().getMethod("isPresent");
+                if (!(Boolean) isPresentMethod.invoke(optionalXParticle)) return;
+                
+                Method getMethod = optionalXParticle.getClass().getMethod("get");
+                Object xParticle = getMethod.invoke(optionalXParticle);
+                
+                Method spawnMethod = xParticle.getClass().getMethod("spawn", Location.class, int.class, double.class, double.class, double.class, double.class);
+                spawnMethod.invoke(xParticle, location, count, spreadX, spreadY, spreadZ, extra);
+                return;
+            } catch (Exception e) {
+            }
+        }
+        
+        try {
+            org.bukkit.Particle particle = org.bukkit.Particle.valueOf(particleName.toUpperCase());
+            if (location.getWorld() != null) {
+                location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra);
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    public static void spawnParticleWithData(Location location, String particleName, int count, double spreadX, double spreadY, double spreadZ, double extra, Object data) {
+        if (location == null || location.getWorld() == null) return;
+        
+        initialize();
+        
+        if (xParticleClass != null) {
+            try {
+                Method matchMethod = xParticleClass.getMethod("matchXParticle", String.class);
+                Object optionalXParticle = matchMethod.invoke(null, particleName);
+                
+                Method isPresentMethod = optionalXParticle.getClass().getMethod("isPresent");
+                if (!(Boolean) isPresentMethod.invoke(optionalXParticle)) return;
+                
+                Method getMethod = optionalXParticle.getClass().getMethod("get");
+                Object xParticle = getMethod.invoke(optionalXParticle);
+                
+                try {
+                    Method spawnMethod = xParticle.getClass().getMethod("spawn", Location.class, int.class, double.class, double.class, double.class, double.class, Object.class);
+                    spawnMethod.invoke(xParticle, location, count, spreadX, spreadY, spreadZ, extra, data);
+                    return;
+                } catch (NoSuchMethodException e) {
+                    Method spawnMethod = xParticle.getClass().getMethod("spawn", Location.class, int.class, double.class, double.class, double.class, double.class);
+                    spawnMethod.invoke(xParticle, location, count, spreadX, spreadY, spreadZ, extra);
+                    return;
+                }
+            } catch (Exception e) {
+            }
+        }
+        
+        try {
+            org.bukkit.Particle particle = org.bukkit.Particle.valueOf(particleName.toUpperCase());
+            if (location.getWorld() != null) {
+                if (data != null) {
+                    location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra, data);
+                } else {
+                    location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra);
+                }
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    public static boolean isWaterBlock(Block block) {
+        if (block == null) return false;
+        
+        Material type = block.getType();
+        if (type == Material.WATER) return true;
+        
+        try {
+            Material stationaryWater = Material.valueOf("STATIONARY_WATER");
+            if (type == stationaryWater) return true;
+        } catch (Exception e) {
+        }
+        
+        try {
+            Material bubbleColumn = Material.valueOf("BUBBLE_COLUMN");
+            if (type == bubbleColumn) return true;
+        } catch (Exception e) {
+        }
+        
+        try {
+            Object blockData = block.getBlockData();
+            if (blockData != null) {
+                Class<?> waterloggedClass = Class.forName("org.bukkit.block.data.Waterlogged");
+                if (waterloggedClass.isInstance(blockData)) {
+                    Method isWaterloggedMethod = waterloggedClass.getMethod("isWaterlogged");
+                    Boolean waterlogged = (Boolean) isWaterloggedMethod.invoke(blockData);
+                    if (waterlogged != null && waterlogged) return true;
+                }
+            }
+        } catch (Exception e) {
+        }
+        
+        Material belowType = block.getRelative(org.bukkit.block.BlockFace.DOWN).getType();
+        if (belowType == Material.WATER) return true;
+        
+        try {
+            Material stationaryWater = Material.valueOf("STATIONARY_WATER");
+            if (belowType == stationaryWater) return true;
+        } catch (Exception e) {
+        }
+        
+        try {
+            Material bubbleColumn = Material.valueOf("BUBBLE_COLUMN");
+            if (belowType == bubbleColumn) return true;
+        } catch (Exception e) {
+        }
+        
+        return false;
+    }
+
+    public static boolean isLavaBlock(Block block) {
+        if (block == null) return false;
+        
+        Material type = block.getType();
+        if (type == Material.LAVA) return true;
+        
+        try {
+            Material stationaryLava = Material.valueOf("STATIONARY_LAVA");
+            if (type == stationaryLava) return true;
+        } catch (Exception e) {
+        }
+        
+        Material belowType = block.getRelative(org.bukkit.block.BlockFace.DOWN).getType();
+        if (belowType == Material.LAVA) return true;
+        
+        try {
+            Material stationaryLava = Material.valueOf("STATIONARY_LAVA");
+            if (belowType == stationaryLava) return true;
+        } catch (Exception e) {
+        }
+        
+        return false;
+    }
+
+    public static boolean isLiquidBlock(Block block) {
+        return isWaterBlock(block) || isLavaBlock(block);
+    }
+
+    public static org.bukkit.Particle getParticle(String particleName) {
+        if (particleName == null || particleName.isEmpty()) return null;
+        
+        initialize();
+        
+        if (xParticleClass != null) {
+            try {
+                Method matchMethod = xParticleClass.getMethod("matchXParticle", String.class);
+                Object optionalXParticle = matchMethod.invoke(null, particleName);
+                
+                Method isPresentMethod = optionalXParticle.getClass().getMethod("isPresent");
+                if ((Boolean) isPresentMethod.invoke(optionalXParticle)) {
+                    Method getMethod = optionalXParticle.getClass().getMethod("get");
+                    Object xParticle = getMethod.invoke(optionalXParticle);
+                    
+                    Method parseMethod = xParticle.getClass().getMethod("get");
+                    Object particle = parseMethod.invoke(xParticle);
+                    if (particle instanceof org.bukkit.Particle) {
+                        return (org.bukkit.Particle) particle;
+                    }
+                }
+            } catch (Exception e) {
+            }
+        }
+        
+        try {
+            return org.bukkit.Particle.valueOf(particleName.toUpperCase());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static org.bukkit.Particle getParticle(String particleName, org.bukkit.Particle fallback) {
+        org.bukkit.Particle particle = getParticle(particleName);
+        return particle != null ? particle : fallback;
     }
 }

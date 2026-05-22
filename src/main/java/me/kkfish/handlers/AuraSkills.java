@@ -221,12 +221,16 @@ public class AuraSkills {
     }
 
     private double getRarityMultiplier(int rarity) {
-        switch (rarity) {
-            case 5: return 5.0;
-            case 4: return 3.0;
-            case 3: return 1.5;
-            default: return 1.0;
-        }
+        String rarityName = getRarityNameByLevel(rarity);
+        return config.getRarityAuraSkillsXpMultiplier(rarityName);
+    }
+
+    private String getRarityNameByLevel(int rarity) {
+        if (rarity >= 5) return "legendary";
+        if (rarity == 4) return "epic";
+        if (rarity == 3) return "rare";
+        if (rarity == 2) return "uncommon";
+        return "common";
     }
 
     public boolean isAuraSkillsEnabled() {

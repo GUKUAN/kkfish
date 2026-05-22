@@ -22,6 +22,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import me.kkfish.fishing.WaterType;
 import me.kkfish.kkfish;
 import me.kkfish.handlers.AuraSkills;
 import me.kkfish.managers.ItemValue;
@@ -38,12 +39,14 @@ public class Config {
     private FileConfiguration competeConfig;
     private FileConfiguration hookConfig;
     private FileConfiguration soundConfig;
+    private FileConfiguration poolConfig;
     private File mainConfigFile;
     private File fishConfigFile;
     private File baitFile;
     private File competeConfigFile;
     private File hookConfigFile;
     private File soundConfigFile;
+    private File poolConfigFile;
     private ItemValue itemValue;
 
     public Config(kkfish plugin) {
@@ -123,6 +126,12 @@ public class Config {
             plugin.saveResource("sounds.yml", false);
         }
         soundConfig = YamlConfiguration.loadConfiguration(soundConfigFile);
+
+        poolConfigFile = new File(plugin.getDataFolder(), "pools.yml");
+        if (!poolConfigFile.exists()) {
+            plugin.saveResource("pools.yml", false);
+        }
+        poolConfig = YamlConfiguration.loadConfiguration(poolConfigFile);
     }
 
     public void saveConfigs() {
@@ -135,6 +144,7 @@ public class Config {
             competeConfig.save(new File(plugin.getDataFolder(), "compete.yml"));
             hookConfig.save(new File(plugin.getDataFolder(), "hooks.yml"));
             soundConfig.save(new File(plugin.getDataFolder(), "sounds.yml"));
+            poolConfig.save(new File(plugin.getDataFolder(), "pools.yml"));
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "无法保存配置文件", e);
         }
@@ -150,6 +160,7 @@ public class Config {
         baitConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "baits.yml"));
         competeConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "compete.yml"));
         soundConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "sounds.yml"));
+        poolConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "pools.yml"));
     }
 
     public FileConfiguration getMainConfig() {
@@ -201,7 +212,7 @@ public class Config {
     }
 
     public boolean isVanillaFishingDisabled() {
-        return mainConfig.getBoolean("fishing-settings.disable-vanilla-fishing", true);
+        return mainConfig.getBoolean("fishing-settings.disable-vanilla-fishing", false);
     }
     
     public boolean isWorldWhitelistEnabled() {
@@ -229,7 +240,7 @@ public class Config {
     }
     
     public boolean isSeasonalFishingEnabled() {
-        return mainConfig.getBoolean("seasonal.enabled", false);
+        return mainConfig.getBoolean("seasonal.enabled", true);
     }
     
     public List<String> getAvailableFish(String season) {
@@ -267,23 +278,11 @@ public class Config {
         return fishNames;
     }
 
-    public List<String> getSuccessCommands() {
-        return mainConfig.getStringList("rewards.success-commands");
-    }
-
-    public List<String> getFailCommands() {
-        return mainConfig.getStringList("rewards.fail-commands");
-    }
-    
     public List<String> getFishCommands(String fishName) {
         if (fishConfig.contains("fish." + fishName + ".command")) {
             return fishConfig.getStringList("fish." + fishName + ".command");
         }
         return new ArrayList<>();
-    }
-
-    public boolean isSoundEnabled(String soundType) {
-        return mainConfig.getBoolean("sound-settings." + soundType + "-enabled", true);
     }
 
     public boolean fishExists(String fishName) {
@@ -296,15 +295,8 @@ public class Config {
             for (Map<?, ?> levelMap : levels) {
                 for (Object key : levelMap.keySet()) {
                     String levelName = key.toString();
-                    if (levelName.contains("legendary")) {
-                        return 5;
-                    } else if (levelName.contains("epic")) {
-                        return 4;
-                    } else if (levelName.contains("rare")) {
-                        return 3;
-                    } else if (levelName.contains("common")) {
-                        return 1;
-                    }
+                    String rarityName = getRarityNameByLevel(levelName);
+                    return getRarityOrder(rarityName);
                 }
             }
         }
@@ -476,10 +468,10 @@ public class Config {
                             }
                         }
             }
-            return plugin.getMessageManager().getMessageWithoutPrefix("rarity_name.common", "普通");
+            return getRarityDisplayName("common");
         } catch (Exception e) {
             logger.warning(plugin.getMessageManager().getMessageWithoutPrefix("config_fish_level_calc_error", "计算钓鱼等级时出错: %s", e.getMessage()));
-            return plugin.getMessageManager().getMessageWithoutPrefix("rarity_name.common", "普通");
+            return getRarityDisplayName("common");
         }
     }
     
@@ -490,17 +482,7 @@ public class Config {
         
         levelName = levelName.toLowerCase();
         
-        switch (levelName) {
-            case "legendary":
-                return mainConfig.getInt("fishing-settings.rarity.weights.legendary", 5);
-            case "epic":
-                return mainConfig.getInt("fishing-settings.rarity.weights.epic", 15);
-            case "rare":
-                return mainConfig.getInt("fishing-settings.rarity.weights.rare", 30);
-            case "common":
-            default:
-                return mainConfig.getInt("fishing-settings.rarity.weights.common", 100);
-        }
+        return mainConfig.getInt("fishing-settings.rarity." + levelName + ".weight", 50);
     }
 
     public boolean rodExists(String rodName) {
@@ -726,6 +708,10 @@ public class Config {
         return mainConfig.getDouble("fishing-settings.vanilla-exp-multiplier", 1.0);
     }
 
+    public boolean isFishEscapeBeforeMinigameEnabled() {
+        return mainConfig.getBoolean("fishing-settings.escape", false);
+    }
+
     public int getFishExp(String fishName) {
         int baseExp = fishConfig.getInt("fish." + fishName + ".exp", 10);
         double multiplier = getVanillaExpMultiplier();
@@ -822,7 +808,7 @@ public class Config {
     }
 
     public boolean isSeasonalPriceFluctuationEnabled() {
-        return mainConfig.getBoolean("seasonal.price-fluctuation.enabled", false);
+        return mainConfig.getBoolean("seasonal.price-fluctuation.enabled", true);
     }
     
     public double getSeasonalPriceMultiplier(String season) {
@@ -838,7 +824,15 @@ public class Config {
     }
     
     public boolean isDebugMode() {
-        return mainConfig.getBoolean("debug", false);
+        return mainConfig.getBoolean("debug.enabled", mainConfig.getBoolean("debug", false));
+    }
+    
+    public boolean isUpdateCheckEnabled() {
+        return mainConfig.getBoolean("update-check.enabled", true);
+    }
+    
+    public String getTimezone() {
+        return mainConfig.getString("timezone.value", mainConfig.getString("timezone", ""));
     }
     
     public boolean isVisualEffectsEnabled() {
@@ -1435,14 +1429,7 @@ public class Config {
             mainConfig.set("fishing-settings.progress-bar.decrease-speed", 0.01);
             mainConfig.set("fishing-settings.progress-bar.rarity-impact.enabled", true);
             mainConfig.set("fishing-settings.progress-bar.rarity-impact.slowdown-per-rarity-level", 0.15);
-            mainConfig.set("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.3);
-            
-            mainConfig.set("fishing-settings.progress-bar.styles.green-bar-color", "GREEN");
-            mainConfig.set("fishing-settings.progress-bar.styles.green-bar-edge-color", "DARK_GREEN");
-            mainConfig.set("fishing-settings.progress-bar.styles.background-color", "GRAY");
-            mainConfig.set("fishing-settings.progress-bar.styles.fish-indicator-color", "BLUE");
-            mainConfig.set("fishing-settings.progress-bar.styles.progress-bar-color", "BLUE");
-            mainConfig.set("fishing-settings.progress-bar.styles.progress-bar-empty-color", "GRAY");
+            mainConfig.set("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.45);
             
             mainConfig.set("fishing-settings.rarity.multipliers.legendary", 2.0);
             mainConfig.set("fishing-settings.rarity.multipliers.epic", 1.5);
@@ -1463,33 +1450,16 @@ public class Config {
         }
         
         if (!mainConfig.contains("fishing-settings.disable-vanilla-fishing")) {
-            mainConfig.set("fishing-settings.disable-vanilla-fishing", true);
+            mainConfig.set("fishing-settings.disable-vanilla-fishing", false);
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "fishing-settings.disable-vanilla-fishing"));
         }
         
         if (!mainConfig.contains("fishing-settings.progress-bar.rarity-impact")) {
             mainConfig.set("fishing-settings.progress-bar.rarity-impact.enabled", true);
             mainConfig.set("fishing-settings.progress-bar.rarity-impact.slowdown-per-rarity-level", 0.15);
-            mainConfig.set("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.3);
+            mainConfig.set("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.45);
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "fishing-settings.progress-bar.rarity-impact"));
         }
-        
-        if (!mainConfig.contains("fishing-settings.progress-bar.styles")) {
-            mainConfig.set("fishing-settings.progress-bar.styles.green-bar-color", "&a");
-            mainConfig.set("fishing-settings.progress-bar.styles.green-bar-edge-color", "&2");
-            mainConfig.set("fishing-settings.progress-bar.styles.background-color", "&7");
-            mainConfig.set("fishing-settings.progress-bar.styles.fish-indicator-color", "&9");
-            mainConfig.set("fishing-settings.progress-bar.styles.progress-bar-color", "&9");
-            mainConfig.set("fishing-settings.progress-bar.styles.progress-bar-empty-color", "&7");
-            mainConfig.set("fishing-settings.progress-bar.styles.green-bar-char", "|");
-            mainConfig.set("fishing-settings.progress-bar.styles.green-bar-edge-char", "|");
-            mainConfig.set("fishing-settings.progress-bar.styles.background-char", "|");
-            mainConfig.set("fishing-settings.progress-bar.styles.fish-indicator-char", "|||");
-            mainConfig.set("fishing-settings.progress-bar.styles.progress-bar-char", "=");
-            mainConfig.set("fishing-settings.progress-bar.styles.progress-bar-empty-char", "-");
-            logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "fishing-settings.progress-bar.styles"));
-        }
-        
 
         
         if (!mainConfig.contains("visual-effects")) {
@@ -1592,7 +1562,6 @@ public class Config {
         
         if (!mainConfig.contains("debug")) {
             mainConfig.set("debug.enabled", false);
-            mainConfig.set("debug.verbose", false);
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "debug"));
         }
         
@@ -1615,12 +1584,11 @@ public class Config {
             }
             
             mainConfig.set("language.current", defaultLanguage);
-            mainConfig.set("language.supported", supportedLanguages);
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s，自动检测并设置默认语言为: %s", "language", defaultLanguage));
         }
         
         if (!mainConfig.contains("update-check")) {
-            mainConfig.set("update-check.enabled", false);
+            mainConfig.set("update-check.enabled", true);
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "update-check"));
         }
         
@@ -1633,7 +1601,6 @@ public class Config {
             mainConfig.set("database.mysql.username", "root");
             mainConfig.set("database.mysql.password", "password");
             mainConfig.set("database.mysql.table-prefix", "kkfish_");
-            mainConfig.set("database.mysql.pool-size", 5);
             mainConfig.set("database.mysql.use-ssl", false);
             mainConfig.set("database.mysql.timeout", 30000);
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "database"));
@@ -1660,6 +1627,65 @@ public class Config {
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "seasonal.price-fluctuation"));
         }
         
+        if (!mainConfig.contains("lava-fishing")) {
+            mainConfig.set("lava-fishing.enabled", true);
+            mainConfig.set("lava-fishing.trigger-mode", "AUTO");
+            mainConfig.set("lava-fishing.bite-time-min", 100);
+            mainConfig.set("lava-fishing.bite-time-max", 400);
+            mainConfig.set("lava-fishing.bite-chance-multiplier", 0.8);
+            mainConfig.set("lava-fishing.minigame.difficulty-multiplier", 1.2);
+            mainConfig.set("lava-fishing.effects.ambient-particle", "FLAME");
+            mainConfig.set("lava-fishing.effects.ambient-particle-count", 2);
+            mainConfig.set("lava-fishing.effects.bite-particle", "FLAME");
+            mainConfig.set("lava-fishing.effects.bite-particle-count", 20);
+            mainConfig.set("lava-fishing.effects.bite-sound", "ENTITY_GENERIC_EXTINGUISH_FIRE");
+            mainConfig.set("lava-fishing.effects.bite-sound-volume", 0.25);
+            mainConfig.set("lava-fishing.effects.bite-sound-pitch", 1.0);
+            logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "lava-fishing"));
+        }
+        
+        if (!mainConfig.contains("void-fishing")) {
+            mainConfig.set("void-fishing.enabled", true);
+            mainConfig.set("void-fishing.trigger-mode", "AUTO");
+            mainConfig.set("void-fishing.end-detection.enabled", true);
+            mainConfig.set("void-fishing.end-detection.countdown-ticks", 2);
+            mainConfig.set("void-fishing.end-detection.require-below-player", true);
+            mainConfig.set("void-fishing.bite-time-min", 120);
+            mainConfig.set("void-fishing.bite-time-max", 500);
+            mainConfig.set("void-fishing.bite-chance-multiplier", 0.7);
+            mainConfig.set("void-fishing.minigame.difficulty-multiplier", 1.5);
+            mainConfig.set("void-fishing.effects.ambient-particle", "END_ROD");
+            mainConfig.set("void-fishing.effects.ambient-particle-count", 1);
+            mainConfig.set("void-fishing.effects.bite-particle", "END_ROD");
+            mainConfig.set("void-fishing.effects.bite-particle-count", 20);
+            mainConfig.set("void-fishing.effects.bite-sound", "ITEM_TRIDENT_THUNDER");
+            mainConfig.set("void-fishing.effects.bite-sound-volume", 0.25);
+            mainConfig.set("void-fishing.effects.bite-sound-pitch", 1.0);
+            logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "void-fishing"));
+        }
+        
+        if (!mainConfig.contains("styles")) {
+            mainConfig.set("styles.default.progress-char", "&9=");
+            mainConfig.set("styles.default.progress-bar-empty-char", "&7-");
+            mainConfig.set("styles.default.green-bar-char", "&a|");
+            mainConfig.set("styles.default.green-bar-edge-char", "&2|");
+            mainConfig.set("styles.default.background-char", "&7|");
+            mainConfig.set("styles.default.fish-indicator-char", "&9|||");
+            mainConfig.set("styles.lava.progress-char", "&6=");
+            mainConfig.set("styles.lava.progress-bar-empty-char", "&8-");
+            mainConfig.set("styles.lava.green-bar-char", "&c▌");
+            mainConfig.set("styles.lava.green-bar-edge-char", "&4▌");
+            mainConfig.set("styles.lava.background-char", "&8░");
+            mainConfig.set("styles.lava.fish-indicator-char", "&e|||");
+            mainConfig.set("styles.void.progress-char", "&5═");
+            mainConfig.set("styles.void.progress-bar-empty-char", "&8─");
+            mainConfig.set("styles.void.green-bar-char", "&d▐");
+            mainConfig.set("styles.void.green-bar-edge-char", "&5▐");
+            mainConfig.set("styles.void.background-char", "&8░");
+            mainConfig.set("styles.void.fish-indicator-char", "&b✦");
+            logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "styles"));
+        }
+
         if (!mainConfig.contains("item-templates")) {
             mainConfig.set("item-templates.fish-templates.default.content", "%separator%\n%name%\n%separator%\n%description%\n\n%size%\n%value%\n%rarity%\n\n%effects%\n%separator%\n%tip%");
             mainConfig.set("item-templates.fish-templates.simple.content", "%name%\n%description%\n%size%\n%value%");
@@ -1676,7 +1702,11 @@ public class Config {
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "item-templates"));
         }
         
-
+        if (!mainConfig.contains("broadcast")) {
+            mainConfig.set("broadcast.enabled", true);
+            mainConfig.set("broadcast.range", "global");
+            logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "broadcast"));
+        }
 
     }
     
@@ -1762,6 +1792,225 @@ public class Config {
             soundConfig.set("minigame.volume", 0.5);
             soundConfig.set("minigame.pitch", 1.0);
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_sound", "添加缺失的音效配置: %s", "minigame"));
+        }
+    }
+
+    public FileConfiguration getPoolConfig() {
+        return poolConfig;
+    }
+
+    public List<String> getPoolFish(WaterType waterType) {
+        String key = waterType.name().toLowerCase();
+        if (poolConfig.contains(key)) {
+            return poolConfig.getStringList(key);
+        }
+        return new ArrayList<>();
+    }
+
+    public List<String> getAvailableFishFromPool(WaterType waterType, String biome, String weather, long time, String season) {
+        List<String> poolFish = getPoolFish(waterType);
+        if (poolFish.isEmpty()) {
+            return getAvailableFish(biome, weather, time, season);
+        }
+
+        List<String> availableFish = new ArrayList<>();
+        for (String fishName : poolFish) {
+            if (fishExists(fishName)) {
+                boolean canSpawn = true;
+
+                if (fishConfig.contains("fish." + fishName + ".biomes")) {
+                    List<String> biomes = fishConfig.getStringList("fish." + fishName + ".biomes");
+                    if (!biomes.isEmpty() && !biomes.contains(biome)) {
+                        canSpawn = false;
+                    }
+                }
+
+                if (canSpawn && fishConfig.contains("fish." + fishName + ".weather")) {
+                    List<String> weathers = fishConfig.getStringList("fish." + fishName + ".weather");
+                    if (!weathers.isEmpty() && !weathers.contains(weather)) {
+                        canSpawn = false;
+                    }
+                }
+
+                if (canSpawn && fishConfig.contains("fish." + fishName + ".time")) {
+                    List<String> timeRanges = fishConfig.getStringList("fish." + fishName + ".time");
+                    boolean timeMatch = false;
+                    for (String range : timeRanges) {
+                        if (range.equalsIgnoreCase("ANY") || isTimeInRange(time, range)) {
+                            timeMatch = true;
+                            break;
+                        }
+                    }
+                    if (!timeRanges.isEmpty() && !timeMatch) {
+                        canSpawn = false;
+                    }
+                }
+
+                if (canSpawn && isSeasonalFishingEnabled() && season != null && fishConfig.contains("fish." + fishName + ".seasons")) {
+                    List<String> seasons = fishConfig.getStringList("fish." + fishName + ".seasons");
+                    if (!seasons.isEmpty() && !seasons.contains(season)) {
+                        canSpawn = false;
+                    }
+                }
+
+                if (canSpawn) {
+                    availableFish.add(fishName);
+                }
+            }
+        }
+
+        if (availableFish.isEmpty()) {
+            return getAvailableFish(biome, weather, time, season);
+        }
+
+        return availableFish;
+    }
+
+    public boolean isLavaFishingEnabled() {
+        return mainConfig.getBoolean("lava-fishing.enabled", true);
+    }
+
+    public String getLavaTriggerMode() {
+        return mainConfig.getString("lava-fishing.trigger-mode", "AUTO");
+    }
+
+    public int getLavaBiteTimeMin() {
+        return mainConfig.getInt("lava-fishing.bite-time-min", 100);
+    }
+
+    public int getLavaBiteTimeMax() {
+        return mainConfig.getInt("lava-fishing.bite-time-max", 400);
+    }
+
+    public double getLavaBiteChanceMultiplier() {
+        return mainConfig.getDouble("lava-fishing.bite-chance-multiplier", 0.8);
+    }
+
+    public double getLavaDifficultyMultiplier() {
+        return mainConfig.getDouble("lava-fishing.minigame.difficulty-multiplier", 1.2);
+    }
+
+    public String getLavaAmbientParticle() {
+        return mainConfig.getString("lava-fishing.effects.ambient-particle", "FLAME");
+    }
+
+    public int getLavaAmbientParticleCount() {
+        return mainConfig.getInt("lava-fishing.effects.ambient-particle-count", 2);
+    }
+
+    public String getLavaBiteParticle() {
+        return mainConfig.getString("lava-fishing.effects.bite-particle", "FLAME");
+    }
+
+    public int getLavaBiteParticleCount() {
+        return mainConfig.getInt("lava-fishing.effects.bite-particle-count", 20);
+    }
+
+    public String getLavaBiteSound() {
+        return mainConfig.getString("lava-fishing.effects.bite-sound", "ENTITY_GENERIC_EXTINGUISH_FIRE");
+    }
+
+    public float getLavaBiteSoundVolume() {
+        return (float) mainConfig.getDouble("lava-fishing.effects.bite-sound-volume", 0.25);
+    }
+
+    public float getLavaBiteSoundPitch() {
+        return (float) mainConfig.getDouble("lava-fishing.effects.bite-sound-pitch", 1.0);
+    }
+
+    public boolean isVoidFishingEnabled() {
+        return mainConfig.getBoolean("void-fishing.enabled", true);
+    }
+
+    public String getVoidTriggerMode() {
+        return mainConfig.getString("void-fishing.trigger-mode", "AUTO");
+    }
+
+    public boolean isEndDetectionEnabled() {
+        return mainConfig.getBoolean("void-fishing.end-detection.enabled", true);
+    }
+
+    public int getEndCountdownTicks() {
+        return mainConfig.getInt("void-fishing.end-detection.countdown-ticks", 2);
+    }
+
+    public boolean isEndRequireBelowPlayer() {
+        return mainConfig.getBoolean("void-fishing.end-detection.require-below-player", true);
+    }
+
+    public int getVoidBiteTimeMin() {
+        return mainConfig.getInt("void-fishing.bite-time-min", 120);
+    }
+
+    public int getVoidBiteTimeMax() {
+        return mainConfig.getInt("void-fishing.bite-time-max", 500);
+    }
+
+    public double getVoidBiteChanceMultiplier() {
+        return mainConfig.getDouble("void-fishing.bite-chance-multiplier", 0.7);
+    }
+
+    public double getVoidDifficultyMultiplier() {
+        return mainConfig.getDouble("void-fishing.minigame.difficulty-multiplier", 1.5);
+    }
+
+    public String getVoidAmbientParticle() {
+        return mainConfig.getString("void-fishing.effects.ambient-particle", "END_ROD");
+    }
+
+    public int getVoidAmbientParticleCount() {
+        return mainConfig.getInt("void-fishing.effects.ambient-particle-count", 1);
+    }
+
+    public String getVoidBiteParticle() {
+        return mainConfig.getString("void-fishing.effects.bite-particle", "END_ROD");
+    }
+
+    public int getVoidBiteParticleCount() {
+        return mainConfig.getInt("void-fishing.effects.bite-particle-count", 20);
+    }
+
+    public String getVoidBiteSound() {
+        return mainConfig.getString("void-fishing.effects.bite-sound", "ITEM_TRIDENT_THUNDER");
+    }
+
+    public float getVoidBiteSoundVolume() {
+        return (float) mainConfig.getDouble("void-fishing.effects.bite-sound-volume", 0.25);
+    }
+
+    public float getVoidBiteSoundPitch() {
+        return (float) mainConfig.getDouble("void-fishing.effects.bite-sound-pitch", 1.0);
+    }
+
+    public double getRarityValueMultiplier(String rarityName) {
+        return mainConfig.getDouble("fishing-settings.rarity." + rarityName + ".value-multiplier", 1.0);
+    }
+
+    public double getRarityAuraSkillsXpMultiplier(String rarityName) {
+        return mainConfig.getDouble("fishing-settings.rarity." + rarityName + ".aura-skills-xp-multiplier", 1.0);
+    }
+
+    public String getRarityDisplayName(String rarityName) {
+        return mainConfig.getString("fishing-settings.rarity." + rarityName + ".display-name", rarityName);
+    }
+
+    public String getRarityNameByLevel(String levelName) {
+        if (levelName == null) return "common";
+        levelName = levelName.toLowerCase();
+        if (levelName.contains("legendary")) return "legendary";
+        if (levelName.contains("epic")) return "epic";
+        if (levelName.contains("rare")) return "rare";
+        if (levelName.contains("uncommon")) return "uncommon";
+        return "common";
+    }
+
+    public int getRarityOrder(String rarityName) {
+        switch (rarityName) {
+            case "legendary": return 5;
+            case "epic": return 4;
+            case "rare": return 3;
+            case "uncommon": return 2;
+            default: return 1;
         }
     }
 }

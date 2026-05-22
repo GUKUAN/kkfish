@@ -10,10 +10,12 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class EntityBatchProcessor {
 
+    private static final Logger LOGGER = Logger.getLogger("KKFish-EntityBatchProcessor");
     private static final int DEFAULT_BATCH_SIZE = 50;
     private static final long DEFAULT_FLUSH_INTERVAL = 20L;
     
@@ -122,9 +124,11 @@ public class EntityBatchProcessor {
                             world.spawnParticle(batch.particle, batch.location, batch.count, batch.offsetX, batch.offsetY, batch.offsetZ, batch.extra);
                         }
                     } catch (Exception e) {
+                        LOGGER.warning("Failed to spawn particle without data: " + e.getMessage());
                     }
                 }
             } catch (Exception e) {
+                LOGGER.warning("Failed to spawn particle: " + e.getMessage());
             }
         }
     }

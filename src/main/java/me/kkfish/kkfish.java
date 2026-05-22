@@ -58,14 +58,15 @@ public class kkfish extends JavaPlugin {
         instance = this;
         
         config = new Config(this);
-        config.checkAndAddMissingConfigs();
         
         messageManager = MessageManager.getInstance(this);
         messageManager.completeAllLanguageFiles();
         
+        config.checkAndAddMissingConfigs();
+        
         DependencyManager dependencyManager = new DependencyManager(this);
         if (!dependencyManager.checkAndDownloadDependencies()) {
-            getLogger().severe("依赖下载失败，插件可能无法正常运行！");
+            getLogger().severe(messageManager.getMessageWithoutPrefix("dependency_download_failed_all", "Dependency download failed, plugin may not work properly!"));
         }
         dependencyManager.loadDependencies();
         
@@ -107,10 +108,13 @@ public class kkfish extends JavaPlugin {
         itemCraft = new ItemCraft(this);
         
         entityBatchProcessor = new me.kkfish.utils.EntityBatchProcessor();
+        me.kkfish.utils.SchedulerUtil.runSyncTimer(this, entityBatchProcessor::flush, 20L, 20L);
         
         initMetrics();
         
-        new UpdateChecker(this).checkForUpdates();
+        if (config.isUpdateCheckEnabled()) {
+            new UpdateChecker(this).checkForUpdates();
+        }
         
         me.kkfish.utils.SchedulerUtil.runSyncDelayed(this, () -> {
             getLogger().info(messageManager.getMessageWithoutPrefix("log.plugin_loaded", "KKFISH fishing system has been loaded!"));

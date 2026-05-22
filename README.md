@@ -23,7 +23,7 @@ kkfish is a powerful new generation Minecraft fishing plugin inspired by Stardew
 
 ## Development Notes
 
-- The plugin supports Minecraft versions 1.12-1.21
+- The plugin supports Minecraft versions 1.12-26.1
 - Uses XSeries library for version compatibility
 - Dependency management is handled through Maven
 - Code style follows the project's existing coding standards

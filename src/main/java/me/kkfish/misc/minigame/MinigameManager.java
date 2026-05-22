@@ -26,6 +26,8 @@ import me.kkfish.utils.ActionBarUtil.MessageType;
 import me.kkfish.managers.Compete;
 import me.kkfish.kkfish;
 import me.kkfish.managers.Config;
+import me.kkfish.fishing.WaterType;
+import me.kkfish.fishing.HookMechanicFactory;
 
 
 public class MinigameManager {
@@ -59,7 +61,12 @@ public class MinigameManager {
             hookLocation = ((ArmorStand) activeSession).getLocation();
         }
         
-        GameSession session = new GameSession(plugin, player, hookLocation, chargePercentage, getRodNameByPlayer(player), baitName, 0.0);
+        WaterType waterType = plugin.getFish().getWaterType(player);
+        if (waterType == null) {
+            waterType = WaterType.WATER;
+        }
+        
+        GameSession session = new GameSession(plugin, player, hookLocation, waterType, chargePercentage, getRodNameByPlayer(player), baitName, 0.0);
         gameSessions.put(player.getUniqueId(), session);
         session.start();
         plugin.getSoundManager().playBiteSound(player.getLocation());
@@ -80,7 +87,12 @@ public class MinigameManager {
             hookLocation = ((ArmorStand) activeSession).getLocation();
         }
         
-        GameSession session = new GameSession(plugin, player, hookLocation, chargePercentage, rodName, baitName, rareFishChance);
+        WaterType waterType = plugin.getFish().getWaterType(player);
+        if (waterType == null) {
+            waterType = WaterType.WATER;
+        }
+        
+        GameSession session = new GameSession(plugin, player, hookLocation, waterType, chargePercentage, rodName, baitName, rareFishChance);
         gameSessions.put(playerId, session);
         
         session.start();
@@ -135,7 +147,7 @@ public class MinigameManager {
                     
                     double actualFishValue = session.getActualFishValue();
                     
-                    fishingManager.animateFishToPlayer(player, fishStartLocation, session.hookLocation, fishItem, actualFishValue, new me.kkfish.managers.Fish.AnimationCompleteCallback() {
+                    fishingManager.animateFishToPlayer(player, fishStartLocation, session.hookLocation, fishItem, actualFishValue, session.waterType, new me.kkfish.managers.Fish.AnimationCompleteCallback() {
                     @Override
                     public void onAnimationComplete() {
                         if (player.getInventory().firstEmpty() != -1) {
@@ -176,9 +188,6 @@ public class MinigameManager {
                                 int level = 1;
                                 try {
                                     String levelName = session.fishLevel;
-                                    if (levelName.contains("")) {
-                                        levelName = levelName.split("", 2)[0];
-                                    }
                                     
                                     switch (levelName.toLowerCase()) {
                                         case "legendary":

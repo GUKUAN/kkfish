@@ -281,14 +281,9 @@ public class Cmd implements CommandExecutor, TabCompleter {
                 break;
 
             case "compete":
-                if (sender instanceof Player) {
-                    Player player = (Player)sender;
-                    String[] competeArgs = new String[args.length - 1];
-                    System.arraycopy(args, 1, competeArgs, 0, args.length - 1);
-                    handleCompeteCommand(player, competeArgs);
-                } else {
-                    sender.sendMessage(messageManager.getMessage("player_only_command", "§c此命令只能由玩家在游戏内执行！"));
-                }
+                String[] competeArgs = new String[args.length - 1];
+                System.arraycopy(args, 1, competeArgs, 0, args.length - 1);
+                handleCompeteCommand(sender, competeArgs);
                 break;
             case "add":
                 if (!sender.hasPermission("kkfish.admin")) {
@@ -1345,15 +1340,15 @@ public class Cmd implements CommandExecutor, TabCompleter {
         return new ArrayList<>(subCommands);
     }
     
-    private boolean handleCompeteCommand(Player player, String[] args) {
+    private boolean handleCompeteCommand(CommandSender sender, String[] args) {
         if (args.length < 1) {
-            sendHelp(player);
+            sendHelp(sender);
             return true;
         }
         
         Compete competitionManager = plugin.getCompete();
         if (competitionManager == null) {
-            player.sendMessage(messageManager.getMessage("competition_not_initialized", "§c比赛功能未初始化!"));
+            sender.sendMessage(messageManager.getMessage("competition_not_initialized", "§c比赛功能未初始化!"));
             return true;
         }
         
@@ -1361,13 +1356,13 @@ public class Cmd implements CommandExecutor, TabCompleter {
         
         switch (subCommand) {
             case "start":
-                if (!player.hasPermission("kkfish.admin")) {
-                    player.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+                if (sender instanceof Player && !sender.hasPermission("kkfish.admin")) {
+                    sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
                     return true;
                 }
                 
                 if (args.length < 2) {
-                    player.sendMessage(messageManager.getMessage("competition_specify_config_id", "§c请指定比赛配置ID!"));
+                    sender.sendMessage(messageManager.getMessage("competition_specify_config_id", "§c请指定比赛配置ID!"));
                     return true;
                 }
                 
@@ -1377,81 +1372,81 @@ public class Cmd implements CommandExecutor, TabCompleter {
                     try {
                         duration = Integer.parseInt(args[2]);
                     } catch (NumberFormatException e) {
-                        player.sendMessage("§c无效的持续时间，将使用配置中的默认值");
+                        sender.sendMessage("§c无效的持续时间，将使用配置中的默认值");
                     }
                 }
                 
                 boolean started = competitionManager.startCompetitionManually(configId, duration);
                 if (started) {
-                    player.sendMessage(messageManager.getMessage("competition_started_success", "§a成功启动比赛: %id%", configId));
+                    sender.sendMessage(messageManager.getMessage("competition_started_success", "§a成功启动比赛: %id%", configId));
                 } else {
-                    player.sendMessage(messageManager.getMessage("competition_started_failed", "§c启动比赛失败: 配置不存在或比赛已在进行中"));
+                    sender.sendMessage(messageManager.getMessage("competition_started_failed", "§c启动比赛失败: 配置不存在或比赛已在进行中"));
                 }
                 break;
                 
             case "stop":
-                if (!player.hasPermission("kkfish.admin")) {
-                    player.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+                if (sender instanceof Player && !sender.hasPermission("kkfish.admin")) {
+                    sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
                     return true;
                 }
                 
                 if (args.length < 2) {
-                    player.sendMessage(messageManager.getMessage("competition_specify_competition_id", "§c请指定要停止的比赛ID!"));
+                    sender.sendMessage(messageManager.getMessage("competition_specify_competition_id", "§c请指定要停止的比赛ID!"));
                     return true;
                 }
                 
                 String competitionId = args[1];
                 boolean stopped = competitionManager.stopCompetitionManually(competitionId);
                 if (stopped) {
-                    player.sendMessage(messageManager.getMessage("competition_stopped_success", "§a成功停止比赛: %id%", competitionId));
+                    sender.sendMessage(messageManager.getMessage("competition_stopped_success", "§a成功停止比赛: %id%", competitionId));
                 } else {
-                    player.sendMessage(messageManager.getMessage("competition_stopped_failed", "§c停止比赛失败: 比赛不存在或未在进行中"));
+                    sender.sendMessage(messageManager.getMessage("competition_stopped_failed", "§c停止比赛失败: 比赛不存在或未在进行中"));
                 }
                 break;
                 
             case "forcestop":
-                if (!player.hasPermission("kkfish.admin")) {
-                    player.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+                if (sender instanceof Player && !sender.hasPermission("kkfish.admin")) {
+                    sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
                     return true;
                 }
                 
                 if (args.length < 2) {
-                    player.sendMessage(messageManager.getMessage("competition_specify_competition_id", "§c请指定要强制停止的比赛ID!"));
+                    sender.sendMessage(messageManager.getMessage("competition_specify_competition_id", "§c请指定要强制停止的比赛ID!"));
                     return true;
                 }
                 
                 String forceCompetitionId = args[1];
                 boolean forceStopped = competitionManager.forceStopCompetitionManually(forceCompetitionId);
                 if (forceStopped) {
-                    player.sendMessage(messageManager.getMessage("competition_force_stopped_success", "§a成功强制停止并结算比赛: %id%", forceCompetitionId));
+                    sender.sendMessage(messageManager.getMessage("competition_force_stopped_success", "§a成功强制停止并结算比赛: %id%", forceCompetitionId));
                 } else {
-                    player.sendMessage(messageManager.getMessage("competition_force_stopped_failed", "§c强制停止比赛失败: 比赛不存在或未在进行中"));
+                    sender.sendMessage(messageManager.getMessage("competition_force_stopped_failed", "§c强制停止比赛失败: 比赛不存在或未在进行中"));
                 }
                 break;
                 
             case "list":
                 Set<String> configIds = competitionManager.getCompetitionConfigIds();
                 if (configIds.isEmpty()) {
-                    player.sendMessage(messageManager.getMessage("competition_no_configs", "§e当前没有比赛配置"));
+                    sender.sendMessage(messageManager.getMessage("competition_no_configs", "§e当前没有比赛配置"));
                 } else {
-                    player.sendMessage(messageManager.getMessage("competition_config_list_title", "§e===== 比赛配置列表 ====="));
+                    sender.sendMessage(messageManager.getMessage("competition_config_list_title", "§e===== 比赛配置列表 ====="));
                     for (String id : configIds) {
-                        player.sendMessage(messageManager.getMessage("competition_config_item", "§f- %id%", id));
+                        sender.sendMessage(messageManager.getMessage("competition_config_item", "§f- %id%", id));
                     }
                 }
                 
                 Set<String> activeIds = competitionManager.getActiveCompetitionIds();
                 if (!activeIds.isEmpty()) {
-                    player.sendMessage(messageManager.getMessage("competition_active_title", "§a正在进行的比赛:"));
+                    sender.sendMessage(messageManager.getMessage("competition_active_title", "§a正在进行的比赛:"));
                     for (String id : activeIds) {
-                        player.sendMessage(messageManager.getMessage("competition_active_item", "§f- %id%", id));
+                        sender.sendMessage(messageManager.getMessage("competition_active_item", "§f- %id%", id));
                     }
                 }
                 break;
                 
             default:
-                player.sendMessage(messageManager.getMessage("competition_unknown_subcommand", "§c未知的子命令: %command%", subCommand));
-                sendHelp(player);
+                sender.sendMessage(messageManager.getMessage("competition_unknown_subcommand", "§c未知的子命令: %command%", subCommand));
+                sendHelp(sender);
                 break;
         }
         

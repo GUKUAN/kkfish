@@ -5,7 +5,9 @@
 # custom-competition:
 #   name: "Custom Fishing Competition"
 #   type: "TOTAL_VALUE"  # Competition type: AMOUNT, TOTAL_VALUE, SINGLE_VALUE, POINTS_ONLY
-#   schedule: "every 1 19:00"  # Every Monday at 19:00
+#   schedule: "every 1 19:00"  # Every Monday at 19:00 (1=Sunday, 2=Monday, ..., 7=Saturday)
+#   schedule: "every day 20:00"  # Every day at 20:00
+#   schedule: "2024-12-25 12:00"  # Specific date and time
 #   min-players: 5  # Minimum players required
 #   duration: 3600  # Duration in seconds (1 hour)
 #   

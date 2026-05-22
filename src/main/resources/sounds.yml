@@ -29,13 +29,6 @@ bite_hint:
   volume: 0.8  # Volume
   pitch: 1.2   # Pitch
 
-# Hooked Sound (when player successfully hooks the fish)
-hooked:
-  enabled: true
-  name: "BLOCK_NOTE_BLOCK_PLING"  # Sound name
-  volume: 0.9  # Volume
-  pitch: 1.3   # Pitch
-
 # Reel Sound (when player reels in the fish)
 reel:
   enabled: true
@@ -72,37 +65,7 @@ minigame:
   volume: 0.5  # Volume
   pitch: 1.0   # Pitch
 
-# Perfect Catch Sound (when player makes a perfect catch)
-perfect_catch:
-  enabled: true
-  name: "ENTITY_PLAYER_LEVELUP"  # Sound name
-  volume: 1.2  # Volume
-  pitch: 1.5   # Pitch
 
-# ==========================
-# Charge Sounds
-# ==========================
-
-# Start Charging Sound (when player starts charging the rod)
-start_charge:
-  enabled: true
-  name: "ITEM_ARMOR_EQUIP_LEATHER"  # Sound name
-  volume: 0.5  # Volume
-  pitch: 0.8   # Pitch
-
-# Charge Complete Sound (when player reaches max charge)
-charge_complete:
-  enabled: true
-  name: "ITEM_ARMOR_EQUIP_IRON"  # Sound name
-  volume: 0.7  # Volume
-  pitch: 1.1   # Pitch
-
-# Overcharge Sound (when player overcharges the rod)
-overcharge:
-  enabled: true
-  name: "BLOCK_NOTE_BLOCK_BASS"  # Sound name
-  volume: 0.9  # Volume
-  pitch: 0.7   # Pitch
 
 # Note: All sound names must be valid Bukkit sound enum values
 # You can find the full list here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Sound.html

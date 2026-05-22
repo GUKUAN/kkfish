@@ -13,11 +13,13 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import me.kkfish.kkfish;
 import me.kkfish.managers.Config;
+import me.kkfish.fishing.WaterType;
 
 public class GameSession extends BukkitRunnable {
     
     public final Player player;
     public final Location hookLocation;
+    public final WaterType waterType;
     private double difficulty;
     public final String targetFish;
     private final double fishSizeMin;
@@ -70,11 +72,12 @@ public class GameSession extends BukkitRunnable {
     private final kkfish plugin;
     private final Config config;
     
-    public GameSession(kkfish plugin, Player player, Location hookLocation, double chargePercentage, String rodName, String baitName, double rareFishChance) {
+    public GameSession(kkfish plugin, Player player, Location hookLocation, WaterType waterType, double chargePercentage, String rodName, String baitName, double rareFishChance) {
         this.plugin = plugin;
         this.config = plugin.getCustomConfig();
         this.player = player;
         this.hookLocation = hookLocation;
+        this.waterType = waterType;
         this.difficulty = 1.0 - (chargePercentage / 100.0 * 0.3);
         this.baitName = baitName;
         
@@ -108,7 +111,7 @@ public class GameSession extends BukkitRunnable {
         this.isMoving = true;
         this.moveTick = 0;
         
-        int initialProgress = plugin.getCustomConfig().getMainConfig().getInt("fishing-settings.initial-progress", 50);
+        int initialProgress = plugin.getCustomConfig().getMainConfig().getInt("fishing-settings.initial-progress", 10);
         this.progress = initialProgress / 100.0;
     }
     
@@ -639,7 +642,7 @@ public class GameSession extends BukkitRunnable {
         if (enableRarityImpact) {
             int fishRarity = plugin.getCustomConfig().getFishRarity(targetFish);
             double slowdownPerLevel = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.rarity-impact.slowdown-per-rarity-level", 0.15);
-            double minSpeedRatio = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.3);
+            double minSpeedRatio = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.45);
             
             raritySlowdownFactor = 1.0 - (fishRarity - 1) * slowdownPerLevel;
             raritySlowdownFactor = Math.max(minSpeedRatio, raritySlowdownFactor);
@@ -650,7 +653,7 @@ public class GameSession extends BukkitRunnable {
         if (invincibleTicks > 0) {
             invincibleTicks--;
             if (isFishInGreenBar) {
-                double increaseSpeed = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.increase-speed", 0.005);
+                double increaseSpeed = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.increase-speed", 0.015);
                 progress += increaseSpeed * (1.0 / difficulty) * raritySlowdownFactor;
                 if (progress > 1) progress = 1;
             }
@@ -658,39 +661,33 @@ public class GameSession extends BukkitRunnable {
         }
         
         if (isFishInGreenBar) {
-            double increaseSpeed = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.increase-speed", 0.005);
+            double increaseSpeed = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.increase-speed", 0.015);
             progress += increaseSpeed * (1.0 / difficulty) * raritySlowdownFactor;
             if (progress > 1) progress = 1;
         } else {
-            double decreaseSpeed = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.decrease-speed", 0.005);
+            double decreaseSpeed = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.decrease-speed", 0.01);
             progress -= decreaseSpeed * difficulty;
             if (progress < 0) progress = 0;
         }
     }
     
     private void displayGameUI() {
-        String greenBarColor = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.green-bar-color", "GREEN");
-        String greenBarEdgeColor = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.green-bar-edge-color", "DARK_GREEN");
-        String backgroundColor = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.background-color", "GRAY");
-        String fishIndicatorColor = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.fish-indicator-color", "BLUE");
-        String progressBarColor = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.progress-bar-color", "BLUE");
-        String progressBarEmptyColor = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.progress-bar-empty-color", "GRAY");
+        String stylePath;
+        if (waterType == WaterType.LAVA) {
+            stylePath = "styles.lava";
+        } else if (waterType == WaterType.VOID) {
+            stylePath = "styles.void";
+        } else {
+            stylePath = "styles.default";
+        }
+        String progressBarChar = ChatColor.translateAlternateColorCodes('&', plugin.getCustomConfig().getMainConfig().getString(stylePath + ".progress-char", "&9="));
+        String progressBarEmptyChar = ChatColor.translateAlternateColorCodes('&', plugin.getCustomConfig().getMainConfig().getString(stylePath + ".progress-bar-empty-char", "&7-"));
+        String greenBarChar = ChatColor.translateAlternateColorCodes('&', plugin.getCustomConfig().getMainConfig().getString(stylePath + ".green-bar-char", "&a|"));
+        String greenBarEdgeChar = ChatColor.translateAlternateColorCodes('&', plugin.getCustomConfig().getMainConfig().getString(stylePath + ".green-bar-edge-char", "&2|"));
+        String backgroundChar = ChatColor.translateAlternateColorCodes('&', plugin.getCustomConfig().getMainConfig().getString(stylePath + ".background-char", "&7|"));
+        String fishIndicatorChar = ChatColor.translateAlternateColorCodes('&', plugin.getCustomConfig().getMainConfig().getString(stylePath + ".fish-indicator-char", "&9|||"));
         
-        String greenBarChar = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.green-bar-char", "|");
-        String greenBarEdgeChar = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.green-bar-edge-char", "|");
-        String backgroundChar = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.background-char", "|");
-        String fishIndicatorChar = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.fish-indicator-char", "|||");
-        String progressBarChar = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.progress-bar-char", "=");
-        String progressBarEmptyChar = plugin.getCustomConfig().getMainConfig().getString("fishing-settings.progress-bar.styles.progress-bar-empty-char", "-");
-        
-        String greenBarColorCode = processColorConfig(greenBarColor, "GREEN");
-        String greenBarEdgeColorCode = processColorConfig(greenBarEdgeColor, "DARK_GREEN");
-        String backgroundColorCode = processColorConfig(backgroundColor, "GRAY");
-        String fishIndicatorColorCode = processColorConfig(fishIndicatorColor, "BLUE");
-        String progressBarColorCode = processColorConfig(progressBarColor, "BLUE");
-        String progressBarEmptyColorCode = processColorConfig(progressBarEmptyColor, "GRAY");
-        
-        StringBuilder greenBar = new StringBuilder(greenBarColorCode + "[");
+        StringBuilder greenBar = new StringBuilder("[");
         int totalBars = 30;
         int greenBarCenter = (int)(greenBarPos * totalBars);
         int fishPosInBar = (int)(fishPos * totalBars);
@@ -705,47 +702,33 @@ public class GameSession extends BukkitRunnable {
         for (int i = 0; i < totalBars; i++) {
             if (Math.abs(i - greenBarCenter) <= greenBarLength / 2) {
                 if (i == edgeLeft || i == edgeRight) {
-                    barSegments[i] = greenBarEdgeColorCode + greenBarEdgeChar;
+                    barSegments[i] = greenBarEdgeChar;
                 } else {
-                    barSegments[i] = greenBarColorCode + greenBarChar;
+                    barSegments[i] = greenBarChar;
                 }
             } else {
-                barSegments[i] = backgroundColorCode + backgroundChar;
+                barSegments[i] = backgroundChar;
             }
         }
         
-        String fishIndicator = fishIndicatorColorCode + fishIndicatorChar;
-        
         if (Math.abs(fishPosInBar - edgeLeft) <= 1 || Math.abs(fishPosInBar - edgeRight) <= 1) {
-            if (fishPosInBar == edgeLeft && fishIndicatorChar.length() > 1) {
-                int splitPos = Math.min(1, fishIndicatorChar.length() - 1);
-                String edgePart = greenBarEdgeColorCode + fishIndicatorChar.substring(0, splitPos);
-                String fishPart = fishIndicatorColorCode + fishIndicatorChar.substring(splitPos);
-                barSegments[fishPosInBar] = edgePart + fishPart;
-            } else if (fishPosInBar == edgeRight && fishIndicatorChar.length() > 1) {
-                int splitPos = fishIndicatorChar.length() - 1;
-                String fishPart = fishIndicatorColorCode + fishIndicatorChar.substring(0, splitPos);
-                String edgePart = greenBarEdgeColorCode + fishIndicatorChar.substring(splitPos);
-                barSegments[fishPosInBar] = fishPart + edgePart;
-            } else {
-                barSegments[fishPosInBar] = fishIndicator;
-            }
+            barSegments[fishPosInBar] = fishIndicatorChar;
         } else {
-            barSegments[fishPosInBar] = fishIndicator;
+            barSegments[fishPosInBar] = fishIndicatorChar;
         }
         
         for (String segment : barSegments) {
             greenBar.append(segment);
         }
-        greenBar.append(greenBarColorCode + "]");
+        greenBar.append("]");
         
-        StringBuilder progressBar = new StringBuilder(progressBarColorCode + "[");
+        StringBuilder progressBar = new StringBuilder("[");
         int progressLength = (int)(progress * 20);
         
         for (int i = 0; i < 20; i++) {
-            progressBar.append(i < progressLength ? progressBarColorCode + progressBarChar : progressBarEmptyColorCode + progressBarEmptyChar);
+            progressBar.append(i < progressLength ? progressBarChar : progressBarEmptyChar);
         }
-        progressBar.append(progressBarColorCode + "]");
+        progressBar.append("]");
         
         player.sendTitle(greenBar.toString(), progressBar.toString(), 0, 10, 0);
     }
@@ -783,15 +766,8 @@ public class GameSession extends BukkitRunnable {
         double sizeMultiplier = fishSize / maxSize;
         
         double rarityMultiplier = 1.0;
-        if (fishLevel.contains("legendary")) {
-            rarityMultiplier = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.rarity-multipliers.legendary", 5.0);
-        } else if (fishLevel.contains("epic")) {
-            rarityMultiplier = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.rarity-multipliers.epic", 3.0);
-        } else if (fishLevel.contains("rare")) {
-            rarityMultiplier = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.rarity-multipliers.rare", 2.0);
-        } else {
-            rarityMultiplier = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.rarity-multipliers.common", 1.5);
-        }
+        String rarityName = plugin.getCustomConfig().getRarityNameByLevel(fishLevel);
+        rarityMultiplier = plugin.getCustomConfig().getRarityValueMultiplier(rarityName);
         
         double valueBonus = 1.0;
         if (player != null) {

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -12,11 +13,13 @@ import me.kkfish.kkfish;
 
 public class GUIMenuLoader {
     private final kkfish plugin;
+    private final Logger logger;
     private final Map<String, MenuConfig> menuConfigs = new HashMap<>();
     private final File guiFolder;
     
     public GUIMenuLoader(kkfish plugin) {
         this.plugin = plugin;
+        this.logger = plugin.getLogger();
         this.guiFolder = new File(plugin.getDataFolder(), "gui");
         if (!guiFolder.exists()) {
             guiFolder.mkdirs();

@@ -4,7 +4,7 @@
   <groupId>me.kkfish</groupId>
   <artifactId>kkfish</artifactId>
   <name>kkfish</name>
-  <version>1.4.0</version>
+  <version>1.5.0</version>
   <description>kkfish plugin</description>
   <url>https://github.com/gukuan/kkfish</url>
   <build>

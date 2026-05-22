@@ -131,6 +131,7 @@ public class CompetitionConfig {
             try {
                 tempBossBarColor = BarColor.valueOf(colorStr);
             } catch (IllegalArgumentException e) {
+                // Invalid boss bar color, using default
             }
             this.bossBarColor = tempBossBarColor;
             

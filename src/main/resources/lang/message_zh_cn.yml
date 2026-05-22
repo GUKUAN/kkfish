@@ -306,18 +306,6 @@ season.winter: "冬季"
 season.all: "四季出现"
 
 # ==========================
-# 稀有度配置
-# ==========================
-
-# 稀有度名称映射
-rarity_name:
-  common: "普通"
-  uncommon: "优秀"
-  rare: "稀有"
-  epic: "史诗"
-  legendary: "传说"
-
-# ==========================
 # 时间单位配置
 # ==========================
 time.day: "天"
@@ -345,6 +333,7 @@ fishing_effect_parse_failed: "解析鱼特效失败: %s - %s"
 dependency_lib_folder_created: "创建依赖库文件夹成功: %s"
 dependency_lib_folder_failed: "创建依赖库文件夹失败: %s"
 dependency_download_failed: "下载依赖失败: %s"
+dependency_download_failed_all: "依赖下载失败，插件可能无法正常运行！"
 dependency_load_overall_failed: "加载依赖失败: %s"
 
 # ==========================

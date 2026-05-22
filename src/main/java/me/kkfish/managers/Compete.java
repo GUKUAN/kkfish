@@ -15,6 +15,8 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 import me.kkfish.kkfish;
 import me.kkfish.utils.SchedulerUtil;
@@ -430,58 +432,112 @@ public class Compete {
         
         public void schedule() {
             if (config.getSchedule().contains("every")) {
-                scheduleWeekly();
+                scheduleRecurring();
             } else if (config.getSchedule().contains("-")) {
                 scheduleSpecificDate();
             }
         }
         
-        private void scheduleWeekly() {
+        private ZoneId getTimeZone() {
+            String timezone = plugin.getCustomConfig().getTimezone();
+            if (timezone == null || timezone.isEmpty()) {
+                return ZoneId.systemDefault();
+            }
+            try {
+                return ZoneId.of(timezone);
+            } catch (Exception e) {
+                plugin.getLogger().warning(plugin.getMessageManager().getMessageWithoutPrefix("timezone_invalid", "Invalid timezone '%s', using system default", timezone));
+                return ZoneId.systemDefault();
+            }
+        }
+        
+        private void scheduleRecurring() {
             try {
                 String[] parts = config.getSchedule().split(" ");
-                int dayOfWeek = Integer.parseInt(parts[1]) - 1;
+                String dayPart = parts[1];
                 String[] timeParts = parts[2].split(":");
                 int hour = Integer.parseInt(timeParts[0]);
                 int minute = Integer.parseInt(timeParts[1]);
                 
-                Calendar calendar = Calendar.getInstance();
-                calendar.set(Calendar.HOUR_OF_DAY, hour);
-                calendar.set(Calendar.MINUTE, minute);
-                calendar.set(Calendar.SECOND, 0);
+                ZoneId zoneId = getTimeZone();
+                ZonedDateTime now = ZonedDateTime.now(zoneId);
+                ZonedDateTime nextRun;
                 
-                if (calendar.get(Calendar.DAY_OF_WEEK) - 1 > dayOfWeek || 
-                    (calendar.get(Calendar.DAY_OF_WEEK) - 1 == dayOfWeek && 
-                     calendar.getTimeInMillis() < System.currentTimeMillis())) {
-                    calendar.add(Calendar.DAY_OF_WEEK, 7 - (calendar.get(Calendar.DAY_OF_WEEK) - 1 - dayOfWeek));
-                } else if (calendar.get(Calendar.DAY_OF_WEEK) - 1 < dayOfWeek) {
-                    calendar.add(Calendar.DAY_OF_WEEK, dayOfWeek - (calendar.get(Calendar.DAY_OF_WEEK) - 1));
+                if (dayPart.equalsIgnoreCase("day")) {
+                    nextRun = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0);
+                    if (nextRun.isBefore(now) || nextRun.isEqual(now)) {
+                        nextRun = nextRun.plusDays(1);
+                    }
+                    scheduleDaily(nextRun);
+                } else {
+                    int dayOfWeek = Integer.parseInt(dayPart) - 1;
+                    scheduleWeekly(dayOfWeek, hour, minute, zoneId);
                 }
                 
-                long delay = calendar.getTimeInMillis() - System.currentTimeMillis();
-                
-                final BukkitRunnable runnable = new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        if (config.getMinPlayers() > 0 && Bukkit.getOnlinePlayers().size() < config.getMinPlayers()) {
-                            scheduleWeekly();
-                            return;
-                        }
-                        
-                        startCompetitionManually(config.getId(), config.getDuration());
-                        scheduleWeekly();
-                    }
-                };
-                
-                scheduleCompetitionTask(runnable, delay, true);
-                
             } catch (Exception e) {
-                plugin.getLogger().warning(plugin.getMessageManager().getMessageWithoutPrefix("competition_schedule_parse_error", "Failed to parse weekly competition time: %s - %s", config.getSchedule(), e.getMessage()));
+                plugin.getLogger().warning(plugin.getMessageManager().getMessageWithoutPrefix("competition_schedule_parse_error", "Failed to parse recurring competition time: %s - %s", config.getSchedule(), e.getMessage()));
             }
+        }
+        
+        private void scheduleDaily(ZonedDateTime nextRun) {
+            ZoneId zoneId = getTimeZone();
+            ZonedDateTime now = ZonedDateTime.now(zoneId);
+            long delay = java.time.Duration.between(now, nextRun).toMillis();
+            
+            final BukkitRunnable runnable = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (config.getMinPlayers() > 0 && Bukkit.getOnlinePlayers().size() < config.getMinPlayers()) {
+                        scheduleDaily(nextRun.plusDays(1));
+                        return;
+                    }
+                    
+                    startCompetitionManually(config.getId(), config.getDuration());
+                    ZonedDateTime next = ZonedDateTime.now(zoneId).plusDays(1).withHour(nextRun.getHour()).withMinute(nextRun.getMinute()).withSecond(0);
+                    scheduleDaily(next);
+                }
+            };
+            
+            scheduleCompetitionTask(runnable, delay, true);
+        }
+        
+        private void scheduleWeekly(int dayOfWeek, int hour, int minute, ZoneId zoneId) {
+            ZonedDateTime now = ZonedDateTime.now(zoneId);
+            ZonedDateTime nextRun = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0);
+            
+            int currentDayOfWeek = now.getDayOfWeek().getValue() % 7;
+            int daysUntilTarget = (dayOfWeek - currentDayOfWeek + 7) % 7;
+            
+            if (daysUntilTarget == 0 && (nextRun.isBefore(now) || nextRun.isEqual(now))) {
+                daysUntilTarget = 7;
+            }
+            
+            nextRun = nextRun.plusDays(daysUntilTarget);
+            
+            long delay = java.time.Duration.between(now, nextRun).toMillis();
+            
+            final ZonedDateTime finalNextRun = nextRun;
+            final BukkitRunnable runnable = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (config.getMinPlayers() > 0 && Bukkit.getOnlinePlayers().size() < config.getMinPlayers()) {
+                        scheduleWeekly(dayOfWeek, hour, minute, zoneId);
+                        return;
+                    }
+                    
+                    startCompetitionManually(config.getId(), config.getDuration());
+                    scheduleWeekly(dayOfWeek, hour, minute, zoneId);
+                }
+            };
+            
+            scheduleCompetitionTask(runnable, delay, true);
         }
         
         private void scheduleSpecificDate() {
             try {
+                ZoneId zoneId = getTimeZone();
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+                dateFormat.setTimeZone(java.util.TimeZone.getTimeZone(zoneId));
                 Date date = dateFormat.parse(config.getSchedule());
                 
                 long delay = date.getTime() - System.currentTimeMillis();

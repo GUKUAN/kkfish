@@ -2,6 +2,7 @@
 target/
 
 # IDE files
+.trae/
 .idea/
 *.iml
 *.ipr
@@ -24,3 +25,8 @@ target/
 *.zip
 *.tar.gz
 *.rar
+
+# Other
+kkfish-bstat/
+.git/
+docs/

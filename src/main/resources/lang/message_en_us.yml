@@ -306,18 +306,6 @@ season.winter: "Winter"
 season.all: "Appears in all seasons"
 
 # ==========================
-# Rarity Configuration
-# ==========================
-
-# Rarity Name Mapping
-rarity_name:
-  common: "Common"
-  uncommon: "Uncommon"
-  rare: "Rare"
-  epic: "Epic"
-  legendary: "Legendary"
-
-# ==========================
 # Time Unit Configuration
 # ==========================
 time.day: "day"
@@ -345,6 +333,7 @@ fishing_effect_parse_failed: "Failed to parse fish effect: %s - %s"
 dependency_lib_folder_created: "Successfully created dependency library folder: %s"
 dependency_lib_folder_failed: "Failed to create dependency library folder: %s"
 dependency_download_failed: "Failed to download dependency: %s"
+dependency_download_failed_all: "Dependency download failed, plugin may not work properly!"
 dependency_load_overall_failed: "Failed to load dependency: %s"
 
 # ==========================

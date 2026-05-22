@@ -12,9 +12,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
@@ -23,6 +23,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.player.PlayerToggleSprintEvent;
+import org.bukkit.event.block.Action;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -64,9 +65,6 @@ public class Fishing implements Listener {
         this.fish = plugin.getFish();
         this.soundManager = plugin.getSoundManager();
         this.messageManager = plugin.getMessageManager();
-
-        Bukkit.getPluginManager().registerEvents(this, plugin);
-        
 
     }
 
@@ -252,6 +250,21 @@ public class Fishing implements Listener {
     }
 
     @EventHandler
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+        Fish fish = plugin.getFish();
+
+        if (fish != null && fish.isPlayerInMinigame(player.getUniqueId())) {
+            event.setCancelled(true);
+            fish.handlePlayerClick(player);
+        }
+    }
+
+    @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) {
             return;
@@ -285,7 +298,7 @@ public class Fishing implements Listener {
             return;
         }
         
-        if (event.getAction().name().contains("RIGHT_CLICK") && 
+        if ((event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) && 
             plugin.getCmd().hasFishingRod(player)) {
             
             ItemStack rod = player.getInventory().getItemInMainHand();
@@ -319,6 +332,7 @@ public class Fishing implements Listener {
         
         if (currentDurability <= 0) {
             player.sendMessage(messageManager.getMessage("rod_broken", "你的钓鱼竿已经损坏了！"));
+            return false;
         }
         
         return true;
@@ -360,6 +374,9 @@ public class Fishing implements Listener {
         
         ItemMeta meta = rod.getItemMeta();
         if (meta != null) {
+            PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            pdc.set(new NamespacedKey(plugin, "rod_durability"), PersistentDataType.INTEGER, currentDurability);
+            
             String templateName = config.getRodTemplateName(rodType);
             String template = config.getRodTemplate(templateName);
             if (template == null || template.isEmpty()) {
@@ -482,6 +499,15 @@ public class Fishing implements Listener {
         
         if (maxDurability <= 0) {
             return Integer.MAX_VALUE;
+        }
+        
+        ItemMeta meta = rod.getItemMeta();
+        if (meta != null) {
+            PersistentDataContainer pdc = meta.getPersistentDataContainer();
+            NamespacedKey key = new NamespacedKey(plugin, "rod_durability");
+            if (pdc.has(key, PersistentDataType.INTEGER)) {
+                return Math.max(0, pdc.get(key, PersistentDataType.INTEGER));
+            }
         }
         
         int baseDurability = 100;
