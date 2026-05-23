@@ -1575,6 +1575,10 @@ public class Fish {
     }
     
     public ItemStack createFishItem(String fishName, boolean forceRarity, Player player, double fishSize, String fishLevel) {
+        return createFishItem(fishName, forceRarity, player, fishSize, fishLevel, null);
+    }
+    
+    public ItemStack createFishItem(String fishName, boolean forceRarity, Player player, double fishSize, String fishLevel, Double preCalculatedValue) {
         FileConfiguration fishConfig = config.getFishConfig();
         
         String displayName = fishConfig.getString("fish." + fishName + ".display-name", fishName);
@@ -1668,37 +1672,42 @@ public class Fish {
                 }
             }
             
-            double baseValue = fishConfig.getDouble("fish." + fishName + ".value", 10.0);
-            double rarityMultiplier = 1.0;
+            int value;
             String rarityDisplayName = fishLevel;
-            
-            String rarityName = config.getRarityNameByLevel(fishLevel);
-            rarityMultiplier = config.getRarityValueMultiplier(rarityName);
-            rarityDisplayName = config.getRarityDisplayName(rarityName);
-            
-            double finalValue = baseValue * fishSize / maxSize * rarityMultiplier * valueBonus;
-            
-            if (config.isDebugMode()) {
-                plugin.getLogger().info(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_calculation", "[Debug] 计算鱼的价值: 基础价值=%s, 鱼大小=%s, 最大大小=%s, 稀有度倍率=%s, 鱼钩材质加成=%s, 最终价值=%s", baseValue, fishSize, maxSize, rarityMultiplier, valueBonus, finalValue));
-            }
-            
-            if (plugin.isRealisticSeasonsEnabled() && config.isSeasonalPriceFluctuationEnabled()) {
-                String currentSeason = plugin.getCurrentSeason();
-                if (currentSeason != null) {
-                    double seasonalMultiplier = config.getSeasonalPriceMultiplier(currentSeason);
-                    finalValue *= seasonalMultiplier;
-                    
-                    double baseFluctuation = config.getBasePriceFluctuation();
-                    double randomFluctuation = 1.0 + (new Random().nextDouble() - 0.5) * 2 * baseFluctuation;
-                    finalValue *= randomFluctuation;
-                    
-                    if (config.isDebugMode()) {
-                        plugin.getLogger().info(plugin.getMessageManager().getMessageWithoutPrefix("debug_seasonal_price_fluctuation", "[Debug] 应用季节性价格浮动: 当前季节=%s, 季节倍率=%s, 随机浮动=%s, 浮动后价值=%s", currentSeason, seasonalMultiplier, randomFluctuation, finalValue));
+            if (preCalculatedValue != null) {
+                value = (int) Math.round(preCalculatedValue);
+            } else {
+                double baseValue = fishConfig.getDouble("fish." + fishName + ".value", 10.0);
+                double rarityMultiplier = 1.0;
+                
+                String rarityName = config.getRarityNameByLevel(fishLevel);
+                rarityMultiplier = config.getRarityValueMultiplier(rarityName);
+                rarityDisplayName = config.getRarityDisplayName(rarityName);
+                
+                double finalValue = baseValue * fishSize / maxSize * rarityMultiplier * valueBonus;
+                
+                if (config.isDebugMode()) {
+                    plugin.getLogger().info(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_calculation", "[Debug] 计算鱼的价值: 基础价值=%s, 鱼大小=%s, 最大大小=%s, 稀有度倍率=%s, 鱼钩材质加成=%s, 最终价值=%s", baseValue, fishSize, maxSize, rarityMultiplier, valueBonus, finalValue));
+                }
+                
+                if (plugin.isRealisticSeasonsEnabled() && config.isSeasonalPriceFluctuationEnabled()) {
+                    String currentSeason = plugin.getCurrentSeason();
+                    if (currentSeason != null) {
+                        double seasonalMultiplier = config.getSeasonalPriceMultiplier(currentSeason);
+                        finalValue *= seasonalMultiplier;
+                        
+                        double baseFluctuation = config.getBasePriceFluctuation();
+                        double randomFluctuation = 1.0 + (new Random().nextDouble() - 0.5) * 2 * baseFluctuation;
+                        finalValue *= randomFluctuation;
+                        
+                        if (config.isDebugMode()) {
+                            plugin.getLogger().info(plugin.getMessageManager().getMessageWithoutPrefix("debug_seasonal_price_fluctuation", "[Debug] 应用季节性价格浮动: 当前季节=%s, 季节倍率=%s, 随机浮动=%s, 浮动后价值=%s", currentSeason, seasonalMultiplier, randomFluctuation, finalValue));
+                        }
                     }
                 }
+                
+                value = (int) Math.round(finalValue);
             }
-            
-            int value = (int) Math.round(finalValue);
             
             String sizeQuality;
             if (fishSize < minSize + (maxSize - minSize) * 0.3) {

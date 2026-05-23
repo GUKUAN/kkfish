@@ -136,6 +136,8 @@ public class MinigameManager {
         
         if (session.isSuccess) {
             final String fishName = session.targetFish;
+            
+            double actualFishValue = session.getActualFishValue();
             final ItemStack fishItem = session.createFishItem();
             final double fishValue = plugin.getCustomConfig().getFishValue(fishName);
             
@@ -144,8 +146,6 @@ public class MinigameManager {
                 if (player != null) {
                     Location fishStartLocation = session.hookLocation.clone();
                     fishStartLocation.add(0, 0.5, 0);
-                    
-                    double actualFishValue = session.getActualFishValue();
                     
                     fishingManager.animateFishToPlayer(player, fishStartLocation, session.hookLocation, fishItem, actualFishValue, session.waterType, new me.kkfish.managers.Fish.AnimationCompleteCallback() {
                     @Override
@@ -209,7 +209,7 @@ public class MinigameManager {
                                 } catch (Exception e) {
                                     plugin.getLogger().warning("处理鱼等级时出错: " + session.fishLevel);
                                 }
-                                fishingManager.sendFishBroadcast(player, fishName, session.fishSize, level, fishValue);
+                                fishingManager.sendFishBroadcast(player, fishName, session.fishSize, level, actualFishValue);
                             }
                             
                             List<String> fishCommands = configManager.getFishCommands(fishName);

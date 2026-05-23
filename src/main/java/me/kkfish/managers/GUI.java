@@ -197,7 +197,7 @@ public class GUI {
         title = title.replace("%page%", String.valueOf(page + 1));
         
         Inventory gui = Bukkit.createInventory(
-            new GUIHolder(GUIType.valueOf(menuName.toUpperCase().replace("_", "_"))),
+            new GUIHolder(GUIType.valueOf(menuName.toUpperCase().replace("_", "_")), page),
             size,
             ChatColor.translateAlternateColorCodes('&', title)
         );
@@ -1104,7 +1104,7 @@ public class GUI {
         // 过滤出应该在GUI中显示的鱼钩
         List<String> visibleHookNames = new ArrayList<>();
         for (String hookName : allHooks.keySet()) {
-            if (!config.isHookVisibleInGui(hookName)) {
+            if (!config.hasHookMaterialPermission(player, hookName)) {
                 continue;
             }
             
@@ -1201,9 +1201,8 @@ public class GUI {
         // 添加当前页的鱼钩，采用更美观的网格布局
         int slotIndex = 19; // 从第二行第二列开始
         for (String hookName : currentPageHooks) {
-            // 检查玩家是否有权限
-            if (!config.hasHookMaterialPermission(player, hookName)) {
-                continue; // 跳过玩家没有权限的鱼钩
+            if (!config.isHookVisibleInGui(hookName)) {
+                continue;
             }
             
             // 获取鱼钩配置
@@ -1987,7 +1986,7 @@ public class GUI {
             lore.add("§7§m-------------------");
             
             // 检查是否已购买
-            boolean isPurchased = plugin.getDB().hasPlayerPurchasedHook(player.getUniqueId().toString(), type);
+            boolean isPurchased = config.hasHookMaterialPermission(player, type);
             
             // 检查是否需要购买
             if (config.isHookNeedPurchase(type)) {

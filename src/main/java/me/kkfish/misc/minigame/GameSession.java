@@ -35,6 +35,7 @@ public class GameSession extends BukkitRunnable {
     private double progress;
     private int invincibleTicks;
     public boolean isSuccess = false;
+    private Double cachedActualFishValue = null;
     private double greenBarWidth = 0.3;
     
     private int moveDir = 0;
@@ -758,6 +759,10 @@ public class GameSession extends BukkitRunnable {
     }
     
     public double getActualFishValue() {
+        if (cachedActualFishValue != null) {
+            return cachedActualFishValue;
+        }
+        
         double baseValue = plugin.getCustomConfig().getFishConfig().getDouble("fish." + targetFish + ".value", 10.0);
         
         double minSize = plugin.getCustomConfig().getFishConfig().getDouble("fish." + targetFish + ".min-size", 20.0);
@@ -799,11 +804,12 @@ public class GameSession extends BukkitRunnable {
             }
         }
         
-        return Math.round(finalValue * 100) / 100.0;
+        cachedActualFishValue = Math.round(finalValue * 100) / 100.0;
+        return cachedActualFishValue;
     }
     
     public ItemStack createFishItem() {
-        return plugin.getFish().createFishItem(targetFish, false, this.player, this.fishSize, this.fishLevel);
+        return plugin.getFish().createFishItem(targetFish, false, this.player, this.fishSize, this.fishLevel, cachedActualFishValue);
     }
     
     public boolean isCancelled() {

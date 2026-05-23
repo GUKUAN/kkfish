@@ -159,12 +159,83 @@ public class GUIAction {
         me.kkfish.kkfish kkfishPlugin = (me.kkfish.kkfish) plugin;
         GUI guiManager = kkfishPlugin.getGUI();
         Config configManager = kkfishPlugin.getCustomConfig();
+        me.kkfish.misc.MessageManager messageManager = kkfishPlugin.getMessageManager();
         
         if (configManager.hasHookMaterialPermission(player, itemId)) {
             guiManager.setPlayerHookMaterial(player, itemId);
-            plugin.getLogger().info("Player " + player.getName() + " equipped hook " + itemId);
+            return;
+        }
+        
+        if (!itemType.equals("hook")) {
+            return;
+        }
+        
+        if (!configManager.isHookNeedPurchase(itemId)) {
+            player.sendMessage(messageManager.getMessage(player, "hook_no_permission", "§c你没有权限使用这个鱼钩！"));
+            return;
+        }
+        
+        boolean isLeftClick = event.isLeftClick();
+        boolean isRightClick = event.isRightClick();
+        
+        boolean purchaseSuccess = false;
+        
+        if (isLeftClick && configManager.canPurchaseWithVault(itemId)) {
+            net.milkbowl.vault.economy.Economy economy = kkfishPlugin.getEconomy();
+            if (economy == null) {
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_vault_unavailable", "§c经济系统未启用，无法使用金币购买！"));
+                return;
+            }
+            
+            double vaultPrice = configManager.getHookVaultPrice(itemId);
+            double balance = economy.getBalance(player);
+            
+            if (balance < vaultPrice) {
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_insufficient_vault", "§c金币不足！还需 %.2f 金币", vaultPrice - balance));
+                return;
+            }
+            
+            net.milkbowl.vault.economy.EconomyResponse response = economy.withdrawPlayer(player, vaultPrice);
+            if (!response.transactionSuccess()) {
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_deduct_failed", "§c扣除金币失败，请稍后再试。"));
+                return;
+            }
+            
+            purchaseSuccess = true;
+        } else if (isRightClick && configManager.canPurchaseWithPoints(itemId)) {
+            org.black_ixx.playerpoints.PlayerPointsAPI pointsAPI = kkfishPlugin.getPlayerPointsAPI();
+            if (pointsAPI == null) {
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_points_unavailable", "§c点卷系统未启用，无法使用点卷购买！"));
+                return;
+            }
+            
+            int pointsPrice = configManager.getHookPointsPrice(itemId);
+            int currentPoints = pointsAPI.look(player.getUniqueId());
+            
+            if (currentPoints < pointsPrice) {
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_insufficient_points", "§c点卷不足！还需 %d 点卷", pointsPrice - currentPoints));
+                return;
+            }
+            
+            if (!pointsAPI.take(player.getUniqueId(), pointsPrice)) {
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_deduct_failed", "§c扣除点卷失败，请稍后再试。"));
+                return;
+            }
+            
+            purchaseSuccess = true;
         } else {
-            plugin.getLogger().info("Player " + player.getName() + " trying to buy " + itemType + " " + itemId);
+            player.sendMessage(messageManager.getMessage(player, "hook_purchase_invalid_click", "§c请使用左键 (金币) 或右键 (点卷) 购买"));
+            return;
+        }
+        
+        if (purchaseSuccess) {
+            kkfishPlugin.getDB().markHookAsPurchased(player.getUniqueId().toString(), itemId);
+            
+            String displayName = configManager.getHookDisplayName(itemId);
+            displayName = displayName.replace('§', '&');
+            player.sendMessage(messageManager.getMessage(player, "hook_purchase_success", "§a成功购买鱼钩: %s！", displayName));
+            
+            guiManager.setPlayerHookMaterial(player, itemId);
         }
     }
     
