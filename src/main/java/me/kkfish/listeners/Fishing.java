@@ -158,7 +158,7 @@ public class Fishing implements Listener {
 
         DB db = plugin.getDB();
         if (db != null) {
-            db.clearAllCache();
+            db.clearPlayerCache(player.getUniqueId().toString());
         }
         
 
@@ -182,7 +182,7 @@ public class Fishing implements Listener {
             Location from = event.getFrom();
             Location to = event.getTo();
             
-            if (to != null && (from.getX() != to.getX() || from.getZ() != to.getZ())) {
+            if (to != null && (from.getX() != to.getX() || from.getZ() != to.getZ() || from.getY() != to.getY())) {
                 event.setCancelled(true);
             }
         }
@@ -356,6 +356,12 @@ public class Fishing implements Listener {
         int baseLoss = mainConfig.getInt("fishing-settings.durability.base-loss", 1);
         int maxSingleLoss = mainConfig.getInt("fishing-settings.durability.max-single-loss", 5);
         
+        if (maxSingleLoss < baseLoss) {
+            int temp = maxSingleLoss;
+            maxSingleLoss = baseLoss;
+            baseLoss = temp;
+        }
+        
         int durabilityLoss = baseLoss + (int) (Math.random() * (maxSingleLoss - baseLoss + 1));
         
         if (config.isDebugMode()) {
@@ -495,6 +501,9 @@ public class Fishing implements Listener {
         Config config = plugin.getCustomConfig();
         
         String rodType = config.getRodType(rod);
+        if (rodType == null) {
+            return -1;
+        }
         int maxDurability = config.getRodDurability(rodType);
         
         if (maxDurability <= 0) {

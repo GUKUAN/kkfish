@@ -79,6 +79,10 @@ public class GUIListener implements Listener {
         }
     }
     
+    public void reloadDisplayNameMap() {
+        initializeDisplayNameToHookNameMap();
+    }
+    
     public String getHookNameFromDisplayName(String displayName) {
         String hookName = displayNameToHookNameMap.get(displayName);
         
@@ -306,7 +310,8 @@ public class GUIListener implements Listener {
                             soldCount++;
                             inventory.setItem(i, null);
                         } else {
-                            player.getInventory().addItem(item);
+                            player.getInventory().addItem(item).values().forEach(remaining ->
+                                    player.getWorld().dropItemNaturally(player.getLocation(), remaining));
                             refundCount++;
                             inventory.setItem(i, null);
                         }
@@ -328,9 +333,14 @@ public class GUIListener implements Listener {
             }
         }
         
-        if (event.getPlayer() instanceof Player) {
-            Player player = (Player) event.getPlayer();
-            guiManager.setHookSearchQuery(player, null);
+        if (holder instanceof GUIHolder) {
+            GUIHolder guiHolder = (GUIHolder) holder;
+            if (guiHolder.getType() == GUI.GUIType.HOOK_MATERIAL) {
+                if (event.getPlayer() instanceof Player) {
+                    Player player = (Player) event.getPlayer();
+                    guiManager.setHookSearchQuery(player, null);
+                }
+            }
         }
     }
     
@@ -351,32 +361,24 @@ public class GUIListener implements Listener {
             if (value <= 0 && item.hasItemMeta()) {
                 try {
                     ItemMeta meta = item.getItemMeta();
-                    java.lang.reflect.Method getPdcMethod = meta.getClass().getMethod("getPersistentDataContainer");
-                    if (getPdcMethod != null) {
-                        Object pdc = getPdcMethod.invoke(meta);
+                    PersistentDataContainer pdc = meta.getPersistentDataContainer();
+                    NamespacedKey uuidKey = new NamespacedKey(kkfish.getInstance(), "fish_uuid");
+                    
+                    if (pdc.has(uuidKey, PersistentDataType.STRING)) {
+                        fishUUIDStr = pdc.get(uuidKey, PersistentDataType.STRING);
                         
-                        java.lang.reflect.Method hasMethod = pdc.getClass().getMethod("has", org.bukkit.NamespacedKey.class, org.bukkit.persistence.PersistentDataType.class);
-                        NamespacedKey uuidKey = new NamespacedKey(kkfish.getInstance(), "fish_uuid");
-                        
-                        java.lang.reflect.Field stringField = org.bukkit.persistence.PersistentDataType.class.getField("STRING");
-                        Object stringType = stringField.get(null);
-                        
-                        if ((Boolean) hasMethod.invoke(pdc, uuidKey, stringType)) {
-                            java.lang.reflect.Method getMethod = pdc.getClass().getMethod("get", org.bukkit.NamespacedKey.class, org.bukkit.persistence.PersistentDataType.class);
-                            fishUUIDStr = (String) getMethod.invoke(pdc, uuidKey, stringType);
-                            
-                            if (fishUUIDStr != null) {
-                                value = kkfish.getInstance().getDB().getFishValueByUUID(fishUUIDStr);
-                            }
+                        if (fishUUIDStr != null) {
+                            value = kkfish.getInstance().getDB().getFishValueByUUID(fishUUIDStr);
                         }
                     }
-                } catch (NoSuchMethodException e) {
                 } catch (Exception e) {
                 }
             }
             
             String fishName = getItemNameFromItem(item);
-            if (fishName != null) {
+            boolean hasItemRewards = fishName != null && plugin.getCustomConfig().getItemValue().hasItemRewards(fishName);
+            
+            if (hasItemRewards) {
                 List<ItemStack> itemRewards = plugin.getCustomConfig().getItemValue().getItemRewards(fishName);
                 for (ItemStack reward : itemRewards) {
                     player.getInventory().addItem(reward);
@@ -394,12 +396,21 @@ public class GUIListener implements Listener {
                 }
             }
             
-            if (fishName != null && plugin.getCustomConfig().getItemValue().hasItemRewards(fishName)) {
+            if (hasItemRewards) {
+                if (value > 0 && plugin.getCustomConfig().isEconomyEnabled()) {
+                    Economy economy = plugin.getEconomy();
+                    if (economy != null) {
+                        economy.depositPlayer(player, value);
+                        if (fishUUIDStr != null) {
+                            plugin.getDB().removeFishUUIDValue(fishUUIDStr);
+                        }
+                    }
+                }
                 return 1;
             }
             
         } catch (Exception e) {
-            e.printStackTrace();
+            plugin.getLogger().warning("Failed to sell fish item: " + e.getMessage());
         }
         
         return 0;

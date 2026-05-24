@@ -29,6 +29,7 @@ public abstract class Competition {
     protected final Map<UUID, CompetitionData> playerData = new ConcurrentHashMap<>();
     protected BossBar bossBar;
     protected BukkitTask countdownTask;
+    private boolean ended = false;
 
     public Competition(Compete manager, CompetitionConfig config, int duration) {
         this.manager = manager;
@@ -69,6 +70,9 @@ public abstract class Competition {
     }
     
     private void cleanupAndAnnounce(boolean forceSettle) {
+        if (ended) return;
+        ended = true;
+        
         if (countdownTask != null) {
             SchedulerUtil.cancelTask(countdownTask);
         }
@@ -99,6 +103,10 @@ public abstract class Competition {
     }
 
     private void startCountdownTask() {
+        if (countdownTask != null) {
+            countdownTask.cancel();
+        }
+        
         final CompetitionConfig config = this.config;
         final Competition competition = this;
         final BossBar bossBar = this.bossBar;
@@ -213,26 +221,7 @@ public abstract class Competition {
     protected abstract String getResultMessageFormat();
 
     protected String formatDuration(int seconds) {
-        int days = seconds / 86400;
-        int hours = (seconds % 86400) / 3600;
-        int minutes = (seconds % 3600) / 60;
-        int secs = seconds % 60;
-        
-        StringBuilder sb = new StringBuilder();
-        if (days > 0) {
-            sb.append(days).append(manager.getPlugin().getMessageManager().getMessageWithoutPrefix("time.day", "天"));
-        }
-        if (hours > 0) {
-            sb.append(hours).append(manager.getPlugin().getMessageManager().getMessageWithoutPrefix("time.hour", "时"));
-        }
-        if (minutes > 0) {
-            sb.append(minutes).append(manager.getPlugin().getMessageManager().getMessageWithoutPrefix("time.minute", "分"));
-        }
-        if (secs > 0 || sb.length() == 0) {
-            sb.append(secs).append(manager.getPlugin().getMessageManager().getMessageWithoutPrefix("time.second", "秒"));
-        }
-
-        return sb.toString();
+        return CompetitionUtils.formatDuration(seconds, manager.getPlugin().getMessageManager());
     }
 
     public CompetitionConfig getConfig() {

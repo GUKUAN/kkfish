@@ -34,11 +34,6 @@ public class Compete {
     protected final Set<BukkitTask> scheduledTasks = ConcurrentHashMap.newKeySet();
     protected final Set<BossBar> activeBossBars = ConcurrentHashMap.newKeySet();
     private final Map<String, Scoreboard> activeScoreboards = new ConcurrentHashMap<>();
-    
-    private final StringBuilder sb = new StringBuilder();
-    private final ArrayList<Map.Entry<UUID, CompetitionData>> sortedEntries = new ArrayList<>();
-    private final ArrayList<CompetitionData> sortedData = new ArrayList<>();
-    private final ArrayList<String> sortedKeys = new ArrayList<>();
 
     public Compete(kkfish plugin) {
         this.plugin = plugin;
@@ -50,7 +45,7 @@ public class Compete {
         competitionConfigs.clear();
 
         FileConfiguration config = plugin.getCustomConfig().getCompeteConfig();
-        if (config.contains("competitions")) {
+        if (config.contains("competitions") && config.getConfigurationSection("competitions") != null) {
             for (String id : config.getConfigurationSection("competitions").getKeys(false)) {
                 CompetitionConfig cfg = new CompetitionConfig(id, config);
                 if (cfg.isEnabled()) {
@@ -86,12 +81,10 @@ public class Compete {
         
         int actualDuration = durationSeconds > 0 ? durationSeconds : config.getDuration();
         
-        if (activeCompetitions.containsKey(competitionId)) {
+        Competition competition = createCompetition(config, actualDuration);
+        if (activeCompetitions.putIfAbsent(competitionId, competition) != null) {
             return false;
         }
-        
-        Competition competition = createCompetition(config, actualDuration);
-        activeCompetitions.put(competitionId, competition);
         competition.start();
         
         createScoreboard(competitionId);
@@ -300,8 +293,7 @@ public class Compete {
         
         Map<String, Integer> lines = competition.getConfig().getDisplayConfig().getScoreboardLines();
         
-        sortedKeys.clear();
-        sortedKeys.addAll(lines.keySet());
+        List<String> sortedKeys = new ArrayList<>(lines.keySet());
         
         sortedKeys.sort((a, b) -> {
             int scoreA = lines.get(a);
@@ -324,8 +316,7 @@ public class Compete {
             return 0;
         });
 
-        sortedData.clear();
-        sortedData.addAll(competition.getPlayerData().values());
+        List<CompetitionData> sortedData = new ArrayList<>(competition.getPlayerData().values());
         competition.sortData(sortedData);
 
         for (String key : sortedKeys) {
@@ -400,26 +391,7 @@ public class Compete {
     }
     
     private String formatDuration(int seconds) {
-        int days = seconds / 86400;
-        int hours = (seconds % 86400) / 3600;
-        int minutes = (seconds % 3600) / 60;
-        int secs = seconds % 60;
-        
-        sb.setLength(0);
-        if (days > 0) {
-            sb.append(days).append(plugin.getMessageManager().getMessageWithoutPrefix("time.day", "天"));
-        }
-        if (hours > 0) {
-            sb.append(hours).append(plugin.getMessageManager().getMessageWithoutPrefix("time.hour", "时"));
-        }
-        if (minutes > 0) {
-            sb.append(minutes).append(plugin.getMessageManager().getMessageWithoutPrefix("time.minute", "分"));
-        }
-        if (secs > 0 || sb.length() == 0) {
-            sb.append(secs).append(plugin.getMessageManager().getMessageWithoutPrefix("time.second", "秒"));
-        }
-
-        return sb.toString();
+        return CompetitionUtils.formatDuration(seconds, plugin.getMessageManager());
     }
 
     public class ScheduledCompetition {
@@ -454,6 +426,10 @@ public class Compete {
         private void scheduleRecurring() {
             try {
                 String[] parts = config.getSchedule().split(" ");
+                if (parts.length < 3) {
+                    plugin.getLogger().warning(plugin.getMessageManager().getMessageWithoutPrefix("competition_schedule_parse_error", "Failed to parse recurring competition time: %s - insufficient parts", config.getSchedule()));
+                    return;
+                }
                 String dayPart = parts[1];
                 String[] timeParts = parts[2].split(":");
                 int hour = Integer.parseInt(timeParts[0]);
@@ -567,7 +543,19 @@ public class Compete {
         }
         
         private void scheduleCompetitionTask(BukkitRunnable runnable, long delay, boolean isRecurring) {
-            task = runnable.runTaskLater(plugin, delay / 50);
+            final BukkitTask[] taskHolder = new BukkitTask[1];
+            BukkitRunnable wrapper = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    try {
+                        runnable.run();
+                    } finally {
+                        scheduledTasks.remove(taskHolder[0]);
+                    }
+                }
+            };
+            task = wrapper.runTaskLater(plugin, delay / 50);
+            taskHolder[0] = task;
             scheduledTasks.add(task);
             scheduleCompetitionNotification(delay);
         }
@@ -578,17 +566,24 @@ public class Compete {
             
             try {
                 if (notificationDelay > 0) {
-                    SchedulerUtil.scheduleTask(plugin, new BukkitRunnable() {
+                    BukkitTask notificationTask = SchedulerUtil.scheduleTask(plugin, new BukkitRunnable() {
                         @Override
                         public void run() {
-                            if (!plugin.getServer().getOnlinePlayers().isEmpty()) {
-                                plugin.getServer().getOnlinePlayers().forEach(player -> {
-                                    String message = plugin.getMessageManager().getMessage(player, "competition.starting_soon", "Competition will start in %s minutes!", String.valueOf(minutes));
-                                    player.sendMessage(message);
-                                });
+                            try {
+                                if (!plugin.getServer().getOnlinePlayers().isEmpty()) {
+                                    plugin.getServer().getOnlinePlayers().forEach(player -> {
+                                        String message = plugin.getMessageManager().getMessage(player, "competition.starting_soon", "Competition will start in %s minutes!", String.valueOf(minutes));
+                                        player.sendMessage(message);
+                                    });
+                                }
+                            } finally {
+                                scheduledTasks.remove(this);
                             }
                         }
                     }, notificationDelay / 50, 0);
+                    if (notificationTask != null) {
+                        scheduledTasks.add(notificationTask);
+                    }
                 }
             } catch (Exception e) {
                 plugin.getLogger().warning(plugin.getMessageManager().getMessageWithoutPrefix("competition_notification_schedule_error", "Failed to schedule competition start notification task: %s", e.getMessage()));

@@ -34,7 +34,8 @@ public class DB {
     // 缓存相关
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
     private final int DEFAULT_CACHE_EXPIRY = 300; // 默认缓存过期时间（秒）
-    private final int MAX_CACHE_SIZE = 1000; // 最大缓存条目数
+    private final int MAX_CACHE_SIZE = 1000;
+    private int cacheWriteCount = 0;
     
     // 缓存条目类
     private class CacheEntry {
@@ -146,7 +147,8 @@ public class DB {
      * 创建数据表
      */
     private void createTables() throws SQLException {
-        // 创建玩家钓鱼统计数据表
+        String autoIncrementType = dbType.equals("mysql") ? "INT PRIMARY KEY AUTO_INCREMENT" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+
         String createPlayerStatsTable = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "player_fishing_stats (" +
                 "player_uuid VARCHAR(36) PRIMARY KEY, " +
                 "player_name VARCHAR(16), " +
@@ -213,7 +215,7 @@ public class DB {
         
         // 创建钓鱼记录表
         String createFishingLogTable = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "fishing_log (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "id " + autoIncrementType + ", " +
                 "player_uuid VARCHAR(36), " +
                 "fish_name VARCHAR(64), " +
                 "fish_level VARCHAR(32), " +
@@ -255,7 +257,7 @@ public class DB {
         
         // 创建鱼效果表
         String createFishEffectsTable = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "fish_effects (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "id " + autoIncrementType + ", " +
                 "fish_uuid VARCHAR(36), " +
                 "effect_type VARCHAR(32), " +
                 "effect_level INT, " +
@@ -280,7 +282,7 @@ public class DB {
         try {
             // 记录到钓鱼日志
             String insertLog = "INSERT INTO " + tablePrefix + "fishing_log (player_uuid, fish_name, fish_level, fish_size, fish_value, location_x, location_y, location_z, world_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            try (PreparedStatement pstmt = connection.prepareStatement(insertLog)) {
+            try (PreparedStatement pstmt = getConnection().prepareStatement(insertLog)) {
                 pstmt.setString(1, player.getUniqueId().toString());
                 pstmt.setString(2, fishName);
                 pstmt.setString(3, fishLevel);
@@ -307,53 +309,49 @@ public class DB {
     private void updatePlayerStats(Player player, double fishSize, int fishValue, boolean isLegendary) throws SQLException {
         String uuid = player.getUniqueId().toString();
         String name = player.getName();
-        
-        // 检查玩家是否已存在
-        String checkPlayer = "SELECT * FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(checkPlayer)) {
-            pstmt.setString(1, uuid);
-            ResultSet rs = pstmt.executeQuery();
-            
-            if (rs.next()) {
-                // 玩家已存在，更新数据
-                int totalFishCaught = rs.getInt("total_fish_caught") + 1;
-                double currentLargestSize = rs.getDouble("largest_fish_size");
-                int currentMostValuable = rs.getInt("most_valuable_fish");
-                int legendaryCaught = rs.getInt("legendary_fish_caught");
-                
-                if (isLegendary) {
-                    legendaryCaught++;
-                }
-                
-                String updatePlayer = "UPDATE " + tablePrefix + "player_fishing_stats SET " +
-                        "player_name = ?, " +
-                        "total_fish_caught = ?, " +
-                        "largest_fish_size = ?, " +
-                        "most_valuable_fish = ?, " +
-                        "last_fishing_time = CURRENT_TIMESTAMP, " +
-                        "legendary_fish_caught = ? " +
-                        "WHERE player_uuid = ?";
-                try (PreparedStatement updateStmt = connection.prepareStatement(updatePlayer)) {
-                    updateStmt.setString(1, name);
-                    updateStmt.setInt(2, totalFishCaught);
-                    updateStmt.setDouble(3, Math.max(currentLargestSize, fishSize));
-                    updateStmt.setInt(4, Math.max(currentMostValuable, fishValue));
-                    updateStmt.setInt(5, legendaryCaught);
-                    updateStmt.setString(6, uuid);
-                    updateStmt.executeUpdate();
-                }
-            } else {
-                // 玩家不存在，插入新数据
-                String insertPlayer = "INSERT INTO " + tablePrefix + "player_fishing_stats (player_uuid, player_name, total_fish_caught, largest_fish_size, most_valuable_fish, legendary_fish_caught) VALUES (?, ?, ?, ?, ?, ?)";
-                try (PreparedStatement insertStmt = connection.prepareStatement(insertPlayer)) {
-                    insertStmt.setString(1, uuid);
-                    insertStmt.setString(2, name);
-                    insertStmt.setInt(3, 1);
-                    insertStmt.setDouble(4, fishSize);
-                    insertStmt.setInt(5, fishValue);
-                    insertStmt.setInt(6, isLegendary ? 1 : 0);
-                    insertStmt.executeUpdate();
-                }
+        int legendaryIncrement = isLegendary ? 1 : 0;
+
+        if (dbType.equals("mysql")) {
+            String query = "INSERT INTO " + tablePrefix + "player_fishing_stats " +
+                    "(player_uuid, player_name, total_fish_caught, largest_fish_size, most_valuable_fish, legendary_fish_caught, last_fishing_time) " +
+                    "VALUES (?, ?, 1, ?, ?, ?, CURRENT_TIMESTAMP) " +
+                    "ON DUPLICATE KEY UPDATE " +
+                    "player_name = VALUES(player_name), " +
+                    "total_fish_caught = total_fish_caught + 1, " +
+                    "largest_fish_size = GREATEST(largest_fish_size, VALUES(largest_fish_size)), " +
+                    "most_valuable_fish = GREATEST(most_valuable_fish, VALUES(most_valuable_fish)), " +
+                    "legendary_fish_caught = legendary_fish_caught + ?, " +
+                    "last_fishing_time = CURRENT_TIMESTAMP";
+            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                pstmt.setString(1, uuid);
+                pstmt.setString(2, name);
+                pstmt.setDouble(3, fishSize);
+                pstmt.setInt(4, fishValue);
+                pstmt.setInt(5, legendaryIncrement);
+                pstmt.setInt(6, legendaryIncrement);
+                pstmt.executeUpdate();
+            }
+        } else {
+            String query = "INSERT OR REPLACE INTO " + tablePrefix + "player_fishing_stats " +
+                    "(player_uuid, player_name, total_fish_caught, largest_fish_size, most_valuable_fish, success_rate, last_fishing_time, legendary_fish_caught, hook_material, player_language) " +
+                    "SELECT ?, ?, " +
+                    "COALESCE(MAX(total_fish_caught), 0) + 1, " +
+                    "MAX(?, COALESCE(MAX(largest_fish_size), 0)), " +
+                    "MAX(?, COALESCE(MAX(most_valuable_fish), 0)), " +
+                    "COALESCE(MAX(success_rate), 0.0), " +
+                    "CURRENT_TIMESTAMP, " +
+                    "COALESCE(MAX(legendary_fish_caught), 0) + ?, " +
+                    "COALESCE(MAX(hook_material), 'wood'), " +
+                    "COALESCE(MAX(player_language), 'zh_cn') " +
+                    "FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
+            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                pstmt.setString(1, uuid);
+                pstmt.setString(2, name);
+                pstmt.setDouble(3, fishSize);
+                pstmt.setInt(4, fishValue);
+                pstmt.setInt(5, legendaryIncrement);
+                pstmt.setString(6, uuid);
+                pstmt.executeUpdate();
             }
         }
     }
@@ -407,9 +405,10 @@ public class DB {
             plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_result", "Database connection result: " + (connection != null ? "Success" : "Failed")));
         } catch (SQLException | ClassNotFoundException e) {
             plugin.getLogger().log(Level.SEVERE, plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_reconnect_failed", "Failed to reconnect to database!"), e);
-            // 确保返回null而不是无效连接
             connection = null;
-            plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_return_null", "Database connection failed, returning null"));
+        }
+        if (connection == null) {
+            throw new RuntimeException("Failed to establish database connection");
         }
         return connection;
     }
@@ -480,8 +479,10 @@ public class DB {
      * 添加缓存条目
      */
     private void addToCache(String key, Object value, int expirySeconds) {
-        // 清除过期缓存
-        cleanupCache();
+        cacheWriteCount++;
+        if (cacheWriteCount % 100 == 0) {
+            cleanupCache();
+        }
         
         // 如果缓存已满，清除一些旧条目
         if (cache.size() >= MAX_CACHE_SIZE) {
@@ -540,11 +541,22 @@ public class DB {
     public void clearAllCache() {
         cache.clear();
     }
+
+    public void clearPlayerCache(String playerId) {
+        cache.keySet().removeIf(key -> key.endsWith(":" + playerId) || key.contains(":" + playerId + ":"));
+    }
     
     /**
      * 通用方法：从玩家统计数据表获取字符串类型的值
      */
+    private boolean isValidColumnName(String name) {
+        return name != null && name.matches("[a-zA-Z0-9_]+");
+    }
+
     private String getPlayerStringValue(String playerId, String columnName, String defaultValue, String cacheKeyPrefix, Consumer<String> setter) {
+        if (!isValidColumnName(columnName)) {
+            return defaultValue;
+        }
         // 生成缓存键
         String cacheKey = cacheKeyPrefix + ":" + playerId;
         
@@ -580,6 +592,9 @@ public class DB {
      * 通用方法：设置玩家统计数据表的字符串类型值
      */
     private void setPlayerStringValue(String playerId, String columnName, String value, String cacheKeyPrefix) {
+        if (!isValidColumnName(columnName)) {
+            return;
+        }
         try {
             // 先检查玩家是否存在
             String checkQuery = "SELECT * FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
@@ -662,7 +677,7 @@ public class DB {
      */
     public void markHookAsPurchased(String playerId, String hookMaterial) {
         try {
-            String query = "INSERT OR REPLACE INTO " + tablePrefix + "player_purchased_hooks (player_uuid, hook_material) VALUES (?, ?)";
+            String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "player_purchased_hooks (player_uuid, hook_material) VALUES (?, ?)";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
                 pstmt.setString(1, playerId);
                 pstmt.setString(2, hookMaterial);
@@ -687,7 +702,7 @@ public class DB {
         // 先从缓存获取
         Object cachedValue = getFromCache(cacheKey);
         if (cachedValue != null) {
-            return (List<String>) cachedValue;
+            return new ArrayList<>((List<String>) cachedValue);
         }
         
         List<String> hooks = new ArrayList<>();
@@ -793,7 +808,7 @@ public class DB {
      */
     public void storeFishUUIDValue(String fishUUID, int fishValue) {
         try {
-            String query = "INSERT OR REPLACE INTO " + tablePrefix + "fish_uuid_values (fish_uuid, fish_value) VALUES (?, ?)";
+            String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "fish_uuid_values (fish_uuid, fish_value) VALUES (?, ?)";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
                 pstmt.setString(1, fishUUID);
                 pstmt.setInt(2, fishValue);

@@ -7,6 +7,7 @@ import me.kkfish.managers.Compete;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class AmountCompetition extends Competition {
@@ -17,6 +18,9 @@ public class AmountCompetition extends Competition {
 
     @Override
     public void recordCatch(Player player, String fishName, double value) {
+        if (config.hasFishList() && !config.getFishList().containsKey(fishName)) {
+            return;
+        }
         UUID playerId = player.getUniqueId();
         CompetitionData data = playerData.computeIfAbsent(playerId, k -> new CompetitionData(playerId, player.getName()));
         data.addAmount();

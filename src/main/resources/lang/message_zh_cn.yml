@@ -6,6 +6,8 @@ fish_bite: "&d鱼上钩了！"
 fishing_hint: "&c!"
 fishing_hooked: "&a上钩了！"
 hook_in_water: "&d鱼钩已入水，等待鱼儿上钩..."
+hook_in_lava: "&d鱼钩已落入岩浆中，等待鱼儿上钩..."
+hook_in_void: "&d鱼钩已进入虚空，等待鱼儿上钩..."
 hook_not_in_water: "&d鱼钩没有入水！"
 fish_escape: "&d鱼跑了..."
 stop_fishing: "&5你停止了钓鱼。"
@@ -220,6 +222,7 @@ competition_config_item: "§f- %s"
 competition_active_title: "§a正在进行的比赛:"
 competition_active_item: "§f- %s"
 competition_unknown_subcommand: "§c未知的子命令: %s"
+competition_invalid_duration: "§c无效的持续时间，将使用配置中的默认值"
 
 # ==========================
 # 比赛系统消息

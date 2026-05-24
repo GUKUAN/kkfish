@@ -48,13 +48,16 @@ public class MinigameManager {
         plugin.getFishingListener().deductRodDurability(player, rod);
     }
     
-
+    
     
     public void startMinigame(Player player, double chargePercentage) {
+        if (gameSessions.containsKey(player.getUniqueId())) return;
         startMinigame(player, chargePercentage, null);
     }
     
     public void startMinigame(Player player, double chargePercentage, String baitName) {
+        if (gameSessions.containsKey(player.getUniqueId())) return;
+        
         Location hookLocation = player.getLocation().clone();
         Object activeSession = plugin.getFish().getActiveSession(player);
         if (activeSession instanceof ArmorStand) {
@@ -137,7 +140,7 @@ public class MinigameManager {
         if (session.isSuccess) {
             final String fishName = session.targetFish;
             
-            double actualFishValue = session.getActualFishValue();
+            final double actualFishValue = session.getActualFishValue();
             final ItemStack fishItem = session.createFishItem();
             final double fishValue = plugin.getCustomConfig().getFishValue(fishName);
             
@@ -180,7 +183,6 @@ public class MinigameManager {
                             
                             Compete competitionManager = plugin.getCompete();
                             if (competitionManager != null) {
-                                double actualFishValue = session.getActualFishValue();
                                 competitionManager.recordPlayerCatch(player, fishName, actualFishValue);
                             }
                             
@@ -326,7 +328,7 @@ public class MinigameManager {
         
         if (item == null || item.getType() == Material.AIR) {
             configManager.debugLog("玩家" + player.getName() + "没有手持物品");
-            return null;
+            return "wood";
         }
         
         if (item.getType() == Material.FISHING_ROD) {
@@ -337,7 +339,7 @@ public class MinigameManager {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) {
             configManager.debugLog("玩家" + player.getName() + "手持物品无元数据: " + item.getType());
-            return null;
+            return "wood";
         }
         
         String playerName = player.getName();
@@ -354,7 +356,7 @@ public class MinigameManager {
         }
         
         configManager.debugLog("玩家" + playerName + "手持物品不是有效鱼竿: " + itemType);
-        return null;
+        return "wood";
     }
     
     private String parseRodNameFromLore(ItemMeta meta, String playerName) {

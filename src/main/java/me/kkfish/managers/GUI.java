@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -38,22 +38,15 @@ public class GUI {
     private final me.kkfish.listeners.GUIListener guiListener;
     
     // 存储玩家当前的鱼类图鉴页面
-    private final Map<UUID, Integer> fishDexPages = new HashMap<>();
+    private final Map<UUID, Integer> fishDexPages = new ConcurrentHashMap<>();
     
-    // 存储玩家当前的鱼钩材质选择页面
-    private final Map<UUID, Integer> hookMaterialPages = new HashMap<>();
+    private final Map<UUID, Integer> hookMaterialPages = new ConcurrentHashMap<>();
     
-    // 存储玩家当前选择的排序方式
-    private final Map<UUID, String> hookSortMethods = new HashMap<>();
+    private final Map<UUID, String> hookSortMethods = new ConcurrentHashMap<>();
     
-    // 存储玩家的搜索关键词
-    private final Map<UUID, String> hookSearchQueries = new HashMap<>();
+    private final Map<UUID, String> hookSearchQueries = new ConcurrentHashMap<>();
     
-    // GUI缓存，避免重复创建相同的GUI
-    private final Map<String, Inventory> guiCache = new HashMap<>();
-    
-    // 存储每个玩家的每个GUI页面的槽位到鱼钩ID的映射
-    private final Map<UUID, Map<String, Map<Integer, String>>> slotToHookMap = new HashMap<>();
+    private final Map<UUID, Map<String, Map<Integer, String>>> slotToHookMap = new ConcurrentHashMap<>();
     
     // GUI菜单加载器
     private final GUIMenuLoader menuLoader;
@@ -89,13 +82,9 @@ public class GUI {
         this.guiListener = new me.kkfish.listeners.GUIListener(this);
     }
     
-    public void clearGUICache() {
-        guiCache.clear();
-    }
-    
     public void reloadMenuConfigs() {
         menuLoader.loadAllMenus();
-        clearGUICache();
+        guiListener.reloadDisplayNameMap();
     }
     
     public DB getDB() {
@@ -196,8 +185,16 @@ public class GUI {
         title = title.replace("%p", player.getName());
         title = title.replace("%page%", String.valueOf(page + 1));
         
+        GUIType guiType;
+        try {
+            guiType = GUIType.valueOf(menuName.toUpperCase().replace("_", "_"));
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("无效的GUI类型: " + menuName);
+            return null;
+        }
+        
         Inventory gui = Bukkit.createInventory(
-            new GUIHolder(GUIType.valueOf(menuName.toUpperCase().replace("_", "_")), page),
+            new GUIHolder(guiType, page),
             size,
             ChatColor.translateAlternateColorCodes('&', title)
         );
@@ -695,15 +692,15 @@ public class GUI {
         // 获取玩家的钓鱼记录
         DB dbManager = plugin.getDB();
         Map<String, Object> fishStats = dbManager.getPlayerFishStats(player.getUniqueId().toString(), fishName);
-        int caughtCount = (int) fishStats.get("caughtCount");
-        double maxSize = (double) fishStats.get("maxSize");
+        int caughtCount = ((Number) fishStats.get("caughtCount")).intValue();
+        double maxSize = ((Number) fishStats.get("maxSize")).doubleValue();
         
         // 获取鱼的基本信息
         String fishDisplayName = fishConfig.getString("fish." + fishName + ".display-name", fishName);
         String materialName = fishConfig.getString("fish." + fishName + ".material", "COD");
         
         // 根据是否钓到过设置不同材质
-        Material material = Material.getMaterial(materialName);
+        Material material = XSeriesUtil.parseMaterial(materialName);
         if (material == null) {
             material = XSeriesUtil.getMaterial("COD");
         }
@@ -1018,20 +1015,7 @@ public class GUI {
         return hookMaterialPages.getOrDefault(player.getUniqueId(), 0);
     }
     
-    /**
-     * 清理指定类型的GUI缓存
-     */
-    public void clearGuiCache(GUIType type) {
-        String prefix = type + ":";
-        for (Iterator<Map.Entry<String, Inventory>> iterator = guiCache.entrySet().iterator(); iterator.hasNext();) {
-            Map.Entry<String, Inventory> entry = iterator.next();
-            if (entry.getKey().startsWith(prefix)) {
-                iterator.remove();
-            }
-        }
-    }
     
-    // 创建主菜单界面
     private Inventory createMainMenu(Player player) {
         Inventory gui = Bukkit.createInventory(
             new GUIHolder(GUIType.MAIN_MENU), 
@@ -1494,7 +1478,7 @@ public class GUI {
         }
         
         // 每页显示36个鱼类（排除最后一行的按钮）
-        int itemsPerPage = 36;
+        int itemsPerPage = 28;
         int startIndex = page * itemsPerPage;
         int endIndex = Math.min(startIndex + itemsPerPage, allFishNames.size());
         
@@ -1865,16 +1849,16 @@ public class GUI {
     // 重载版本的设置鱼钩材质方法（兼容旧代码）
     public void setPlayerHookMaterial(Player player, Material material, boolean refresh) {
         // 从材质类型获取材质名称
-        String materialType = "wood"; // 默认值
-        if (material == Material.STICK || material == Material.OAK_LOG) {
+        String materialType = "wood";
+        if (material == XSeriesUtil.getMaterial("STICK") || material == XSeriesUtil.getMaterial("OAK_LOG")) {
             materialType = "wood";
-        } else if (material == Material.COBBLESTONE || material == Material.STONE) {
+        } else if (material == XSeriesUtil.getMaterial("COBBLESTONE") || material == XSeriesUtil.getMaterial("STONE")) {
             materialType = "stone";
-        } else if (material == Material.IRON_INGOT) {
+        } else if (material == XSeriesUtil.getMaterial("IRON_INGOT")) {
             materialType = "iron";
-        } else if (material == Material.GOLD_INGOT) {
+        } else if (material == XSeriesUtil.getMaterial("GOLD_INGOT")) {
             materialType = "gold";
-        } else if (material == Material.DIAMOND) {
+        } else if (material == XSeriesUtil.getMaterial("DIAMOND")) {
             materialType = "diamond";
         }
         
@@ -1932,7 +1916,7 @@ public class GUI {
     
     // 创建返回按钮
     private ItemStack createBackButton() {
-        return createMenuItem(Material.BARRIER, 
+        return createMenuItem(XSeriesUtil.getMaterial("BARRIER"),
             "§cBack", 
             "§7Return to previous menu");
     }
@@ -2044,9 +2028,6 @@ public class GUI {
             if (isSelected) {
                 lore.add("§7§m-------------------");
                 lore.add("§a§l✓ 当前已装备");
-                
-                // 添加发光效果
-                addGlowEffect(item);
             }
             
             // 设置lore
@@ -2180,31 +2161,22 @@ public class GUI {
         lore.add("");
     }
     
-    // 添加发光效果
-    private void addGlowEffect(ItemStack item) {
-        // 创建一个临时的发光效果
-        // 注意：移除直接添加附魔的代码，避免与实际附魔系统冲突
-        // 保留此方法但不添加实际附魔，后续可以通过ProtocolLib实现真正的发光效果
-    }
-    
-    // 创建鱼类展示物品～(≧∇≦)/~
     private ItemStack createFishDisplayItem(FileConfiguration fishConfig, String fishName, Player player) {
         String displayName = fishConfig.getString("fish." + fishName + ".display-name", fishName);
         String materialName = fishConfig.getString("fish." + fishName + ".material", "COD");
-        Material material = Material.getMaterial(materialName);
+        Material material = XSeriesUtil.parseMaterial(materialName);
         if (material == null) {
-            material = Material.COD;
+            material = XSeriesUtil.getMaterial("COD");
         }
         
         // 获取玩家的钓鱼记录
         DB dbManager = plugin.getDB();
         Map<String, Object> fishStats = dbManager.getPlayerFishStats(player.getUniqueId().toString(), fishName);
-        int caughtCount = (int) fishStats.get("caughtCount");
-        double maxSize = (double) fishStats.get("maxSize");
+        int caughtCount = ((Number) fishStats.get("caughtCount")).intValue();
+        double maxSize = ((Number) fishStats.get("maxSize")).doubleValue();
         
-        // 根据是否钓到过设置不同材质
         if (caughtCount == 0) {
-            material = Material.BLACK_WOOL; // 没钓到过，显示黑色羊毛
+            material = XSeriesUtil.getMaterial("BLACK_WOOL");
         }
         
         ItemStack item = new ItemStack(material);
@@ -2403,7 +2375,7 @@ public class GUI {
     
     // 创建背景物品
     private ItemStack createBackgroundItem() {
-        ItemStack item = new ItemStack(Material.LIGHT_BLUE_STAINED_GLASS_PANE); // 浅蓝色玻璃，清清凉凉的感觉～
+        ItemStack item = new ItemStack(XSeriesUtil.getMaterial("LIGHT_BLUE_STAINED_GLASS_PANE"));
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(" "); // 空名称
         meta.setUnbreakable(true);
@@ -2531,7 +2503,7 @@ public class GUI {
         if (config == null) {
             // 显示错误信息
             // 直接使用普通文本，不再添加额外的颜色代码，让messageManager自动处理
-            ItemStack errorItem = createMenuItem(Material.BARRIER, messageManager.getMessageWithoutPrefix("gui_error_competition_config", "比赛配置不存在"), messageManager.getMessageWithoutPrefix("gui_error_competition_config_desc", "请检查比赛配置"));
+            ItemStack errorItem = createMenuItem(XSeriesUtil.getMaterial("BARRIER"), messageManager.getMessageWithoutPrefix("gui_error_competition_config", "比赛配置不存在"), messageManager.getMessageWithoutPrefix("gui_error_competition_config_desc", "请检查比赛配置"));
             gui.setItem(22, errorItem);
             return gui;
         }
@@ -2561,22 +2533,20 @@ public class GUI {
     
     // 创建比赛按钮
     private ItemStack createCompetitionButton(CompetitionConfig config) {
-        Material material = Material.FISHING_ROD;
+        Material material = XSeriesUtil.getMaterial("FISHING_ROD");
         
-        // 根据比赛类型设置不同的材质
         switch (config.getType()) {
             case "AMOUNT":
-                material = Material.COOKED_COD;
+                material = XSeriesUtil.getMaterial("COOKED_COD");
                 break;
             case "TOTAL_VALUE":
-                material = Material.GOLD_INGOT;
+                material = XSeriesUtil.getMaterial("GOLD_INGOT");
                 break;
             case "SINGLE_VALUE":
-                material = Material.NETHER_STAR;
+                material = XSeriesUtil.getMaterial("NETHER_STAR");
                 break;
             default:
-                // 自定义比赛类型
-                material = Material.ENCHANTED_BOOK;
+                material = XSeriesUtil.getMaterial("ENCHANTED_BOOK");
                 break;
         }
         
@@ -2610,15 +2580,13 @@ public class GUI {
     
     // 创建比赛信息物品
     private ItemStack createCompetitionInfoItem(CompetitionConfig config) {
-        ItemStack item = new ItemStack(Material.BOOK);
+        ItemStack item = new ItemStack(XSeriesUtil.getMaterial("BOOK"));
         ItemMeta meta = item.getItemMeta();
         
-        // 设置显示名称
         String displayName = config.getName();
         if (displayName == null || displayName.isEmpty()) {
             displayName = config.getId();
         }
-        // 让messageManager自动处理颜色代码，不再硬编码
         meta.setDisplayName(messageManager.getMessage("gui_competition_display_name", "§c" + displayName, displayName));
         
         // 设置lore
@@ -2647,15 +2615,14 @@ public class GUI {
     
     // 创建奖励物品
     private ItemStack createRewardItem(int rank, List<String> commands) {
-        Material material = Material.CHEST;
+        Material material = XSeriesUtil.getMaterial("CHEST");
         
-        // 根据排名设置不同的材质
         if (rank == 1) {
-            material = Material.GOLD_BLOCK;
+            material = XSeriesUtil.getMaterial("GOLD_BLOCK");
         } else if (rank == 2) {
-            material = Material.IRON_BLOCK;
+            material = XSeriesUtil.getMaterial("IRON_BLOCK");
         } else if (rank == 3) {
-            material = Material.STONE;
+            material = XSeriesUtil.getMaterial("STONE");
         }
         
         ItemStack item = new ItemStack(material);

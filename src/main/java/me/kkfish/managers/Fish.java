@@ -63,9 +63,8 @@ public class Fish {
     private HookMechanicFactory hookMechanicFactory;
     
     private final Random random = new Random();
-    private final StringBuilder stringBuilder = new StringBuilder();
-    private final Vector tempVector = new Vector();
-    private final Location tempLocation = new Location(null, 0, 0, 0);
+    private final Map<UUID, BukkitTask> floatingEffectTasks = new ConcurrentHashMap<>();
+    private final Map<UUID, BukkitTask> trajectoryTasks = new ConcurrentHashMap<>();
     
     private class BiteHintData {
         double chargePercentage;
@@ -316,6 +315,7 @@ public class Fish {
     }
     
     public void stopCharging(Player player, boolean isOver100Percent) {
+        if (player == null) return;
         UUID playerId = player.getUniqueId();
         if (!chargeStartTime.containsKey(playerId)) {
             return;
@@ -446,6 +446,12 @@ public class Fish {
         for (BukkitRunnable task : biteCheckTasks.values()) {
             task.cancel();
         }
+        for (BukkitTask task : floatingEffectTasks.values()) {
+            task.cancel();
+        }
+        for (BukkitTask task : trajectoryTasks.values()) {
+            task.cancel();
+        }
         
         for (ArmorStand entity : activeSessions.values()) {
             if (entity != null) {
@@ -460,12 +466,14 @@ public class Fish {
         activeChargeTasks.clear();
         activeProgressTasks.clear();
         biteCheckTasks.clear();
+        floatingEffectTasks.clear();
+        trajectoryTasks.clear();
         
         logger.info(plugin.getMessageManager().getMessageWithoutPrefix("cleanup_complete", "钓鱼系统资源清理完成！"));
     }
 
     private void throwFishHook(Player player, double chargePercentage) {
-        if (chargePercentage >= 100.0) {
+        if (chargePercentage > 100.0) {
             chargePercentage = 0;
         }
 
@@ -503,7 +511,7 @@ public class Fish {
                             
                             offhandItem.setAmount(offhandItem.getAmount() - 1);
                             if (offhandItem.getAmount() <= 0) {
-                                player.getInventory().setItemInOffHand(null);
+                                player.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
                             } else {
                                 player.getInventory().setItemInOffHand(offhandItem);
                             }
@@ -522,13 +530,7 @@ public class Fish {
         World world = player.getWorld();
         UUID playerId = player.getUniqueId();
         
-        Location startLocation = tempLocation.clone();
-        startLocation.setWorld(world);
-        startLocation.setX(player.getEyeLocation().getX());
-        startLocation.setY(player.getEyeLocation().getY());
-        startLocation.setZ(player.getEyeLocation().getZ());
-        startLocation.setPitch(player.getEyeLocation().getPitch());
-        startLocation.setYaw(player.getEyeLocation().getYaw());
+        Location startLocation = player.getEyeLocation().clone();
         
         ArmorStand hookEntity = world.spawn(startLocation, ArmorStand.class);
         hookEntity.setVisible(false);
@@ -563,8 +565,7 @@ public class Fish {
     }
     
     private Vector calculateParabolicTrajectory(Player player, double chargePercentage) {
-        Vector direction = tempVector.clone();
-        direction.copy(player.getLocation().getDirection());
+        Vector direction = player.getLocation().getDirection().clone();
         double power = chargePercentage / 100.0;
         double speed = 0.3 + power * 0.3;
         
@@ -619,6 +620,7 @@ public class Fish {
                 if (waterType != null || isOnGround || shouldCheckEscape) {
                     if (taskRef[0] != null) {
                         taskRef[0].cancel();
+                        trajectoryTasks.remove(player.getUniqueId());
                     }
                     
                     if (waterType != null) {
@@ -634,13 +636,18 @@ public class Fish {
                 }
             }
         }, 0, 1);
+        trajectoryTasks.put(player.getUniqueId(), taskRef[0]);
     }
+    
+    private static java.lang.reflect.Method cachedIsPassableMethod = null;
     
     private boolean checkIfHookOnGround(Block block) {
         try {
-            java.lang.reflect.Method isPassableMethod = block.getClass().getMethod("isPassable");
-            if (isPassableMethod != null) {
-                boolean isPassable = (Boolean) isPassableMethod.invoke(block);
+            if (cachedIsPassableMethod == null) {
+                cachedIsPassableMethod = block.getClass().getMethod("isPassable");
+            }
+            if (cachedIsPassableMethod != null) {
+                boolean isPassable = (Boolean) cachedIsPassableMethod.invoke(block);
                 if (!isPassable) {
                     return !isHookPassableBlock(block);
                 }
@@ -655,24 +662,15 @@ public class Fish {
         return false;
     }
 
+    private static final Set<String> PASSABLE_BLOCK_NAMES = new HashSet<>(java.util.Arrays.asList(
+        "TORCH", "REDSTONE_TORCH", "LANTERN", "SEA_LANTERN", "GLOWSTONE",
+        "REDSTONE_LAMP", "REDSTONE_LAMP_OFF", "CAMPFIRE", "SOUL_CAMPFIRE",
+        "SOUL_TORCH", "WALL_TORCH", "SOUL_WALL_TORCH", "LIGHT_BLOCK",
+        "SOUL_LANTERN", "WALL_LANTERN", "SOUL_WALL_LANTERN"
+    ));
+
     private boolean isHookPassableBlock(Block block) {
-        String name = block.getType().name();
-        return name.equals("TORCH") || 
-               name.equals("REDSTONE_TORCH") || 
-               name.equals("LANTERN") || 
-               name.equals("SEA_LANTERN") || 
-               name.equals("GLOWSTONE") || 
-               name.equals("REDSTONE_LAMP") || 
-               name.equals("REDSTONE_LAMP_OFF") || 
-               name.equals("CAMPFIRE") || 
-               name.equals("SOUL_CAMPFIRE") || 
-               name.equals("SOUL_TORCH") || 
-               name.equals("WALL_TORCH") || 
-               name.equals("SOUL_WALL_TORCH") || 
-               name.equals("LIGHT_BLOCK") || 
-               name.equals("SOUL_LANTERN") || 
-               name.equals("WALL_LANTERN") || 
-               name.equals("SOUL_WALL_LANTERN");
+        return PASSABLE_BLOCK_NAMES.contains(block.getType().name());
     }
     
     private void handleHookInWater(Player player, ArmorStand hookEntity, Location currentLoc, Vector velocity, double chargePercentage, String baitName) {
@@ -715,7 +713,7 @@ public class Fish {
                         SchedulerUtil.cancelTask(taskRef[0]);
                     }
                     
-                    startHookFloatingEffect(hookEntity);
+                    startHookFloatingEffect(player, hookEntity);
                     
                     scheduleBiteCheck(player, chargePercentage, baitName);
                 }
@@ -725,14 +723,19 @@ public class Fish {
         taskRef[0] = SchedulerUtil.scheduleTask(plugin, runnableRef[0], 0, 1);
     }
     
-    private void startHookFloatingEffect(ArmorStand hookEntity) {
-        SchedulerUtil.scheduleTask(plugin, new BukkitRunnable() {
+    private void startHookFloatingEffect(Player player, ArmorStand hookEntity) {
+        BukkitTask task = SchedulerUtil.scheduleTask(plugin, new BukkitRunnable() {
             private int floatTicks = 0;
             private final double floatAmplitude = 0.2;
             private final Location floatStartLoc = hookEntity.getLocation().clone();
             
             @Override
             public void run() {
+                if (!hookEntity.isValid()) {
+                    this.cancel();
+                    floatingEffectTasks.remove(player.getUniqueId());
+                    return;
+                }
                 floatTicks++;
                 
                 double yOffset = Math.sin(floatTicks * 0.1) * floatAmplitude;
@@ -742,6 +745,7 @@ public class Fish {
                 hookEntity.teleport(currentLoc);
             }
         }, 0, 1);
+        floatingEffectTasks.put(player.getUniqueId(), task);
     }
     
     private void handleHookOnGround(Player player, ArmorStand hookEntity, Location currentLoc, Vector velocity) {
@@ -1079,7 +1083,7 @@ public class Fish {
             biteRate *= config.getVoidBiteChanceMultiplier();
         }
         
-        String rodName = minigameManager.getRodNameByPlayer(player);
+        String rodName = minigameManager != null ? minigameManager.getRodNameByPlayer(player) : "wood";
         
         biteRate += config.getRodBiteRateBonus(rodName);
         double rareFishChance = config.getRodRareFishChance(rodName);
@@ -1127,8 +1131,8 @@ public class Fish {
     
     private void logBiteProbabilities(Player player, double chargePercentage, String baitName, double biteRate) {
         if (config.isDebugMode()) {
-            stringBuilder.setLength(0);
-            stringBuilder.append("玩家 ")
+            StringBuilder sb = new StringBuilder();
+            sb.append("玩家 ")
                         .append(player.getName())
                         .append(" 的咬钩概率计算: 蓄力=")
                         .append(chargePercentage)
@@ -1136,7 +1140,7 @@ public class Fish {
                         .append(biteRate)
                         .append(", 鱼饵=")
                         .append(baitName);
-            config.debugLog(stringBuilder.toString());
+            config.debugLog(sb.toString());
         }
     }
     
@@ -1416,6 +1420,16 @@ public class Fish {
             biteTask.cancel();
         }
         
+        BukkitTask floatTask = floatingEffectTasks.remove(playerId);
+        if (floatTask != null) {
+            floatTask.cancel();
+        }
+        
+        BukkitTask trajTask = trajectoryTasks.remove(playerId);
+        if (trajTask != null) {
+            trajTask.cancel();
+        }
+        
         playerWaterType.remove(playerId);
         HookMechanic mechanic = playerHookMechanic.remove(playerId);
         if (mechanic != null) {
@@ -1551,7 +1565,7 @@ public class Fish {
             }
         }
         
-        return fishList.get(new Random().nextInt(fishList.size()));
+        return fishList.get(random.nextInt(fishList.size()));
     }
     
     public ItemStack createFishItem(String fishName) {
@@ -1627,7 +1641,7 @@ public class Fish {
             if (player != null) {
                 hookMaterial = plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString());
                 
-                switch (hookMaterial.toLowerCase()) {
+                switch (hookMaterial != null ? hookMaterial.toLowerCase() : "wood") {
                     case "wood":
                         sizeBonus = 1.05;
                         break;
@@ -1654,7 +1668,7 @@ public class Fish {
                 fishSize = Math.min(fishSize * sizeBonus, maxSize);
             }
             
-            if (player != null && !hookMaterial.equalsIgnoreCase("wood")) {
+            if (player != null && hookMaterial != null && !hookMaterial.equalsIgnoreCase("wood")) {
                 String materialColor = ChatColor.GRAY.toString();
                 switch (hookMaterial.toLowerCase()) {
                     case "stone":
@@ -1672,17 +1686,15 @@ public class Fish {
                 }
             }
             
+            String rarityName = config.getRarityNameByLevel(fishLevel);
+            String rarityDisplayName = config.getRarityDisplayName(rarityName);
+            
             int value;
-            String rarityDisplayName = fishLevel;
             if (preCalculatedValue != null) {
                 value = (int) Math.round(preCalculatedValue);
             } else {
                 double baseValue = fishConfig.getDouble("fish." + fishName + ".value", 10.0);
-                double rarityMultiplier = 1.0;
-                
-                String rarityName = config.getRarityNameByLevel(fishLevel);
-                rarityMultiplier = config.getRarityValueMultiplier(rarityName);
-                rarityDisplayName = config.getRarityDisplayName(rarityName);
+                double rarityMultiplier = config.getRarityValueMultiplier(rarityName);
                 
                 double finalValue = baseValue * fishSize / maxSize * rarityMultiplier * valueBonus;
                 
@@ -1697,7 +1709,7 @@ public class Fish {
                         finalValue *= seasonalMultiplier;
                         
                         double baseFluctuation = config.getBasePriceFluctuation();
-                        double randomFluctuation = 1.0 + (new Random().nextDouble() - 0.5) * 2 * baseFluctuation;
+                        double randomFluctuation = 1.0 + (random.nextDouble() - 0.5) * 2 * baseFluctuation;
                         finalValue *= randomFluctuation;
                         
                         if (config.isDebugMode()) {
@@ -1706,7 +1718,7 @@ public class Fish {
                     }
                 }
                 
-                value = (int) Math.round(finalValue);
+                value = Math.max(1, (int) Math.round(finalValue));
             }
             
             String sizeQuality;
@@ -1723,7 +1735,7 @@ public class Fish {
             String templateName = config.getFishTemplateName(fishName);
             String template = config.getFishTemplate(templateName);
             
-            String displayLevel = fishLevel.split(":")[0];
+            String displayLevel = fishLevel != null ? fishLevel.split(":")[0] : "1";
             
             Map<String, String> replacements = new HashMap<>();
             replacements.put("%name%", displayName);
@@ -1751,7 +1763,7 @@ public class Fish {
             if (tips.isEmpty()) {
                 tips = Arrays.asList("你可以在市场上出售它换取金币!", "今天你钓了多少条鱼了?", "它放在水族馆里会很好看!", "鱼肉看起来很美味!", "也许你可以用它来制作特殊药水?");
             }
-            String randomTipContent = tips.get(new Random().nextInt(tips.size()));
+            String randomTipContent = tips.get(random.nextInt(tips.size()));
             String randomTip = ChatColor.GRAY + "「 " + ChatColor.WHITE + randomTipContent + ChatColor.GRAY + " 」";
             replacements.put("%tip%", randomTip);
             
@@ -1862,7 +1874,7 @@ public class Fish {
         broadcastMessage = broadcastMessage.replace("%fish%", fishName);
         broadcastMessage = broadcastMessage.replace("%size%", sizeDesc);
         broadcastMessage = broadcastMessage.replace("%rarity%", rarityDesc);
-        broadcastMessage = broadcastMessage.replace("%value%", String.format("%.1f", fishValue));
+        broadcastMessage = broadcastMessage.replace("%value%", String.format("%.0f", fishValue));
         
         switch (broadcastRange.toLowerCase()) {
             case "global":
@@ -1975,7 +1987,12 @@ public class Fish {
         }
         spawnParticleEffects(hookLocation);
         
-        double distance = hookLocation.distance(player.getLocation());
+        double distance;
+        if (hookLocation.getWorld() != null && hookLocation.getWorld().equals(player.getWorld())) {
+            distance = hookLocation.distance(player.getLocation());
+        } else {
+            distance = 10.0;
+        }
         int animationTicks = (int) Math.min(40 + distance * 4, 100);
         
         new OldFishAnimationTask(this, animationTicks, fishEntity, player, callback, 
@@ -2215,11 +2232,10 @@ public class Fish {
                 restoringForce.getZ() + swayZ * 0.2 + floatForce.getZ()
             );
             
-            Random random = new Random();
             totalForce.add(new Vector(
-                (random.nextDouble() - 0.5) * 0.01,
-                (random.nextDouble() - 0.5) * 0.01,
-                (random.nextDouble() - 0.5) * 0.01
+                (fishingManager.random.nextDouble() - 0.5) * 0.01,
+                (fishingManager.random.nextDouble() - 0.5) * 0.01,
+                (fishingManager.random.nextDouble() - 0.5) * 0.01
             ));
             
             fishEntity.setVelocity(totalForce);
@@ -2268,11 +2284,10 @@ public class Fish {
                 
                 Vector velocity = direction.clone().multiply(speedFactor * stageFactor);
                 
-                Random random = new Random();
                 velocity.add(new Vector(
-                    (random.nextDouble() - 0.5) * 0.02,
-                    (random.nextDouble() - 0.5) * 0.02,
-                    (random.nextDouble() - 0.5) * 0.02
+                    (fishingManager.random.nextDouble() - 0.5) * 0.02,
+                    (fishingManager.random.nextDouble() - 0.5) * 0.02,
+                    (fishingManager.random.nextDouble() - 0.5) * 0.02
                 ));
                 
                 fishEntity.setVelocity(velocity);
@@ -2360,17 +2375,26 @@ public class Fish {
         }
     }
     
+    private final Map<String, Particle> particleCache = new HashMap<>();
+    
     private Particle getSafeParticle(String particleName, Particle fallback) {
+        if (particleCache.containsKey(particleName)) {
+            Particle cached = particleCache.get(particleName);
+            return cached != null ? cached : fallback;
+        }
         try {
-            return Particle.valueOf(particleName);
+            Particle result = Particle.valueOf(particleName);
+            particleCache.put(particleName, result);
+            return result;
         } catch (Exception e) {
+            particleCache.put(particleName, null);
             return fallback;
         }
     }
     
     private void spawnSafeParticle(World world, Particle particle, Location location, int count, double spreadX, double spreadY, double spreadZ, double extra, Object data) {
         try {
-            world.spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, extra, data);
+            world.spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra, data);
         } catch (Exception e) {
         }
     }
@@ -2653,7 +2677,8 @@ public class Fish {
                 return;
             }
             
-            if (chargeTime % 200 == 0) {
+            long chargeTicks = chargeTime / 50;
+            if (chargeTicks > 0 && chargeTime / 200 != (chargeTime - 50) / 200) {
                 plugin.getSoundManager().playChargeTickSound(player.getLocation());
             }
             

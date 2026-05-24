@@ -12,6 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 public class WaterHookMechanic implements HookMechanic {
@@ -19,6 +20,7 @@ public class WaterHookMechanic implements HookMechanic {
     private final kkfish plugin;
     private final Config config;
     private final MessageManager messageManager;
+    private static final java.util.Map<java.util.UUID, BukkitTask> floatTasks = new java.util.HashMap<>();
 
     public WaterHookMechanic(kkfish plugin) {
         this.plugin = plugin;
@@ -43,6 +45,7 @@ public class WaterHookMechanic implements HookMechanic {
     public void startFloating(Player player, ArmorStand hookEntity) {
         FloatTask task = new FloatTask(plugin, hookEntity, this);
         task.start();
+        floatTasks.put(hookEntity.getUniqueId(), task.bukkitTask);
     }
 
     private static class FloatTask implements Runnable {
@@ -71,6 +74,7 @@ public class WaterHookMechanic implements HookMechanic {
                 if (bukkitTask != null) {
                     bukkitTask.cancel();
                 }
+                floatTasks.remove(hookEntity.getUniqueId());
                 return;
             }
             floatTicks++;
@@ -97,6 +101,10 @@ public class WaterHookMechanic implements HookMechanic {
 
     @Override
     public void cleanup(Player player, ArmorStand hookEntity) {
+        BukkitTask task = floatTasks.remove(hookEntity.getUniqueId());
+        if (task != null) {
+            task.cancel();
+        }
     }
 
     private void createWaterSplashEffect(Location location) {
@@ -129,7 +137,7 @@ public class WaterHookMechanic implements HookMechanic {
                 tickCount++;
 
                 entryVelocity.multiply(1 - waterResistance);
-                entryVelocity.setY(entryVelocity.getY() - 0.01);
+                entryVelocity.setY(Math.max(entryVelocity.getY() - 0.01, -0.5));
 
                 Location currentLoc = hookEntity.getLocation();
                 currentLoc.add(entryVelocity);

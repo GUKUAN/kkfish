@@ -6,6 +6,8 @@ fish_bite: "&dFish is biting!"
 fishing_hint: "&c!"
 fishing_hooked: "&aHooked!"
 hook_in_water: "&dHook is in the water, waiting for fish to bite..."
+hook_in_lava: "&dHook is in the lava, waiting for fish to bite..."
+hook_in_void: "&dHook has entered the void, waiting for fish to bite..."
 hook_not_in_water: "&dHook is not in the water!"
 fish_escape: "&dFish escaped..."
 stop_fishing: "&5You stopped fishing."
@@ -220,6 +222,7 @@ competition_config_item: "§f- %s"
 competition_active_title: "§aOngoing competitions:"
 competition_active_item: "§f- %s"
 competition_unknown_subcommand: "§cUnknown subcommand: %s"
+competition_invalid_duration: "§cInvalid duration, using default value from configuration"
 
 # ==========================
 # Competition System Messages

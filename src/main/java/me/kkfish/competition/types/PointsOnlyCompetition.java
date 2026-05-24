@@ -23,6 +23,9 @@ public class PointsOnlyCompetition extends Competition {
 
     @Override
     public void recordCatch(Player player, String fishName, double value) {
+        if (config.hasFishList() && !fishList.containsKey(fishName)) {
+            return;
+        }
         UUID playerId = player.getUniqueId();
         CompetitionData data = playerData.computeIfAbsent(playerId, k -> new CompetitionData(playerId, player.getName()));
         
@@ -31,8 +34,14 @@ public class PointsOnlyCompetition extends Competition {
     }
 
     private double calculatePoints(String fishName, double value) {
-        double basePoints = fishList.getOrDefault(fishName, 1.0);
-        return basePoints * value * pointMultiplier;
+        if (config.hasFishList()) {
+            if (!fishList.containsKey(fishName)) {
+                return 0.0;
+            }
+            double basePoints = fishList.get(fishName);
+            return basePoints * pointMultiplier;
+        }
+        return value * pointMultiplier;
     }
 
     @Override

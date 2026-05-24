@@ -261,7 +261,7 @@ styles:
     progress-bar-empty-char: "&8-"
     green-bar-char: "&c|"
     green-bar-edge-char: "&4|"
-    background-char: "&8░"
+    background-char: "&8|"
     fish-indicator-char: "&e|||"
   void:
     progress-char: "&5═"

@@ -8,7 +8,7 @@ public class SlotMapping {
     
     public static final int GUI_SIZE_54 = 54;
     public static final int GUI_SIZE_27 = 27;
-    public static final int GUI_SIZE_6 = 6;
+    public static final int GUI_SIZE_6 = 54;
     
     public static class MainMenu {
         public static final int HOOK_MATERIAL_SLOT = 10;
@@ -137,7 +137,7 @@ public class SlotMapping {
         ));
         
         public static boolean isItemDisplaySlot(int slot) {
-            return slot >= 0 && slot < 27 && slot != BACK_BUTTON_SLOT;
+            return slot >= 0 && slot < 54 && slot != BACK_BUTTON_SLOT;
         }
         
         public static boolean isControlSlot(int slot) {
@@ -192,7 +192,7 @@ public class SlotMapping {
         if (guiSize == GUI_SIZE_54) {
             return 32;
         } else if (guiSize == GUI_SIZE_27) {
-            return 25;
+            return 20;
         } else if (guiSize == GUI_SIZE_6) {
             return 0;
         }

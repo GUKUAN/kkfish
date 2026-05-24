@@ -12,6 +12,7 @@ import me.kkfish.gui.GUIHolder;
 import me.kkfish.managers.GUI;
 import me.kkfish.managers.Cmd;
 import me.kkfish.managers.Config;
+import me.kkfish.utils.XSeriesUtil;
 
 public class GUIAction {
     private final Plugin plugin;
@@ -73,7 +74,7 @@ public class GUIAction {
             return;
         }
         
-        player.playSound(player.getLocation(), soundName, volume, pitch);
+        XSeriesUtil.playSound(player.getLocation(), soundName, volume, pitch);
     }
     
     private void handleCloseAction(InventoryClickEvent event) {
@@ -248,12 +249,8 @@ public class GUIAction {
         
         plugin.getLogger().info("Player " + player.getName() + " selling items");
         
-        me.kkfish.managers.Cmd commandManager = kkfishPlugin.getCmd();
-        
         try {
-            java.lang.reflect.Method sellAllFishMethod = commandManager.getClass().getDeclaredMethod("sellAllFish", Player.class);
-            sellAllFishMethod.setAccessible(true);
-            sellAllFishMethod.invoke(commandManager, player);
+            kkfishPlugin.getCmd().sellAllFish(player);
         } catch (Exception e) {
             plugin.getLogger().warning(kkfishPlugin.getMessageManager().getMessageWithoutPrefix("log.sell_operation_failed", "执行出售操作失败: ") + e.getMessage());
             player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "sell_operation_failed", "§c出售操作失败，请稍后再试。"));
@@ -372,9 +369,12 @@ public class GUIAction {
             command = command.replace("%player%", player.getName());
             command = command.replace("%p", player.getName());
             boolean wasOp = player.isOp();
-            player.setOp(true);
-            Bukkit.dispatchCommand(player, command);
-            player.setOp(wasOp);
+            try {
+                player.setOp(true);
+                Bukkit.dispatchCommand(player, command);
+            } finally {
+                player.setOp(wasOp);
+            }
         }
     }
     

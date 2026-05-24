@@ -1,14 +1,17 @@
 package me.kkfish.competition;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.DoubleAdder;
 
 public class CompetitionData {
     private final UUID playerUUID;
     private final String playerName;
-    private int totalAmount = 0;
-    private double totalValue = 0.0;
-    private double maxSingleValue = 0.0;
-    private double totalPoints = 0.0;
+    private final AtomicInteger totalAmount = new AtomicInteger(0);
+    private final DoubleAdder totalValue = new DoubleAdder();
+    private final AtomicLong maxSingleValue = new AtomicLong(0);
+    private final DoubleAdder totalPoints = new DoubleAdder();
 
     public CompetitionData(UUID playerUUID, String playerName) {
         this.playerUUID = playerUUID;
@@ -16,18 +19,18 @@ public class CompetitionData {
     }
 
     public void addAmount() {
-        totalAmount++;
+        totalAmount.incrementAndGet();
     }
 
     public void addValue(double value) {
-        totalValue += value;
-        if (value > maxSingleValue) {
-            maxSingleValue = value;
-        }
+        totalValue.add(value);
+        maxSingleValue.updateAndGet(current ->
+            value > Double.longBitsToDouble(current) ? Double.doubleToLongBits(value) : current
+        );
     }
 
     public void addPoints(double points) {
-        totalPoints += points;
+        totalPoints.add(points);
     }
 
     public UUID getPlayerUUID() {
@@ -39,18 +42,18 @@ public class CompetitionData {
     }
 
     public int getTotalAmount() {
-        return totalAmount;
+        return totalAmount.get();
     }
 
     public double getTotalValue() {
-        return totalValue;
+        return totalValue.sum();
     }
 
     public double getMaxSingleValue() {
-        return maxSingleValue;
+        return Double.longBitsToDouble(maxSingleValue.get());
     }
 
     public double getTotalPoints() {
-        return totalPoints;
+        return totalPoints.sum();
     }
 }

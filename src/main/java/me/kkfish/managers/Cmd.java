@@ -34,6 +34,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
     private final kkfish plugin;
     private final Logger logger;
     private final MessageManager messageManager;
+    private final Map<String, Double> fishValueCache = new ConcurrentHashMap<>();
     private final List<String> subCommands = Arrays.asList("help", "reload", "debug", "give", "gui", "version", "sell", "compete", "add", "unlock", "lock", "sellgui", "toggle");
     
 
@@ -613,7 +614,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
     
     private boolean hasItemRewards(ItemStack item) {
         String fishName = getItemNameFromItem(item);
-        boolean hasRewards = fishName != null && plugin.getCustomConfig().getItemValue().hasItemRewards(fishName);
+        boolean hasRewards = fishName != null && plugin.getCustomConfig().getItemValue() != null && plugin.getCustomConfig().getItemValue().hasItemRewards(fishName);
         
         if (plugin.getCustomConfig().isDebugMode()) {
             plugin.getLogger().info(plugin.getMessageManager().getMessageWithoutPrefix("debug_check_item_rewards", "[Debug] 检查物品是否有物品奖励: %s", hasRewards));
@@ -629,7 +630,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
     
     private void handleItemRewards(Player player, ItemStack item) {
         String fishName = getItemNameFromItem(item);
-        if (fishName != null) {
+        if (fishName != null && plugin.getCustomConfig().getItemValue() != null) {
             List<ItemStack> itemRewards = plugin.getCustomConfig().getItemValue().getItemRewards(fishName);
             for (ItemStack reward : itemRewards) {
                 player.getInventory().addItem(reward);
@@ -684,7 +685,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void sellAllFish(Player player) {
+    public void sellAllFish(Player player) {
         int totalValue = 0;
         int soldCount = 0;
         List<String> uuidStrsToRemove = new ArrayList<>();
@@ -711,6 +712,9 @@ public class Cmd implements CommandExecutor, TabCompleter {
             }
             
             String fishUUIDStr = getFishUUIDString(item);
+            if (fishUUIDStr != null) {
+                uuidStrsToRemove.add(fishUUIDStr);
+            }
             
             if (plugin.getCustomConfig().isDebugMode()) {
                 plugin.getLogger().info(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_uuid_obtained", "[Debug] 获取到的鱼UUID: %s", (fishUUIDStr != null ? fishUUIDStr : "null")));
@@ -725,9 +729,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
             
             if (value > 0 || itemHasRewards) {
                 if (itemHasRewards) {
-                    for (int j = 0; j < item.getAmount(); j++) {
-                        handleItemRewards(player, item);
-                    }
+                    handleItemRewards(player, item);
                     hasItemRewards = true;
                 }
                 
@@ -786,9 +788,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
             
             if (value > 0 || itemHasRewards) {
                 if (itemHasRewards) {
-                    for (int j = 0; j < item.getAmount(); j++) {
-                        handleItemRewards(targetPlayer, item);
-                    }
+                    handleItemRewards(targetPlayer, item);
                     hasItemRewards = true;
                 }
                 
@@ -822,6 +822,10 @@ public class Cmd implements CommandExecutor, TabCompleter {
     private int getFishValueFromItem(ItemStack item) {
         String uuidStr = getFishUUIDString(item);
         if (uuidStr != null) {
+            Double cachedValue = fishValueCache.get(uuidStr);
+            if (cachedValue != null) {
+                return cachedValue.intValue();
+            }
             try {
                 int value = plugin.getDB().getFishValueByUUID(uuidStr);
                 
@@ -830,6 +834,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
                 }
                 
                 if (value > 0) {
+                    fishValueCache.put(uuidStr, (double) value);
                     return value;
                 }
             } catch (IllegalArgumentException e) {
@@ -867,23 +872,9 @@ public class Cmd implements CommandExecutor, TabCompleter {
     }
     
     private void setFishUUIDString(ItemStack item, ItemMeta meta, String uuidStr) {
-        try {
-            java.lang.reflect.Method getPdcMethod = meta.getClass().getMethod("getPersistentDataContainer");
-            getPdcMethod.setAccessible(true);
-            if (getPdcMethod != null) {
-                Object pdc = getPdcMethod.invoke(meta);
-                
-                java.lang.reflect.Method setMethod = pdc.getClass().getMethod("set", org.bukkit.NamespacedKey.class, org.bukkit.persistence.PersistentDataType.class, java.lang.Object.class);
-                NamespacedKey key = getFishUUIDKey();
-                
-                java.lang.reflect.Field stringField = org.bukkit.persistence.PersistentDataType.class.getField("STRING");
-                Object stringType = stringField.get(null);
-                
-                setMethod.invoke(pdc, key, stringType, uuidStr);
-                item.setItemMeta(meta);
-            }
-        } catch (Exception e) {
-        }
+        NamespacedKey key = getFishUUIDKey();
+        meta.getPersistentDataContainer().set(key, PersistentDataType.STRING, uuidStr);
+        item.setItemMeta(meta);
     }
     
     private UUID getFishUUID(ItemStack item) {
@@ -915,6 +906,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
             return;
         }
         plugin.getCustomConfig().reloadConfigs();
+        fishValueCache.clear();
         plugin.getMessageManager().loadMessages();
         plugin.getMessageManager().completeAllLanguageFiles();
         
@@ -968,9 +960,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
             
             if (value > 0 || itemHasRewards) {
                 if (itemHasRewards) {
-                    for (int j = 0; j < item.getAmount(); j++) {
-                        handleItemRewards(targetPlayer, item);
-                    }
+                    handleItemRewards(targetPlayer, item);
                     hasItemRewards = true;
                 }
                 
@@ -1072,9 +1062,9 @@ public class Cmd implements CommandExecutor, TabCompleter {
         }
         
         String materialStr = configManager.getRodConfig().getString("rods." + rodName + ".material", "FISHING_ROD");
-        Material material = Material.matchMaterial(materialStr);
+        Material material = XSeriesUtil.parseMaterial(materialStr);
         if (material == null) {
-            material = Material.FISHING_ROD;
+            material = XSeriesUtil.parseMaterial("FISHING_ROD");
         }
         
         ItemStack rod = new ItemStack(material, 1);
@@ -1214,9 +1204,9 @@ public class Cmd implements CommandExecutor, TabCompleter {
         }
         
         String materialStr = configManager.getBaitConfig().getString("baits." + baitName + ".material", "MAGMA_CREAM");
-        Material material = Material.matchMaterial(materialStr);
+        Material material = XSeriesUtil.parseMaterial(materialStr);
         if (material == null) {
-            material = Material.MAGMA_CREAM;
+            material = XSeriesUtil.parseMaterial("MAGMA_CREAM");
         }
         
         ItemStack bait = new ItemStack(material, 64);
@@ -1372,7 +1362,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
                     try {
                         duration = Integer.parseInt(args[2]);
                     } catch (NumberFormatException e) {
-                        sender.sendMessage("§c无效的持续时间，将使用配置中的默认值");
+                        sender.sendMessage(messageManager.getMessage("competition_invalid_duration", "§c无效的持续时间，将使用配置中的默认值"));
                     }
                 }
                 

@@ -172,7 +172,7 @@ public class Config {
     }
 
     public String getRodType(ItemStack item) {
-        if (item == null || !item.getType().equals(Material.FISHING_ROD)) {
+        if (item == null || !item.getType().equals(XSeriesUtil.parseMaterial("FISHING_ROD"))) {
             return null;
         }
         
@@ -183,7 +183,11 @@ public class Config {
         
         String displayName = meta.getDisplayName();
         
-        for (String rodName : rodConfig.getConfigurationSection("rods").getKeys(false)) {
+        ConfigurationSection rodsSection = rodConfig.getConfigurationSection("rods");
+        if (rodsSection == null) {
+            return null;
+        }
+        for (String rodName : rodsSection.getKeys(false)) {
             String configDisplayName = rodConfig.getString("rods." + rodName + ".display-name", rodName);
             configDisplayName = ChatColor.translateAlternateColorCodes('&', configDisplayName);
             
@@ -360,7 +364,10 @@ public class Config {
                 for (Object key : levelMap.keySet()) {
                     String levelName = key.toString();
                     if (levelName.contains("legendary") || levelName.contains("epic") || levelName.contains("rare")) {
-                        rareChance += Double.parseDouble(levelMap.get(key).toString()) / 100.0;
+                        try {
+                            rareChance += Double.parseDouble(levelMap.get(key).toString()) / 100.0;
+                        } catch (NumberFormatException e) {
+                        }
                     }
                 }
             }
@@ -418,10 +425,10 @@ public class Config {
                                     if (player != null) {
                                         AuraSkills auraSkills = kkfish.getInstance().getAuraSkills();
                                         if (auraSkills != null) {
-                                            logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_aura_skills_exists", "AuraSkills存在，isEnabled: %s", auraSkills.isAuraSkillsEnabled()));
+                                            if (isDebugMode()) logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_aura_skills_exists", "AuraSkills存在，isEnabled: %s", auraSkills.isAuraSkillsEnabled()));
                                             if (auraSkills.isAuraSkillsEnabled()) {
                                                 int fishingLevel = auraSkills.getFishingLevel(player);
-                                                logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_player_fishing_level", "玩家 %s 的钓鱼等级: %s", player.getName(), fishingLevel));
+                                                if (isDebugMode()) logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_player_fishing_level", "玩家 %s 的钓鱼等级: %s", player.getName(), fishingLevel));
                                                 
                                                 double bonusMultiplier = auraSkills.getRareFishBonus(fishingLevel);
                                                 
@@ -434,10 +441,10 @@ public class Config {
                                                 } else {
                                                     finalWeight = (int)Math.max(50, finalWeight * (2.0 - bonusMultiplier));
                                                 }
-                                                logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_fish_level_weight", "鱼 %s 的 %s 等级权重调整为: %s", fishName, levelName, finalWeight));
+                                                    if (isDebugMode()) logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_fish_level_weight", "鱼 %s 的 %s 等级权重调整为: %s", fishName, levelName, finalWeight));
                                             }
                                         } else {
-                                            logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_aura_skills_not_exists", "AuraSkillsHandler不存在！"));
+                                            if (isDebugMode()) logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_aura_skills_not_exists", "AuraSkillsHandler不存在！"));
                                         }
                                     }
                                     
@@ -556,7 +563,10 @@ public class Config {
     public List<String> getAllBaitNames() {
         List<String> baitNames = new ArrayList<>();
         if (baitConfig.contains("baits")) {
-            baitNames.addAll(baitConfig.getConfigurationSection("baits").getKeys(false));
+            ConfigurationSection baitsSection = baitConfig.getConfigurationSection("baits");
+            if (baitsSection != null) {
+                baitNames.addAll(baitsSection.getKeys(false));
+            }
         }
         return baitNames;
     }
@@ -632,53 +642,62 @@ public class Config {
         return getAvailableFish(biome, weather, time, null);
     }
     
-    public List<String> getAvailableFish(String biome, String weather, long time, String season) {
-        List<String> availableFish = new ArrayList<>();
-        if (fishConfig.contains("fish")) {
-            for (String fishName : fishConfig.getConfigurationSection("fish").getKeys(false)) {
-                boolean canSpawn = true;
-                
-                if (fishConfig.contains("fish." + fishName + ".biomes")) {
-                    List<String> biomes = fishConfig.getStringList("fish." + fishName + ".biomes");
-                    if (!biomes.isEmpty() && !biomes.contains(biome)) {
-                        canSpawn = false;
-                    }
-                }
-                
-                if (canSpawn && fishConfig.contains("fish." + fishName + ".weather")) {
-                    List<String> weathers = fishConfig.getStringList("fish." + fishName + ".weather");
-                    if (!weathers.isEmpty() && !weathers.contains(weather)) {
-                        canSpawn = false;
-                    }
-                }
-                
-                if (canSpawn && fishConfig.contains("fish." + fishName + ".time")) {
-                    List<String> timeRanges = fishConfig.getStringList("fish." + fishName + ".time");
-                    boolean timeMatch = false;
-                    for (String range : timeRanges) {
-                        if (range.equalsIgnoreCase("ANY") || isTimeInRange(time, range)) {
-                            timeMatch = true;
-                            break;
-                        }
-                    }
-                    if (!timeRanges.isEmpty() && !timeMatch) {
-                        canSpawn = false;
-                    }
-                }
-                
-                if (canSpawn && isSeasonalFishingEnabled() && season != null && fishConfig.contains("fish." + fishName + ".seasons")) {
-                    List<String> seasons = fishConfig.getStringList("fish." + fishName + ".seasons");
-                    if (!seasons.isEmpty() && !seasons.contains(season)) {
-                        canSpawn = false;
-                    }
-                }
-                
-                if (canSpawn) {
-                    availableFish.add(fishName);
+    private List<String> filterFishByConditions(List<String> fishNames, String biome, String weather, long time, String season) {
+        List<String> result = new ArrayList<>();
+        for (String fishName : fishNames) {
+            boolean canSpawn = true;
+
+            if (fishConfig.contains("fish." + fishName + ".biomes")) {
+                List<String> biomes = fishConfig.getStringList("fish." + fishName + ".biomes");
+                if (!biomes.isEmpty() && !biomes.contains(biome)) {
+                    canSpawn = false;
                 }
             }
+
+            if (canSpawn && fishConfig.contains("fish." + fishName + ".weather")) {
+                List<String> weathers = fishConfig.getStringList("fish." + fishName + ".weather");
+                if (!weathers.isEmpty() && !weathers.contains(weather)) {
+                    canSpawn = false;
+                }
+            }
+
+            if (canSpawn && fishConfig.contains("fish." + fishName + ".time")) {
+                List<String> timeRanges = fishConfig.getStringList("fish." + fishName + ".time");
+                boolean timeMatch = false;
+                for (String range : timeRanges) {
+                    if (range.equalsIgnoreCase("ANY") || isTimeInRange(time, range)) {
+                        timeMatch = true;
+                        break;
+                    }
+                }
+                if (!timeRanges.isEmpty() && !timeMatch) {
+                    canSpawn = false;
+                }
+            }
+
+            if (canSpawn && isSeasonalFishingEnabled() && season != null && fishConfig.contains("fish." + fishName + ".seasons")) {
+                List<String> seasons = fishConfig.getStringList("fish." + fishName + ".seasons");
+                if (!seasons.isEmpty() && !seasons.contains(season)) {
+                    canSpawn = false;
+                }
+            }
+
+            if (canSpawn) {
+                result.add(fishName);
+            }
         }
-        return availableFish;
+        return result;
+    }
+
+    public List<String> getAvailableFish(String biome, String weather, long time, String season) {
+        if (!fishConfig.contains("fish")) {
+            return new ArrayList<>();
+        }
+        ConfigurationSection fishSection = fishConfig.getConfigurationSection("fish");
+        if (fishSection == null) {
+            return new ArrayList<>();
+        }
+        return filterFishByConditions(new ArrayList<>(fishSection.getKeys(false)), biome, weather, time, season);
     }
 
     private boolean isTimeInRange(long time, String range) {
@@ -824,7 +843,7 @@ public class Config {
     }
     
     public boolean isDebugMode() {
-        return mainConfig.getBoolean("debug.enabled", mainConfig.getBoolean("debug", false));
+        return mainConfig.getBoolean("debug.enabled", false);
     }
     
     public boolean isUpdateCheckEnabled() {
@@ -1008,7 +1027,7 @@ public class Config {
     }
     
     public void setDebugMode(boolean debugMode) {
-        mainConfig.set("debug", debugMode);
+        mainConfig.set("debug.enabled", debugMode);
         saveConfigs();
         if (debugMode) {
             logger.info(plugin.getMessageManager().getMessageWithoutPrefix("config_debug_enabled", "调试模式已开启！将显示详细的钓鱼过程日志~ "));
@@ -1176,6 +1195,9 @@ public class Config {
         int maxPage = 0;
         if (hookConfig.contains("hooks")) {
             ConfigurationSection pagesSection = hookConfig.getConfigurationSection("hooks");
+            if (pagesSection == null) {
+                return maxPage;
+            }
             for (String pageKey : pagesSection.getKeys(false)) {
                 try {
                     int pageNum = Integer.parseInt(pageKey);
@@ -1194,6 +1216,9 @@ public class Config {
             return null;
         }
         ConfigurationSection pagesSection = hookConfig.getConfigurationSection("hooks");
+        if (pagesSection == null) {
+            return null;
+        }
         for (String pageKey : pagesSection.getKeys(false)) {
             if (pagesSection.contains(pageKey + "." + hookName)) {
                 return pagesSection.getConfigurationSection(pageKey + "." + hookName).getValues(false);
@@ -1567,12 +1592,7 @@ public class Config {
         
         if (!mainConfig.contains("language")) {
             String serverLocale = "zh_cn";
-            try {
-                serverLocale = "zh_cn";
-            } catch (Exception e) {
-                logger.warning(plugin.getMessageManager().getMessageWithoutPrefix("config_get_server_lang_failed", "获取服务器语言设置失败: %s", e.getMessage()));
-            }
-            
+
             List<String> supportedLanguages = Arrays.asList("zh_cn", "en_us");
             String defaultLanguage = "zh_cn";
             
@@ -1813,52 +1833,14 @@ public class Config {
             return getAvailableFish(biome, weather, time, season);
         }
 
-        List<String> availableFish = new ArrayList<>();
+        List<String> existingPoolFish = new ArrayList<>();
         for (String fishName : poolFish) {
             if (fishExists(fishName)) {
-                boolean canSpawn = true;
-
-                if (fishConfig.contains("fish." + fishName + ".biomes")) {
-                    List<String> biomes = fishConfig.getStringList("fish." + fishName + ".biomes");
-                    if (!biomes.isEmpty() && !biomes.contains(biome)) {
-                        canSpawn = false;
-                    }
-                }
-
-                if (canSpawn && fishConfig.contains("fish." + fishName + ".weather")) {
-                    List<String> weathers = fishConfig.getStringList("fish." + fishName + ".weather");
-                    if (!weathers.isEmpty() && !weathers.contains(weather)) {
-                        canSpawn = false;
-                    }
-                }
-
-                if (canSpawn && fishConfig.contains("fish." + fishName + ".time")) {
-                    List<String> timeRanges = fishConfig.getStringList("fish." + fishName + ".time");
-                    boolean timeMatch = false;
-                    for (String range : timeRanges) {
-                        if (range.equalsIgnoreCase("ANY") || isTimeInRange(time, range)) {
-                            timeMatch = true;
-                            break;
-                        }
-                    }
-                    if (!timeRanges.isEmpty() && !timeMatch) {
-                        canSpawn = false;
-                    }
-                }
-
-                if (canSpawn && isSeasonalFishingEnabled() && season != null && fishConfig.contains("fish." + fishName + ".seasons")) {
-                    List<String> seasons = fishConfig.getStringList("fish." + fishName + ".seasons");
-                    if (!seasons.isEmpty() && !seasons.contains(season)) {
-                        canSpawn = false;
-                    }
-                }
-
-                if (canSpawn) {
-                    availableFish.add(fishName);
-                }
+                existingPoolFish.add(fishName);
             }
         }
 
+        List<String> availableFish = filterFishByConditions(existingPoolFish, biome, weather, time, season);
         if (availableFish.isEmpty()) {
             return getAvailableFish(biome, weather, time, season);
         }

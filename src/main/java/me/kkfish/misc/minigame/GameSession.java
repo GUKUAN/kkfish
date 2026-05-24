@@ -28,6 +28,8 @@ public class GameSession extends BukkitRunnable {
     public final double fishSize;
     public final String fishLevel;
     private org.bukkit.scheduler.BukkitTask task;
+    private final Random random = new Random();
+    private String cachedRodName;
     
     private double greenBarPos = 0.5;
     private double greenBarVel = 0;
@@ -81,6 +83,7 @@ public class GameSession extends BukkitRunnable {
         this.waterType = waterType;
         this.difficulty = 1.0 - (chargePercentage / 100.0 * 0.3);
         this.baitName = baitName;
+        this.cachedRodName = rodName;
         
         this.invincibleTicks = 60;
         this.dashCooldown = 80;
@@ -104,10 +107,9 @@ public class GameSession extends BukkitRunnable {
         
         this.fishLevel = getRandomFishLevelWithBonus(targetFish);
         
-        this.fishPos = 0.1 + Math.random() * 0.8;
+        this.fishPos = Math.max(0.05, Math.min(0.95, greenBarPos + (random.nextDouble() - 0.5) * 0.1));
         this.targetPos = (int)Math.round(fishPos * 10);
         
-        Random random = new Random();
         this.moveDir = random.nextBoolean() ? -1 : 1;
         this.isMoving = true;
         this.moveTick = 0;
@@ -155,20 +157,6 @@ public class GameSession extends BukkitRunnable {
             return plugin.getMessageManager().getMessageWithoutPrefix("fish_unknown", "未知鱼");
         }
         
-        if (rareFishBonus > 1.0 && Math.random() < 0.1) {
-            List<String> rareFishList = new java.util.ArrayList<>();
-            for (String fish : fishList) {
-                int rarity = plugin.getCustomConfig().getFishRarity(fish);
-                if (rarity >= 3) {
-                    rareFishList.add(fish);
-                }
-            }
-            if (!rareFishList.isEmpty()) {
-                Random random = new Random();
-                return rareFishList.get(random.nextInt(rareFishList.size()));
-            }
-        }
-        
         java.util.LinkedHashMap<String, Double> fishWeights = new java.util.LinkedHashMap<>();
         double totalWeight = 0;
         
@@ -214,7 +202,6 @@ public class GameSession extends BukkitRunnable {
             }
         }
         
-        Random random = new Random();
         return fishList.get(random.nextInt(fishList.size()));
     }
     
@@ -244,21 +231,35 @@ public class GameSession extends BukkitRunnable {
     
     @Override
     public void run() {
-        updateGreenBar();
-        updateFishMovement();
-        updateProgress();
-        displayGameUI();
-        
-        if (progress <= 0) {
+        if (!player.isOnline()) {
             if (task != null) {
                 task.cancel();
             }
             endGame(false);
-        } else if (progress >= 1) {
+            return;
+        }
+        try {
+            updateGreenBar();
+            updateFishMovement();
+            updateProgress();
+            displayGameUI();
+            
+            if (progress <= 0) {
+                if (task != null) {
+                    task.cancel();
+                }
+                endGame(false);
+            } else if (progress >= 1) {
+                if (task != null) {
+                    task.cancel();
+                }
+                endGame(true);
+            }
+        } catch (Exception e) {
             if (task != null) {
                 task.cancel();
             }
-            endGame(true);
+            endGame(false);
         }
     }
     
@@ -300,6 +301,7 @@ public class GameSession extends BukkitRunnable {
     private void updateFishMovement() {
         int rarity = plugin.getCustomConfig().getFishRarity(targetFish);
         int currentGridPos = (int)Math.round(fishPos * 10);
+        currentGridPos = Math.min(currentGridPos, 9);
         
         updateBehaviorAndDangerZones(currentGridPos, rarity);
         
@@ -417,7 +419,7 @@ public class GameSession extends BukkitRunnable {
             }
         }
         
-        behaviorDuration = 20 + new Random().nextInt(40);
+        behaviorDuration = 20 + random.nextInt(40);
         behaviorChangeTimer = 0;
     }
     
@@ -425,10 +427,10 @@ public class GameSession extends BukkitRunnable {
         int baseCooldown = 0;
         
         switch (behavior) {
-            case 0: baseCooldown = MIN_COOLDOWN + new Random().nextInt(15); break;
-            case 1: baseCooldown = MIN_COOLDOWN + new Random().nextInt(20); break;
-            case 2: baseCooldown = MIN_COOLDOWN + new Random().nextInt(10); break;
-            case 3: baseCooldown = MIN_COOLDOWN + new Random().nextInt(25); break;
+            case 0: baseCooldown = MIN_COOLDOWN + random.nextInt(15); break;
+            case 1: baseCooldown = MIN_COOLDOWN + random.nextInt(20); break;
+            case 2: baseCooldown = MIN_COOLDOWN + random.nextInt(10); break;
+            case 3: baseCooldown = MIN_COOLDOWN + random.nextInt(25); break;
         }
         
         if (rarity >= 3) {
@@ -475,34 +477,34 @@ public class GameSession extends BukkitRunnable {
         
         switch (behaviorType) {
             case 0:
-                newDir = new Random().nextBoolean() ? 1 : -1;
-                moveAmount = 1 + new Random().nextInt(3);
+                newDir = random.nextBoolean() ? 1 : -1;
+                moveAmount = 1 + random.nextInt(3);
                 break;
             
             case 1:
                 newDir = findSafestDirection(currentGridPos, rarity);
                 if (newDir == 0) {
-                    newDir = new Random().nextBoolean() ? 1 : -1;
+                    newDir = random.nextBoolean() ? 1 : -1;
                 }
                 
-                moveAmount = 1 + new Random().nextInt(2);
+                moveAmount = 1 + random.nextInt(2);
                 break;
             
             case 2:
-                newDir = new Random().nextBoolean() ? 1 : -1;
-                moveAmount = 2 + new Random().nextInt(3);
+                newDir = random.nextBoolean() ? 1 : -1;
+                moveAmount = 2 + random.nextInt(3);
                 
-                if (new Random().nextDouble() < 0.3 && lastDashTime >= dashCooldown) {
+                if (random.nextDouble() < 0.3 && lastDashTime >= dashCooldown) {
                     startDash(rarity);
                 }
                 break;
             
             case 3:
-                if (new Random().nextDouble() < 0.4) {
+                if (random.nextDouble() < 0.4) {
                     moveAmount = 0;
                     newDir = 0;
                 } else {
-                    newDir = new Random().nextBoolean() ? 1 : -1;
+                    newDir = random.nextBoolean() ? 1 : -1;
                     moveAmount = 1;
                 }
                 
@@ -510,7 +512,7 @@ public class GameSession extends BukkitRunnable {
                 break;
         }
         
-        if (behaviorType != 3 && !isDashing && lastDashTime >= dashCooldown && new Random().nextDouble() < 0.2) {
+        if (behaviorType != 3 && !isDashing && lastDashTime >= dashCooldown && random.nextDouble() < 0.2) {
             startDash(rarity);
         }
         
@@ -569,7 +571,7 @@ public class GameSession extends BukkitRunnable {
     
     private void startDash(int rarity) {
         isDashing = true;
-        dashTimer = 10 + new Random().nextInt(10);
+        dashTimer = 10 + random.nextInt(10);
         
         speed = BASE_SPEED * 2.0 * movementAmplitude;
         
@@ -587,16 +589,16 @@ public class GameSession extends BukkitRunnable {
         } else if (fishPos > greenBarCenter) {
             escapeDir = 1;
         } else {
-            escapeDir = new Random().nextBoolean() ? 1 : -1;
+            escapeDir = random.nextBoolean() ? 1 : -1;
         }
         
         int escapeAmount;
         if (rarity >= 3) {
-            escapeAmount = 3 + new Random().nextInt(3);
+            escapeAmount = 3 + random.nextInt(3);
         } else if (rarity >= 2) {
-            escapeAmount = 2 + new Random().nextInt(3);
+            escapeAmount = 2 + random.nextInt(3);
         } else {
-            escapeAmount = 1 + new Random().nextInt(3);
+            escapeAmount = 1 + random.nextInt(3);
         }
         
         int newGridPos = currentGridPos + (escapeDir * escapeAmount);
@@ -623,17 +625,14 @@ public class GameSession extends BukkitRunnable {
             dashChance = 0.6;
         }
         
-        if (new Random().nextDouble() < dashChance) {
+        if (random.nextDouble() < dashChance) {
             startDash(rarity);
         }
     }
     
     private void updateProgress() {
-        MinigameManager minigameManager = plugin.getMinigameManager();
-        String rodName = minigameManager.getRodNameByPlayer(player);
-        
         double baseWidth = 0.15;
-        int floatAreaSize = config.getRodFloatAreaSize(rodName);
+        int floatAreaSize = config.getRodFloatAreaSize(cachedRodName);
         greenBarWidth = baseWidth + (floatAreaSize - 3) * 0.03;
         greenBarWidth = Math.max(0.08, Math.min(0.4, greenBarWidth));
         
@@ -657,6 +656,10 @@ public class GameSession extends BukkitRunnable {
                 double increaseSpeed = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.increase-speed", 0.015);
                 progress += increaseSpeed * (1.0 / difficulty) * raritySlowdownFactor;
                 if (progress > 1) progress = 1;
+            } else {
+                double decreaseSpeed = plugin.getCustomConfig().getMainConfig().getDouble("fishing-settings.progress-bar.decrease-speed", 0.01);
+                progress -= decreaseSpeed * difficulty;
+                if (progress < 0) progress = 0;
             }
             return;
         }
@@ -712,11 +715,7 @@ public class GameSession extends BukkitRunnable {
             }
         }
         
-        if (Math.abs(fishPosInBar - edgeLeft) <= 1 || Math.abs(fishPosInBar - edgeRight) <= 1) {
-            barSegments[fishPosInBar] = fishIndicatorChar;
-        } else {
-            barSegments[fishPosInBar] = fishIndicatorChar;
-        }
+        barSegments[fishPosInBar] = fishIndicatorChar;
         
         for (String segment : barSegments) {
             greenBar.append(segment);
@@ -768,7 +767,7 @@ public class GameSession extends BukkitRunnable {
         double minSize = plugin.getCustomConfig().getFishConfig().getDouble("fish." + targetFish + ".min-size", 20.0);
         double maxSize = plugin.getCustomConfig().getFishConfig().getDouble("fish." + targetFish + ".max-size", 60.0);
         
-        double sizeMultiplier = fishSize / maxSize;
+        double sizeMultiplier = fishSize / (maxSize > 0 ? maxSize : 60.0);
         
         double rarityMultiplier = 1.0;
         String rarityName = plugin.getCustomConfig().getRarityNameByLevel(fishLevel);
@@ -777,7 +776,8 @@ public class GameSession extends BukkitRunnable {
         double valueBonus = 1.0;
         if (player != null) {
             String hookMaterial = plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString());
-            switch (hookMaterial.toLowerCase()) {
+            String hookType = hookMaterial != null ? hookMaterial.toLowerCase() : "wood";
+            switch (hookType) {
                 case "iron":
                     valueBonus = 1.1;
                     break;
@@ -799,12 +799,12 @@ public class GameSession extends BukkitRunnable {
                 finalValue *= seasonalMultiplier;
                 
                 double baseFluctuation = plugin.getCustomConfig().getBasePriceFluctuation();
-                double randomFluctuation = 1.0 + (new Random().nextDouble() - 0.5) * 2 * baseFluctuation;
+                double randomFluctuation = 1.0 + (random.nextDouble() - 0.5) * 2 * baseFluctuation;
                 finalValue *= randomFluctuation;
             }
         }
         
-        cachedActualFishValue = Math.round(finalValue * 100) / 100.0;
+        cachedActualFishValue = Math.max(1, (double) Math.round(finalValue));
         return cachedActualFishValue;
     }
     

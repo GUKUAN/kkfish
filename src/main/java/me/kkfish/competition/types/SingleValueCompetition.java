@@ -17,6 +17,9 @@ public class SingleValueCompetition extends Competition {
 
     @Override
     public void recordCatch(Player player, String fishName, double value) {
+        if (config.hasFishList() && !config.getFishList().containsKey(fishName)) {
+            return;
+        }
         UUID playerId = player.getUniqueId();
         CompetitionData data = playerData.computeIfAbsent(playerId, k -> new CompetitionData(playerId, player.getName()));
         data.addValue(value);

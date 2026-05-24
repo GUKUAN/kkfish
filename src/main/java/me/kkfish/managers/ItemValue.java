@@ -3,6 +3,7 @@ package me.kkfish.managers;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.configuration.file.FileConfiguration;
+import me.kkfish.kkfish;
 import me.kkfish.managers.Config;
 import me.kkfish.utils.XSeriesUtil;
 
@@ -35,7 +36,11 @@ public class ItemValue {
                     }
 
                     Material material = XSeriesUtil.parseMaterial(materialName);
-                    if (material != null && material.isItem()) {
+                    if (material == null) {
+                        kkfish.getInstance().getLogger().warning("Invalid material in item-value: " + materialName);
+                        continue;
+                    }
+                    if (material.isItem()) {
                         ItemStack itemStack = new ItemStack(material, amount);
                         rewards.add(itemStack);
                     }

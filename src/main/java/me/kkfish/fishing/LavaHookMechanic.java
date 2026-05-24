@@ -32,7 +32,7 @@ public class LavaHookMechanic implements HookMechanic {
     @Override
     public void onHookLand(Player player, ArmorStand hookEntity, Location location, Vector velocity, double chargePercentage, String baitName) {
         createLavaSplashEffect(location);
-        ActionBarUtil.sendActionBarPersistent(plugin, player, messageManager.getMessage("hook_in_water", "鱼钩已落入岩浆中，等待鱼儿上钩..."), 40, MessageType.FISHING);
+        ActionBarUtil.sendActionBarPersistent(plugin, player, messageManager.getMessage("hook_in_lava", "鱼钩已落入岩浆中，等待鱼儿上钩..."), 40, MessageType.FISHING);
         Vector entryVelocity = velocity.clone();
         handleLavaMovement(player, hookEntity, entryVelocity, chargePercentage, baitName);
     }
@@ -144,7 +144,7 @@ public class LavaHookMechanic implements HookMechanic {
 
                 distanceMoved += Math.abs(entryVelocity.getY());
 
-                if (distanceMoved >= targetDistance || tickCount >= maxTicks) {
+                if (distanceMoved >= targetDistance || currentLoc.getBlockY() <= 0 || tickCount >= maxTicks) {
                     if (taskRef[0] != null) {
                         taskRef[0].cancel();
                     }

@@ -1,5 +1,6 @@
 package me.kkfish.competition;
 
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BarColor;
@@ -47,7 +48,7 @@ public class CompetitionConfig {
         
         this.pointMultiplier = config.getDouble(path + ".point-multiplier", 1.0);
         
-        if (config.contains(path + ".rewards")) {
+        if (config.contains(path + ".rewards") && config.getConfigurationSection(path + ".rewards") != null) {
             for (String rankStr : config.getConfigurationSection(path + ".rewards").getKeys(false)) {
                 try {
                     int rank = Integer.parseInt(rankStr);
@@ -59,7 +60,7 @@ public class CompetitionConfig {
             }
         }
         
-        if (config.contains(path + ".reward-display-info")) {
+        if (config.contains(path + ".reward-display-info") && config.getConfigurationSection(path + ".reward-display-info") != null) {
             for (String rankStr : config.getConfigurationSection(path + ".reward-display-info").getKeys(false)) {
                 try {
                     int rank = Integer.parseInt(rankStr);
@@ -131,7 +132,7 @@ public class CompetitionConfig {
             try {
                 tempBossBarColor = BarColor.valueOf(colorStr);
             } catch (IllegalArgumentException e) {
-                // Invalid boss bar color, using default
+                Bukkit.getConsoleSender().sendMessage("§c[KKFish] Invalid boss bar color: " + colorStr + ", using default BLUE");
             }
             this.bossBarColor = tempBossBarColor;
             
@@ -140,6 +141,7 @@ public class CompetitionConfig {
             try {
                 tempBossBarStyle = BarStyle.valueOf(styleStr);
             } catch (IllegalArgumentException e) {
+                Bukkit.getConsoleSender().sendMessage("§c[KKFish] Invalid boss bar style: " + styleStr + ", using default SEGMENTED_10");
             }
             this.bossBarStyle = tempBossBarStyle;
             
@@ -147,7 +149,7 @@ public class CompetitionConfig {
             this.scoreboardTitle = config.getString(path + ".display.scoreboard.title", "&e&l钓鱼比赛");
             
             this.scoreboardLines = new HashMap<>();
-            if (config.contains(path + ".display.scoreboard.lines")) {
+            if (config.contains(path + ".display.scoreboard.lines") && config.getConfigurationSection(path + ".display.scoreboard.lines") != null) {
                 for (String line : config.getConfigurationSection(path + ".display.scoreboard.lines").getKeys(false)) {
                     int interval = config.getInt(path + ".display.scoreboard.lines." + line, 5);
                     scoreboardLines.put(line, interval);

@@ -10,12 +10,14 @@ import me.kkfish.utils.XSeriesUtil;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
 public class VoidHookMechanic implements HookMechanic {
 
     private final kkfish plugin;
     private final Config config;
     private final MessageManager messageManager;
+    private static final java.util.Map<java.util.UUID, BukkitTask> floatTasks = new java.util.HashMap<>();
 
     public VoidHookMechanic(kkfish plugin) {
         this.plugin = plugin;
@@ -31,7 +33,7 @@ public class VoidHookMechanic implements HookMechanic {
     @Override
     public void onHookLand(Player player, ArmorStand hookEntity, Location location, org.bukkit.util.Vector velocity, double chargePercentage, String baitName) {
         createVoidEntryEffect(location);
-        ActionBarUtil.sendActionBarPersistent(plugin, player, messageManager.getMessage("hook_in_water", "鱼钩已进入虚空，等待鱼儿上钩..."), 40, MessageType.FISHING);
+        ActionBarUtil.sendActionBarPersistent(plugin, player, messageManager.getMessage("hook_in_void", "鱼钩已进入虚空，等待鱼儿上钩..."), 40, MessageType.FISHING);
 
         startFloating(player, hookEntity);
         plugin.getFish().scheduleBiteCheck(player, chargePercentage, baitName);
@@ -52,6 +54,7 @@ public class VoidHookMechanic implements HookMechanic {
                     if (taskRef[0] != null) {
                         taskRef[0].cancel();
                     }
+                    floatTasks.remove(hookEntity.getUniqueId());
                     return;
                 }
                 floatTicks++;
@@ -67,6 +70,7 @@ public class VoidHookMechanic implements HookMechanic {
         };
 
         taskRef[0] = SchedulerUtil.runSyncTimer(plugin, runnable, 0, 1);
+        floatTasks.put(hookEntity.getUniqueId(), taskRef[0]);
     }
 
 
@@ -105,6 +109,10 @@ public class VoidHookMechanic implements HookMechanic {
 
     @Override
     public void cleanup(Player player, ArmorStand hookEntity) {
+        BukkitTask task = floatTasks.remove(hookEntity.getUniqueId());
+        if (task != null) {
+            task.cancel();
+        }
     }
 
     private void createVoidEntryEffect(Location location) {

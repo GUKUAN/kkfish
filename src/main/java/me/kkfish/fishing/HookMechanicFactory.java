@@ -101,11 +101,12 @@ public class HookMechanicFactory {
         World world = location.getWorld();
         if (world == null) return false;
 
-        if (world.getEnvironment() == World.Environment.THE_END) {
-            return false;
+        World.Environment env = world.getEnvironment();
+        if (env == World.Environment.THE_END) {
+            return location.getY() < 0;
         }
 
-        return false;
+        return location.getY() < -64;
     }
 
     private boolean canFishInLava(Player player) {
