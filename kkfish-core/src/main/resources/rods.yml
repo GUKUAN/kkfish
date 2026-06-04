@@ -1,0 +1,126 @@
+# kkfish Fishing Rod Configuration
+# Rod Configuration Example
+# You can create custom fishing rods with various properties and effects
+# Example rod configuration (add under rods: node):
+# custom-legendary-rod:
+#   difficulty: 0.5 # Difficulty level (higher value = harder)
+#   float-area-size: 5 # Float area size percentage
+#   durability: 1000 # Durability
+#   enchantability: 30 # Enchantability level (reserved, not yet wired)
+#   charge-speed: 0.5 # Charge speed multiplier (higher = faster)
+#   bite-chance-bonus: 0.5 # Bite chance bonus
+#   rare-fish-chance: 0.3 # Rare fish chance multiplier
+#   material: "DIAMOND_FISHING_ROD" # Minecraft material type
+#   custom-model-data: -1 # Custom model data
+#   display-name: "&6&lLegendary Fishing Rod" # Display name in game
+#   effects: ["LUCK", "LURE"] # Special effects
+#   # Other configuration items...
+
+# Fishing Rod List
+rods:
+  # Basic Fishing Rods
+  default:
+    difficulty: 1.0 # Difficulty level (higher value = harder)
+    float-area-size: 30 # Float area size percentage
+    durability: 65 # Durability
+    enchantability: 15 # Enchantability level
+    charge-speed: 1.0 # Charge speed multiplier (higher = faster charge, easier to overcharge)
+    bite-chance-bonus: 0.0 # Bite chance bonus
+    rare-fish-chance: 0.0 # Rare fish chance multiplier
+    material: "FISHING_ROD" # Minecraft material type
+    custom-model-data: -1 # Custom model data
+    template: "default" # Item description template
+    display-name: "§fWooden Fishing Rod" # Display name in game
+  
+  stone-fishing-rod:
+    difficulty: 1.1
+    float-area-size: 25
+    durability: 131
+    enchantability: 5
+    charge-speed: 1.1
+    bite-chance-bonus: 0.05
+    rare-fish-chance: 0.02
+    material: "FISHING_ROD"
+    custom-model-data: -1
+    template: "default" # Item description template
+    display-name: "§7Stone Fishing Rod"
+  
+  iron-fishing-rod:
+    difficulty: 1.2
+    float-area-size: 20
+    durability: 250
+    enchantability: 14
+    charge-speed: 1.2
+    bite-chance-bonus: 0.1
+    rare-fish-chance: 0.05
+    material: "FISHING_ROD"
+    custom-model-data: -1
+    template: "default" # Item description template
+    display-name: "§fIron Fishing Rod"
+  
+  golden-fishing-rod:
+    difficulty: 1.3
+    float-area-size: 15
+    durability: 32
+    enchantability: 22
+    charge-speed: 1.3
+    bite-chance-bonus: 0.15
+    rare-fish-chance: 0.1
+    material: "FISHING_ROD"
+    custom-model-data: -1
+    template: "default" # Item description template
+    display-name: "§6Golden Fishing Rod"
+  
+  diamond-fishing-rod:
+    difficulty: 1.4
+    float-area-size: 10
+    durability: 1561
+    enchantability: 10
+    charge-speed: 1.4
+    bite-chance-bonus: 0.2
+    rare-fish-chance: 0.15
+    material: "FISHING_ROD"
+    custom-model-data: -1
+    template: "default" # Item description template
+    display-name: "§bDiamond Fishing Rod"
+  
+  netherite-fishing-rod:
+    difficulty: 1.5
+    float-area-size: 8
+    durability: 2031
+    enchantability: 15
+    charge-speed: 1.5
+    bite-chance-bonus: 0.25
+    rare-fish-chance: 0.2
+    material: "FISHING_ROD"
+    custom-model-data: -1
+    template: "default" # Item description template
+    display-name: "§8Netherite Fishing Rod"
+  
+  lucky-fishing-rod:
+    difficulty: 1.6
+    float-area-size: 12
+    durability: 100
+    enchantability: 30
+    charge-speed: 1.6
+    bite-chance-bonus: 0.3
+    rare-fish-chance: 0.25
+    material: "FISHING_ROD"
+    custom-model-data: -1
+    template: "default" # Item description template
+    display-name: "§e§lLucky Fishing Rod"
+    effects: ["LUCK"] # Special effects
+  
+  master-fishing-rod:
+    difficulty: 1.7
+    float-area-size: 5
+    durability: 500
+    enchantability: 25
+    charge-speed: 1.7
+    bite-chance-bonus: 0.4
+    rare-fish-chance: 0.3
+    material: "FISHING_ROD"
+    custom-model-data: -1
+    template: "default" # Item description template
+    display-name: "§5§lMaster Fishing Rod"
+    effects: ["LUCK", "LURE"] # Multiple special effects

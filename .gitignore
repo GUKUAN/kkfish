@@ -17,7 +17,6 @@ build/
 .gradle/
 
 # Maven files
-target/
 *.jar
 *.war
 *.nar
@@ -26,7 +25,5 @@ target/
 *.tar.gz
 *.rar
 
-# Other
-kkfish-bstat/
-.git/
-docs/
+# Dependency reduced POM
+dependency-reduced-pom.xml

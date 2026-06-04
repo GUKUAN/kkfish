@@ -1,0 +1,265 @@
+# kkfish Fish Configuration
+# Fish Configuration Example
+# You can create custom fish with various properties and behaviors
+# Example fish configuration (add under fish: node):
+# custom-legendary-fish:
+#   level:
+#     - legendary:100
+#   activity: 2.0 # (reserved, not yet wired)
+#   min-size: 50
+#   max-size: 150
+#   value: 1000
+#   biomes: ["OCEAN", "DEEP_OCEAN"]
+#   weather: ["THUNDER"]
+#   time: ["NIGHT"]
+#   seasons: ["SUMMER"]
+#   bite-rate-multiplier: 0.3 # (reserved, not yet wired)
+#   description: "A rare and powerful fish"
+#   display-name: "&6&lCustom Legendary Fish"
+#   material: "TROPICAL_FISH"
+#   custom-model-data: -1
+#   enchant-glow: true
+#   effects: ["FIRE_RESISTANCE 3:60", "WATER_BREATHING 2:120"]
+#   movement-amplitude: 2.0
+#   command: ["-o say Congratulations %player%!", "-c give %player% diamond 10"]
+#   saturation: 20
+#   announcement: true
+#   template: "default"
+#   # Other configuration items...
+fish:
+  Carp:
+    level:
+      - common:70
+      - rare:20
+      - epic:10
+    activity: 1.0
+    min-size: 20
+    max-size: 60
+    value: 10
+    item-value:
+      - "diamond:1"
+      - "iron_ingot:3"
+    biomes: ["RIVER", "SWAMP", "BEACH", "FROZEN_RIVER", "PLAINS", "FOREST", "TAIGA", "JUNGLE"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["ANY"]
+    seasons: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
+    bite-rate-multiplier: 1.1
+    description: "A common freshwater fish with delicious meat, commonly found in rivers"
+    display-name: "§fCarp"
+    material: "COD"
+    custom-model-data: -1
+    enchant-glow: false
+    effects: []
+    movement-amplitude: 1.0
+    command: []
+    saturation: 4
+    announcement: false
+    template: "simple"
+
+  GrassCarp:
+    level:
+      - common:100
+    activity: 0.8
+    min-size: 15
+    max-size: 50
+    value: 8
+    biomes: ["RIVER", "SWAMP", "FROZEN_RIVER", "PLAINS", "FOREST", "TAIGA", "JUNGLE"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["ANY"]
+    seasons: ["SPRING", "SUMMER", "AUTUMN"]
+    bite-rate-multiplier: 1.2
+    description: "A gentle freshwater fish that's easy to catch, with a lovely slender body"
+    display-name: "§fGrassCarp"
+    material: "SALMON"
+    custom-model-data: -1
+    enchant-glow: false
+    effects: []
+    movement-amplitude: 0.8
+    command: []
+    saturation: 4
+    announcement: false
+    template: "simple"
+
+  Goldfish:
+    level:
+      - rare:80
+      - epic:20
+    activity: 1.5
+    min-size: 5
+    max-size: 15
+    value: 50
+    biomes: ["RIVER", "PLAINS", "FOREST", "TAIGA", "JUNGLE"]
+    weather: ["CLEAR"]
+    time: ["DAY", "DAWN", "DUSK"]
+    seasons: ["SPRING", "SUMMER"]
+    bite-rate-multiplier: 0.8
+    description: "A beautiful ornamental fish that's very rare, with golden scales that sparkle in sunlight"
+    display-name: "§6Goldfish"
+    material: "TROPICAL_FISH"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: []
+    movement-amplitude: 1.5
+    command: []
+    saturation: 4
+    announcement: true
+    template: "default"
+
+  Bass:
+    level:
+      - rare:100
+    activity: 1.2
+    min-size: 25
+    max-size: 70
+    value: 25
+    biomes: ["OCEAN", "RIVER", "DEEP_OCEAN", "WARM_OCEAN", "COLD_OCEAN"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["DUSK", "DAWN"]
+    seasons: ["SPRING", "SUMMER", "AUTUMN"]
+    bite-rate-multiplier: 0.9
+    description: "A strong predatory fish that swims very fast"
+    display-name: "§3Bass"
+    material: "COD"
+    custom-model-data: -1
+    enchant-glow: false
+    effects: []
+    movement-amplitude: 1.2
+    command: []
+    saturation: 4
+    announcement: false
+    template: "default"
+
+  DragonFish:
+    level:
+      - legendary:10
+    activity: 2.0
+    min-size: 100
+    max-size: 200
+    value: 1000
+    item-value:
+      - "diamond:3"
+      - "iron_block:1"
+      - "gold_block:1"
+    biomes: ["DEEP_OCEAN"]
+    weather: ["THUNDER"]
+    time: ["NIGHT"]
+    seasons: ["SUMMER"]
+    bite-rate-multiplier: 0.3
+    description: "A legendary mysterious fish that few have seen, said to grant mysterious powers to those who eat it"
+    display-name: "§4§lDragonFish"
+    material: "PUFFERFISH"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: ["FIRE_RESISTANCE 3:60", "WATER_BREATHING 2:120"]
+    movement-amplitude: 2.0
+    command: []
+    saturation: 20
+    announcement: true
+    template: "default"
+
+  LightningFish:
+    level:
+      - epic:90
+      - legendary:10
+    activity: 1.8
+    min-size: 30
+    max-size: 80
+    value: 500
+    biomes: ["OCEAN", "DEEP_OCEAN", "WARM_OCEAN", "COLD_OCEAN"]
+    weather: ["THUNDER"]
+    time: ["NIGHT"]
+    seasons: ["SUMMER"]
+    bite-rate-multiplier: 0.5
+    description: "A strange fish that appears during thunderstorms, with a weak electric current that gives a tingly sensation when touched"
+    display-name: "§bLightningFish"
+    material: "TROPICAL_FISH"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: ["SPEED 2:30"]
+    movement-amplitude: 1.8
+    command: []
+    saturation: 10
+    announcement: true
+    template: "default"
+
+  StoneFish:
+    level:
+      - rare:50
+      - common:50
+    activity: 0.6
+    min-size: 20
+    max-size: 40
+    value: 30
+    biomes: ["OCEAN", "SWAMP", "BEACH"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["ANY"]
+    seasons: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
+    bite-rate-multiplier: 0.7
+    description: "A fish skilled at camouflage, often hiding near rocks and looking like a stone"
+    display-name: "§7StoneFish"
+    material: "COD"
+    custom-model-data: -1
+    enchant-glow: false
+    effects: []
+    movement-amplitude: 0.5
+    command: []
+    saturation: 2
+    announcement: false
+    template: "simple"
+
+  FlyingFish:
+    level:
+      - rare:100
+    activity: 1.6
+    min-size: 15
+    max-size: 35
+    value: 75
+    biomes: ["OCEAN", "DEEP_OCEAN", "WARM_OCEAN"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["DAY"]
+    seasons: ["SPRING", "SUMMER"]
+    bite-rate-multiplier: 0.8
+    description: "A strange fish that can briefly jump out of the water, appearing to fly"
+    display-name: "§aFlyingFish"
+    material: "SALMON"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: ["JUMP_BOOST 2:45"]
+    movement-amplitude: 1.6
+    command: []
+    saturation: 15
+    announcement: true
+    template: "default"
+
+  XuFuFish:
+    level:
+      - legendary:100
+    activity: 1.8
+    min-size: 40
+    max-size: 100
+    value: 800
+    biomes: ["OCEAN", "DEEP_OCEAN"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["NIGHT"]
+    seasons: ["AUTUMN"]
+    bite-rate-multiplier: 0.4
+    description: "A legendary mysterious fish said to grant immortality when eaten, glowing with a mysterious light when swimming"
+    display-name: "§d§lXuFuFish"
+    material: "TROPICAL_FISH"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: ["HEALTH_BOOST 3:120", "ABSORPTION 2:60"]
+    movement-amplitude: 1.8
+    command: []
+    saturation: 15
+    announcement: true
+    template: "default"
+
+# Effect Name Mapping
+effects-map:
+  SPEED: "Speed"
+  JUMP_BOOST: "Jump Boost"
+  FIRE_RESISTANCE: "Fire Resistance"
+  WATER_BREATHING: "Water Breathing"
+  HEALTH_BOOST: "Health Boost"
+  ABSORPTION: "Absorption"
