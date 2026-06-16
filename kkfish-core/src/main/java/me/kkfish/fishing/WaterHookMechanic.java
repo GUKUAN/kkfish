@@ -82,10 +82,9 @@ public class WaterHookMechanic implements HookMechanic {
             Location currentLoc = floatStartLoc.clone();
             currentLoc.setY(currentLoc.getY() + yOffset);
             try {
-                java.lang.reflect.Method m = hookEntity.getClass().getMethod("teleportAsync", org.bukkit.Location.class);
-                m.invoke(hookEntity, currentLoc);
+                me.kkfish.utils.NmsAdapter.teleportEntityAsync(hookEntity, currentLoc);
             } catch (Exception e) {
-                try { java.lang.reflect.Method m = hookEntity.getClass().getMethod("teleportAsync", org.bukkit.Location.class); m.invoke(hookEntity, currentLoc); } catch (Exception ex) { hookEntity.teleport(currentLoc); }
+                hookEntity.teleport(currentLoc);
             }
         }
     }
@@ -148,10 +147,9 @@ public class WaterHookMechanic implements HookMechanic {
                 currentLoc.add(entryVelocity);
 
                 try {
-                java.lang.reflect.Method m = hookEntity.getClass().getMethod("teleportAsync", org.bukkit.Location.class);
-                m.invoke(hookEntity, currentLoc);
+                me.kkfish.utils.NmsAdapter.teleportEntityAsync(hookEntity, currentLoc);
             } catch (Exception e) {
-                try { java.lang.reflect.Method m = hookEntity.getClass().getMethod("teleportAsync", org.bukkit.Location.class); m.invoke(hookEntity, currentLoc); } catch (Exception ex) { hookEntity.teleport(currentLoc); }
+                hookEntity.teleport(currentLoc);
             }
 
                 distanceMoved += Math.abs(entryVelocity.getY());

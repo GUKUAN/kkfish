@@ -715,7 +715,7 @@ public class DB {
                 addToCache(cacheKey, hooks, DEFAULT_CACHE_EXPIRY);
             }
         } catch (SQLException e) {
-            kkfish.log("§c" + "获取玩家已购买鱼钩材质失败！"); e.printStackTrace();
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_get_hook_material_failed", "§c获取玩家已购买鱼钩材质失败！")); e.printStackTrace();
         }
         return hooks;
     }
@@ -738,7 +738,7 @@ public class DB {
         try {
             setPlayerStringValue(playerId, "hook_material", materialType, "hook");
         } catch (Exception e) {
-            kkfish.log("§c" + "设置玩家鱼钩材质失败！"); e.printStackTrace();
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_set_hook_material_failed", "§c设置玩家鱼钩材质失败！")); e.printStackTrace();
             throw new RuntimeException("数据库操作失败", e); // 重新抛出异常以便调用者能够捕获
         }
     }
@@ -878,7 +878,7 @@ public class DB {
                 }
             }
         } catch (SQLException e) {
-            kkfish.log("§c" + "获取鱼特效失败！"); e.printStackTrace();
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_get_fish_effect_failed", "§c获取鱼特效失败！")); e.printStackTrace();
         }
         
         return effects;
@@ -996,7 +996,7 @@ public class DB {
                 }
             }
         } catch (SQLException e) {
-            kkfish.log("§c" + "获取所有鱼类名称失败！"); e.printStackTrace();
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_get_all_fish_names_failed", "§c获取所有鱼类名称失败！")); e.printStackTrace();
         }
         return fishNames;
     }

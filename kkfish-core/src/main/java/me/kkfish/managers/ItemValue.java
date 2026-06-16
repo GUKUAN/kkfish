@@ -2,20 +2,13 @@ package me.kkfish.managers;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.Bukkit;
 import me.kkfish.kkfish;
-import org.bukkit.Bukkit;
 import me.kkfish.managers.Config;
-import org.bukkit.Bukkit;
 import me.kkfish.utils.XSeriesUtil;
 
-import org.bukkit.Bukkit;
 import java.util.ArrayList;
-import org.bukkit.Bukkit;
 import java.util.List;
 
 public class ItemValue {
@@ -45,7 +38,7 @@ public class ItemValue {
 
                     Material material = XSeriesUtil.parseMaterial(materialName);
                     if (material == null) {
-                        kkfish.log("§e" + "Invalid material in item-value: " + materialName);
+                        kkfish.log(kkfish.getInstance().getMessageManager().getMessageWithoutPrefix("log.item_value_invalid_material", "§eInvalid material in item-value: " + materialName, materialName));
                         continue;
                     }
                     if (material.isItem()) {

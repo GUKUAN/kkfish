@@ -250,7 +250,7 @@ public class GUIAction {
         kkfish.log("Player " + player.getName() + " selling items");
         
         try {
-            kkfishPlugin.getCmd().sellAllFish(player);
+            kkfishPlugin.getCmd().getSellHandler().sellAllFish(player);
         } catch (Exception e) {
             kkfish.log("§e" + kkfishPlugin.getMessageManager().getMessageWithoutPrefix("log.sell_operation_failed", "执行出售操作失败: ") + e.getMessage());
             player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "sell_operation_failed", "§c出售操作失败，请稍后再试。"));
@@ -301,7 +301,7 @@ public class GUIAction {
                 guiManager.openGUI(player, GUI.GUIType.SELL_GUI);
                 break;
             default:
-                kkfish.log("§e" + "未知的菜单名称: " + menuName);
+                kkfish.log(kkfishPlugin.getMessageManager().getMessageWithoutPrefix("log.gui_action_unknown_menu", "§e未知的菜单名称: " + menuName, menuName));
         }
     }
     

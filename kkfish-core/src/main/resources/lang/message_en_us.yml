@@ -532,6 +532,54 @@ log.player_language_load_failed: "Failed to load player language file: %s"
 log.save_message_failed: "Failed to save message configuration: %s"
 
 # ==========================
+# Config/Database warning logs
+# ==========================
+log.config_save_failed: "Failed to save configuration file"
+log.config_pool_fish_not_found: "Fish '%s' in pool %s does not exist in fish.yml, please check pools.yml and fish.yml consistency"
+log.db_get_player_column_failed: "Failed to get player %s!"
+log.db_set_player_column_failed: "Failed to set player %s!"
+log.db_check_hook_material_failed: "Failed to check if player owns hook material!"
+log.db_mark_hook_material_failed: "Failed to mark hook material as purchased!"
+log.db_get_hook_material_failed: "Failed to get player purchased hook materials!"
+log.db_set_hook_material_failed: "Failed to set player hook material!"
+log.db_get_fish_records_failed: "Failed to get player fishing records!"
+log.db_get_fish_record_failed: "Failed to get player specific fish record!"
+log.db_save_fish_value_failed: "Failed to save fish UUID value!"
+log.db_parse_fish_effect_failed: "Failed to parse fish effect: %s - %s"
+log.db_save_fish_effect_failed: "Failed to save fish effect!"
+log.db_get_fish_effect_failed: "Failed to get fish effect!"
+log.db_get_fish_value_failed: "Failed to get fish UUID value!"
+log.db_delete_fish_value_failed: "Failed to delete fish UUID value!"
+log.db_unlock_dex_failed: "Failed to unlock player fish dex!"
+log.db_lock_dex_failed: "Failed to lock player fish dex!"
+log.db_get_all_fish_names_failed: "Failed to get all fish names!"
+log.db_debug_set_hook_material: "[DEBUG] Setting player hook material | Player: %s Material: %s"
+
+# ==========================
+# GUI warning logs
+# ==========================
+log.gui_menu_not_found: "Menu configuration does not exist: %s"
+log.gui_invalid_type: "Invalid GUI type: %s"
+log.gui_create_competition_item_failed: "Failed to create competition item: %s"
+log.gui_create_hook_item_failed: "Failed to create hook display item: %s - %s"
+log.gui_create_menu_item_failed: "Failed to create menu item: %s"
+
+# ==========================
+# Other warning logs
+# ==========================
+log.gui_action_unknown_menu: "Unknown menu name: %s"
+log.gui_action_player_selling: "Player %s is selling items"
+log.gui_listener_sell_fish_failed: "Failed to sell fish item: %s"
+log.item_value_invalid_material: "Invalid material in item-value: %s"
+log.competition_invalid_bossbar_color: "Invalid boss bar color: %s, using default BLUE"
+log.competition_invalid_bossbar_style: "Invalid boss bar style: %s, using default SEGMENTED_10"
+log.custom_compete_type_registered: "Registered custom competition type: %s"
+log.message_default_not_found: "Default language file (en_us) not found"
+log.message_complete_keys_added: "Added %s missing language keys to %s language file"
+log.message_complete_failed: "Failed to complete language file: %s"
+log.folia_detected: "Folia detected: region/entity/global schedulers will be used."
+
+# ==========================
 # Mode Switch Messages
 # ==========================
 mode_switch_command_disabled: "&cCommand switch fishing mode feature has been disabled"

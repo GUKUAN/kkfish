@@ -139,7 +139,7 @@ public class CompetitionConfig {
             try {
                 tempBossBarColor = BarColor.valueOf(colorStr);
             } catch (IllegalArgumentException e) {
-                kkfish.log("§c[KKFish] Invalid boss bar color: " + colorStr + ", using default BLUE");
+                kkfish.log(kkfish.getInstance().getMessageManager().getMessageWithoutPrefix("log.competition_invalid_bossbar_color", "§c[KKFish] Invalid boss bar color: " + colorStr + ", using default BLUE", colorStr));
             }
             this.bossBarColor = tempBossBarColor;
             
@@ -148,7 +148,7 @@ public class CompetitionConfig {
             try {
                 tempBossBarStyle = BarStyle.valueOf(styleStr);
             } catch (IllegalArgumentException e) {
-                kkfish.log("§c[KKFish] Invalid boss bar style: " + styleStr + ", using default SEGMENTED_10");
+                kkfish.log(kkfish.getInstance().getMessageManager().getMessageWithoutPrefix("log.competition_invalid_bossbar_style", "§c[KKFish] Invalid boss bar style: " + styleStr + ", using default SEGMENTED_10", styleStr));
             }
             this.bossBarStyle = tempBossBarStyle;
             

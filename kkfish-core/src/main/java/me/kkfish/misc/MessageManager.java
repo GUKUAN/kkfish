@@ -2,35 +2,21 @@ package me.kkfish.misc;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 
-import org.bukkit.Bukkit;
 import me.kkfish.kkfish;
-import org.bukkit.Bukkit;
 import me.kkfish.managers.Config;
 
-import org.bukkit.Bukkit;
 import java.io.File;
-import org.bukkit.Bukkit;
 import java.io.IOException;
-import org.bukkit.Bukkit;
 import java.util.HashMap;
-import org.bukkit.Bukkit;
 import java.util.HashSet;
-import org.bukkit.Bukkit;
 import java.util.List;
-import org.bukkit.Bukkit;
 import java.util.Map;
-import org.bukkit.Bukkit;
 import java.util.Set;
-import org.bukkit.Bukkit;
 import java.util.UUID;
 
 public class MessageManager {
@@ -105,8 +91,8 @@ public class MessageManager {
             prefix = prefix.replace('&', '§');
         }
 
-        for (String key : msgConfig.getKeys(false)) {
-            if (!key.equals("prefix")) {
+        for (String key : msgConfig.getKeys(true)) {
+            if (!key.equals("prefix") && msgConfig.isString(key)) {
                 msgMap.put(key, msgConfig.getString(key));
             }
         }
@@ -362,8 +348,8 @@ public class MessageManager {
             FileConfiguration targetConfig = YamlConfiguration.loadConfiguration(targetLangFile);
 
             Set<String> missingKeys = new HashSet<>();
-            for (String key : defaultConfig.getKeys(false)) {
-                if (!targetConfig.contains(key)) {
+            for (String key : defaultConfig.getKeys(true)) {
+                if (defaultConfig.isString(key) && !targetConfig.contains(key)) {
                     missingKeys.add(key);
                 }
             }
@@ -377,10 +363,10 @@ public class MessageManager {
             }
 
             targetConfig.save(targetLangFile);
-            kkfish.log("Added " + missingKeys.size() + " missing language keys to " + targetLang + " language file");
+            kkfish.log(this.getMessageWithoutPrefix("log.message_complete_keys_added", "Added " + missingKeys.size() + " missing language keys to " + targetLang + " language file", missingKeys.size(), targetLang));
             return true;
         } catch (Exception e) {
-            kkfish.log("§e" + "Failed to complete language file: " + e.getMessage());
+            kkfish.log(this.getMessageWithoutPrefix("log.message_complete_failed", "§eFailed to complete language file: " + e.getMessage(), e.getMessage()));
             return false;
         }
     }

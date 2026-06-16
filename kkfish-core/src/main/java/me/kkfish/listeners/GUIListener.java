@@ -2,73 +2,39 @@ package me.kkfish.listeners;
 
 import org.bukkit.Bukkit;
 import java.util.Collection;
-import org.bukkit.Bukkit;
 import java.util.HashMap;
-import org.bukkit.Bukkit;
 import java.util.List;
-import org.bukkit.Bukkit;
 import java.util.Map;
-import org.bukkit.Bukkit;
 import java.util.Set;
-import org.bukkit.Bukkit;
 import java.util.HashSet;
-import org.bukkit.Bukkit;
 import java.util.concurrent.ConcurrentHashMap;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
-import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
-import org.bukkit.Bukkit;
 import org.bukkit.event.inventory.InventoryAction;
-import org.bukkit.Bukkit;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.Bukkit;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.Bukkit;
 import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.Bukkit;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.Bukkit;
 import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.Bukkit;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.Bukkit;
 import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.Bukkit;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.Bukkit;
 import net.milkbowl.vault.economy.Economy;
-import org.bukkit.Bukkit;
 import me.kkfish.kkfish;
-import org.bukkit.Bukkit;
 import me.kkfish.managers.Config;
-import org.bukkit.Bukkit;
 import me.kkfish.managers.GUI;
-import org.bukkit.Bukkit;
 import me.kkfish.misc.MessageManager;
-import org.bukkit.Bukkit;
 import me.kkfish.managers.Compete;
-import org.bukkit.Bukkit;
 import me.kkfish.competition.CompetitionConfig;
-import org.bukkit.Bukkit;
 import me.kkfish.gui.GUIMenuLoader;
-import org.bukkit.Bukkit;
 import me.kkfish.gui.SlotMapping;
-import org.bukkit.Bukkit;
 import me.kkfish.gui.GUIHolder;
-import org.bukkit.Bukkit;
 import me.kkfish.utils.XSeriesUtil;
-import org.bukkit.Bukkit;
 import java.util.function.Consumer;
 
 public class GUIListener implements Listener {
@@ -461,13 +427,13 @@ public class GUIListener implements Listener {
                     return value;
                 }
             }
-            
+
             if (hasItemRewards) {
-                return 1;
+                return value > 0 ? value : 1;
             }
             
         } catch (Exception e) {
-            kkfish.log("§e" + "Failed to sell fish item: " + e.getMessage());
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.gui_listener_sell_fish_failed", "§eFailed to sell fish item: " + e.getMessage(), e.getMessage()));
         }
         
         return 0;

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class Config {
     private File hookConfigFile;
     private File soundConfigFile;
     private File poolConfigFile;
+    private final Map<WaterType, List<String>> validPoolFishCache = new EnumMap<>(WaterType.class);
     private ItemValue itemValue;
 
     public Config(kkfish plugin) {
@@ -128,6 +130,7 @@ public class Config {
             plugin.saveResource("pools.yml", false);
         }
         poolConfig = YamlConfiguration.loadConfiguration(poolConfigFile);
+        reloadPoolCache();
     }
 
     public void saveConfigs() {
@@ -142,7 +145,7 @@ public class Config {
             soundConfig.save(new File(plugin.getDataFolder(), "sounds.yml"));
             poolConfig.save(new File(plugin.getDataFolder(), "pools.yml"));
         } catch (IOException e) {
-            kkfish.log("§c" + "无法保存配置文件"); e.printStackTrace();
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.config_save_failed", "§c无法保存配置文件")); e.printStackTrace();
         }
     }
 
@@ -1816,11 +1819,28 @@ public class Config {
     }
 
     public List<String> getPoolFish(WaterType waterType) {
-        String key = waterType.name().toLowerCase();
-        if (poolConfig.contains(key)) {
-            return poolConfig.getStringList(key);
+        List<String> cached = validPoolFishCache.get(waterType);
+        return cached != null ? cached : new ArrayList<>();
+    }
+
+    private void reloadPoolCache() {
+        validPoolFishCache.clear();
+        for (WaterType waterType : WaterType.values()) {
+            String key = waterType.name().toLowerCase();
+            if (!poolConfig.contains(key)) continue;
+            List<String> raw = poolConfig.getStringList(key);
+            List<String> valid = new ArrayList<>();
+            for (String fishName : raw) {
+                if (fishExists(fishName)) {
+                    valid.add(fishName);
+                } else {
+                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.config_pool_fish_not_found",
+                        "鱼池 " + key + " 中的鱼 '" + fishName + "' 在 fish.yml 中不存在，请检查 pools.yml 和 fish.yml 配置是否一致",
+                        key, fishName));
+                }
+            }
+            validPoolFishCache.put(waterType, valid);
         }
-        return new ArrayList<>();
     }
 
     public List<String> getAvailableFishFromPool(WaterType waterType, String biome, String weather, long time, String season) {
@@ -1829,12 +1849,7 @@ public class Config {
             return getAvailableFish(biome, weather, time, season);
         }
 
-        List<String> existingPoolFish = new ArrayList<>();
-        for (String fishName : poolFish) {
-            if (fishExists(fishName)) {
-                existingPoolFish.add(fishName);
-            }
-        }
+        List<String> existingPoolFish = getPoolFish(waterType);
 
         List<String> availableFish = filterFishByConditions(existingPoolFish, biome, weather, time, season);
         if (availableFish.isEmpty()) {

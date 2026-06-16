@@ -54,7 +54,7 @@ public class UpdateChecker {
                     consumer.accept(null);
                 }
             } catch (IOException exception) {
-                kkfish.log("Unable to check for updates: " + exception.getMessage());
+                kkfish.log(MessageManager.getInstance(plugin).getMessageWithoutPrefix("log.update_check_exception", "Unable to check for updates: " + exception.getMessage(), exception.getMessage()));
                 consumer.accept(null);
             }
         });
@@ -123,7 +123,7 @@ public class UpdateChecker {
             
             return false;
         } catch (NumberFormatException e) {
-            kkfish.log("§e" + "Error parsing version number, using simple comparison: " + e.getMessage());
+            kkfish.log(MessageManager.getInstance(plugin).getMessageWithoutPrefix("log.command_version_parse_failed", "§eError parsing version number, using simple comparison: " + e.getMessage(), e.getMessage()));
             return !newVersion.equals(oldVersion);
         }
     }

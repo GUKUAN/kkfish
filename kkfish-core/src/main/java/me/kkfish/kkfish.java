@@ -1,8 +1,6 @@
 package me.kkfish;
 
-import java.lang.reflect.*;
 import java.util.UUID;
-import java.util.regex.*;
 
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.*;
@@ -20,13 +18,16 @@ import me.kkfish.listeners.Fishing;
 import me.kkfish.listeners.ItemCraft;
 import me.kkfish.handlers.AuraSkills;
 import me.kkfish.misc.SoundManager;
-import me.kkfish.misc.UpdateChecker;
 import me.kkfish.misc.MessageManager;
-import me.kkfish.misc.Metrics;
 import me.kkfish.misc.DependencyManager;
 import me.kkfish.misc.minigame.MinigameManager;
+import me.kkfish.bootstrap.RootService;
+import me.kkfish.economy.EconomyService;
+import me.kkfish.events.EventBus;
+import me.kkfish.integrations.SeasonsService;
+import me.kkfish.platform.VersionService;
+import me.kkfish.player.PlayerContextStore;
 import me.kkfish.scheduler.SchedulerProvider;
-import me.kkfish.scheduler.SchedulerProviderFactory;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class kkfish extends JavaPlugin {
@@ -40,31 +41,36 @@ public class kkfish extends JavaPlugin {
     private MessageManager messageManager;
     private Economy economy;
     private PlayerPointsAPI playerPointsAPI;
+    private EconomyService economyService;
     private GUI gui;
     private AuraSkills auraSkills;
     private Fishing fishingListener;
     private Compete compete;
     private Object realisticSeasons = null;
+    private SeasonsService seasonsService;
     private ItemCraft itemCraft;
     private MinigameManager minigameManager;
+    private PlayerContextStore playerContextStore;
 
     private int majorVersion = 0;
     private int minorVersion = 0;
     private me.kkfish.utils.EntityBatchProcessor entityBatchProcessor;
-    private Metrics metrics;
     private SchedulerProvider scheduler;
+    private VersionService versionService;
+    private RootService rootService;
 
     private final ConcurrentHashMap<UUID, Boolean> playerFishingMode = new ConcurrentHashMap<>();
 
     @Override
     public void onLoad() {
         instance = this;
-        
-        config = new Config(this);
-        
+
+        // MessageManager 必须在 Config 之前初始化，因为 Config 构造时会调用 kkfish.log()
         messageManager = MessageManager.getInstance(this);
         messageManager.completeAllLanguageFiles();
-        
+
+        config = new Config(this);
+
         config.checkAndAddMissingConfigs();
         
         DependencyManager dependencyManager = new DependencyManager(this);
@@ -75,77 +81,40 @@ public class kkfish extends JavaPlugin {
         
         config.initializeItemValue();
         
-        detectServerVersion();
+        versionService = new VersionService();
+        versionService.logDetection(this);
+        majorVersion = versionService.getMajorVersion();
+        minorVersion = versionService.getMinorVersion();
     }
 
     @Override
     public void onEnable() {
-        scheduler = SchedulerProviderFactory.create(this);
-        soundManager = new SoundManager(this);
+        rootService = new RootService(this);
+        rootService.startup();
         
-        if (!setupEconomy()) {
-            kkfish.log(messageManager.getMessageWithoutPrefix("log.no_economy", "Vault or economy plugin not found! Economy features will be unavailable."));
-        } else {
-            kkfish.log(messageManager.getMessageWithoutPrefix("log.economy_success", "Successfully connected to economy system~"));
-        }
-        
-        setupPlayerPoints();
-        
-        setupRealisticSeasons();
-        db = new DB(this);
-        gui = new GUI(this);
-        minigameManager = new MinigameManager(this);
-        fish = new Fish(this);
-        cmd = new Cmd(this);
-        try {
-            auraSkills = new AuraSkills(this);
-        } catch (Exception e) {
-            kkfish.log(messageManager.getMessageWithoutPrefix("log.aura_skills_failed", "AuraSkills handler initialization failed (AuraSkills plugin may be missing): %s", e.getMessage()));
-            auraSkills = null;
-        }
-        
-        compete = new Compete(this);
-        
-        fishingListener = new Fishing(this);
-        Bukkit.getPluginManager().registerEvents(fishingListener, this);
-        
-        itemCraft = new ItemCraft(this);
-        
-        entityBatchProcessor = new me.kkfish.utils.EntityBatchProcessor();
-        scheduler.runTaskTimer(entityBatchProcessor::flush, 20L, 20L);
-        
-        initMetrics();
-        
-        if (config.isUpdateCheckEnabled()) {
-            new UpdateChecker(this).checkForUpdates();
-        }
-        
-        scheduler.runTaskLater(() -> {
-            kkfish.log(messageManager.getMessageWithoutPrefix("log.plugin_loaded", "KKFISH fishing system has been loaded!"));
-        }, 20L);
+        // 从 RootService 同步字段，保持向后兼容的 getter
+        scheduler = rootService.getScheduler();
+        economyService = rootService.getEconomyService();
+        economy = economyService != null ? economyService.getEconomy() : null;
+        playerPointsAPI = economyService != null ? economyService.getPlayerPointsAPI() : null;
+        seasonsService = rootService.getSeasonsService();
+        db = rootService.getDb();
+        gui = rootService.getGui();
+        minigameManager = rootService.getMinigameManager();
+        fish = rootService.getFish();
+        cmd = rootService.getCmd();
+        auraSkills = rootService.getAuraSkills();
+        compete = rootService.getCompete();
+        fishingListener = rootService.getFishingListener();
+        itemCraft = rootService.getItemCraft();
+        entityBatchProcessor = rootService.getEntityBatchProcessor();
     }
 
     @Override
     public void onDisable() {
-        if (fish != null) {
-            fish.cleanup();
+        if (rootService != null) {
+            rootService.close();
         }
-        
-        if (compete != null) {
-            compete.cleanup();
-        }
-        
-        if (db != null) {
-            db.clearAllCache();
-            db.close();
-        }
-        
-        if (entityBatchProcessor != null) {
-            entityBatchProcessor.flush();
-            entityBatchProcessor.clear();
-        }
-
-        kkfish.log(messageManager.getMessageWithoutPrefix("log.plugin_disabled", "KKFISH fishing system has been disabled."));
     }
 
     public static kkfish getInstance() {
@@ -157,7 +126,13 @@ public class kkfish extends JavaPlugin {
     }
 
     public static void log(String message) {
-        MessageManager mm = getInstance().getMessageManager();
+        MessageManager mm = getInstance().messageManager;
+        if (mm == null) {
+            // MessageManager 尚未初始化，直接输出无前缀消息
+            org.bukkit.Bukkit.getConsoleSender().sendMessage(
+                ChatColor.translateAlternateColorCodes('&', message));
+            return;
+        }
         String prefix = mm.getPrefix();
         String fullMsg = ChatColor.translateAlternateColorCodes('&', prefix.replace('§', '&') + message);
         org.bukkit.Bukkit.getConsoleSender().sendMessage(fullMsg);
@@ -200,121 +175,36 @@ public class kkfish extends JavaPlugin {
         return config;
     }
     
-    private boolean setupEconomy() {
-        if (getServer().getPluginManager().getPlugin("Vault") == null) return false;
-        
-        RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
-        if (rsp == null) return false;
-        
-        economy = rsp.getProvider();
-        return economy != null;
-    }
-    
     public Economy getEconomy() {
         return economy;
     }
     
-    private void setupPlayerPoints() {
-        Plugin playerPointsPlugin = getServer().getPluginManager().getPlugin("PlayerPoints");
-        if (playerPointsPlugin != null) {
-            try {
-                Method getAPIMethod = playerPointsPlugin.getClass().getMethod("getAPI");
-                if (Modifier.isStatic(getAPIMethod.getModifiers())) {
-                    playerPointsAPI = (PlayerPointsAPI) getAPIMethod.invoke(null);
-                } else {
-                    playerPointsAPI = (PlayerPointsAPI) getAPIMethod.invoke(playerPointsPlugin);
-                }
-                kkfish.log(messageManager.getMessageWithoutPrefix("log.player_points_success", "Successfully connected to PlayerPoints system~"));
-            } catch (Exception e) {
-                kkfish.log("§e" + messageManager.getMessageWithoutPrefix("log.player_points_failed", "Failed to get PlayerPoints API: %s", e.getMessage()));
-                e.printStackTrace();
-                playerPointsAPI = null;
-            }
-        } else {
-            kkfish.log(messageManager.getMessageWithoutPrefix("log.player_points_not_found", "PlayerPoints plugin not found, point purchase features will be unavailable."));
-            playerPointsAPI = null;
-        }
+    /**
+     * @return 统一经济服务
+     */
+    public EconomyService getEconomyService() {
+        return economyService;
     }
     
-    private void setupRealisticSeasons() {
-        try {
-            if (getServer().getPluginManager().getPlugin("RealisticSeasons") != null) {
-                realisticSeasons = getServer().getPluginManager().getPlugin("RealisticSeasons");
-                kkfish.log(messageManager.getMessageWithoutPrefix("log.realistic_seasons_success", "Successfully connected to RealisticSeasons system~"));
-            } else {
-                kkfish.log(messageManager.getMessageWithoutPrefix("log.realistic_seasons_not_found", "RealisticSeasons plugin not found, seasonal fishing features will be unavailable."));
-                realisticSeasons = null;
-            }
-        } catch (Exception e) {
-            kkfish.log("§e" + messageManager.getMessageWithoutPrefix("log.realistic_seasons_failed", "Failed to get RealisticSeasons API: %s", e.getMessage()));
-            realisticSeasons = null;
-        }
+    /**
+     * @return RealisticSeasons 季节服务
+     */
+    public SeasonsService getSeasonsService() {
+        return seasonsService;
     }
     
     public boolean isRealisticSeasonsEnabled() {
-        return realisticSeasons != null;
+        return seasonsService != null && seasonsService.isEnabled();
     }
     
     public void initMetrics() {
-        boolean bstatsEnabled = getConfig().getBoolean("bstats.enabled", true);
-        
-        if (metrics != null) {
-            try {
-                metrics.shutdown();
-            } catch (Exception e) {
-                // 忽略错误
-            }
-            metrics = null;
-        }
-        
-        if (bstatsEnabled) {
-            try {
-                metrics = new me.kkfish.misc.Metrics(this, 28982);
-                kkfish.log(messageManager.getMessageWithoutPrefix("log.bstats_initialized", "Successfully initialized bStats statistics module"));
-            } catch (Exception e) {
-                String errorMessage = e.getMessage();
-                if (errorMessage == null) errorMessage = e.getClass().getName();
-                kkfish.log("§c" + messageManager.getMessageWithoutPrefix("log.bstats_init_failed", "Failed to initialize bStats statistics module: %s", errorMessage));
-            }
-        } else {
-            kkfish.log(messageManager.getMessageWithoutPrefix("log.bstats_disabled", "bStats statistics module has been disabled"));
+        if (rootService != null) {
+            rootService.reloadMetrics();
         }
     }
     
     public String getCurrentSeason() {
-        if (realisticSeasons == null) return null;
-        
-        try {
-                try {
-                    Class<?> seasonClass = Class.forName("me.lenis0012.bukkit.realisticseasons.season.Season");
-                    Object season = realisticSeasons.getClass().getMethod("getSeason").invoke(realisticSeasons);
-                    return season.toString().toLowerCase();
-                } catch (Exception e1) {
-                    kkfish.log("§e" + messageManager.getMessageWithoutPrefix("log.realistic_seasons_method_failed", "Failed to directly call getSeason method: %s", e1.getMessage()));
-                    
-                    try {
-                        Object seasonManager = realisticSeasons.getClass().getMethod("getSeasonManager").invoke(realisticSeasons);
-                        Object season = seasonManager.getClass().getMethod("getCurrentSeason").invoke(seasonManager);
-                        return season.toString().toLowerCase();
-                    } catch (Exception e2) {
-                        kkfish.log("§e" + messageManager.getMessageWithoutPrefix("log.realistic_seasons_manager_failed", "Failed to get season through season manager: %s", e2.getMessage()));
-                        
-                        try {
-                            Object world = Bukkit.getWorlds().get(0);
-                            Object season = realisticSeasons.getClass().getMethod("getSeason", World.class).invoke(realisticSeasons, world);
-                            return season.toString().toLowerCase();
-                        } catch (Exception e3) {
-                            kkfish.log("§e" + messageManager.getMessageWithoutPrefix("log.realistic_seasons_get_failed", "Failed to get current season: %s", e3.getMessage()));
-                            realisticSeasons = null;
-                            kkfish.log(messageManager.getMessageWithoutPrefix("log.realistic_seasons_disabled", "Seasonal fishing features temporarily disabled to avoid continuous errors."));
-                            return null;
-                        }
-                    }
-                }
-        } catch (Exception e) {
-            kkfish.log("§e" + messageManager.getMessageWithoutPrefix("log.realistic_seasons_unknown_error", "Unknown error occurred while getting current season: %s", e.getMessage()));
-            return null;
-        }
+        return seasonsService != null ? seasonsService.getCurrentSeason() : null;
     }
     
     public PlayerPointsAPI getPlayerPointsAPI() {
@@ -329,36 +219,6 @@ public class kkfish extends JavaPlugin {
         return fishingListener;
     }
     
-    private void detectServerVersion() {
-        String version = Bukkit.getVersion();
-        Pattern pattern = Pattern.compile("(\\d+)\\.(\\d+)(?:\\.(\\d+))?");
-        Matcher matcher = pattern.matcher(version);
-        
-        if (matcher.find()) {
-            try {
-                majorVersion = Integer.parseInt(matcher.group(1));
-                minorVersion = Integer.parseInt(matcher.group(2));
-                if (messageManager != null) {
-                    kkfish.log(messageManager.getMessageWithoutPrefix("log.version_detected", "Server version detected: %s.%s", majorVersion, minorVersion));
-                } else {
-                    kkfish.log("Detected server version: " + majorVersion + "." + minorVersion);
-                }
-            } catch (NumberFormatException e) {
-                if (messageManager != null) {
-                    kkfish.log("§e" + messageManager.getMessageWithoutPrefix("log.version_detection_failed", "Version detection failed, using basic GUI restriction scheme by default"));
-                } else {
-                    kkfish.log("§e" + "Version detection failed, using basic GUI restriction scheme by default");
-                }
-            }
-        } else {
-            if (messageManager != null) {
-                kkfish.log("§e" + messageManager.getMessageWithoutPrefix("log.version_unknown", "Unable to identify server version, using basic GUI restriction scheme by default"));
-            } else {
-                kkfish.log("§e" + "Unable to identify server version, using basic GUI restriction scheme by default");
-            }
-        }
-    }
-    
     public int getMajorVersion() {
         return majorVersion;
     }
@@ -367,12 +227,19 @@ public class kkfish extends JavaPlugin {
         return minorVersion;
     }
     
+    /**
+     * @return 统一版本检测服务
+     */
+    public VersionService getVersionService() {
+        return versionService;
+    }
+    
     public me.kkfish.utils.EntityBatchProcessor getEntityBatchProcessor() {
         return entityBatchProcessor;
     }
     
     public boolean isVersion1_21OrHigher() {
-        return (majorVersion > 1) || (majorVersion == 1 && minorVersion >= 21);
+        return versionService != null ? versionService.is1_21OrHigher() : ((majorVersion > 1) || (majorVersion == 1 && minorVersion >= 21));
     }
 
     public boolean isPlayerInVanillaMode(UUID playerId) {
@@ -389,5 +256,117 @@ public class kkfish extends JavaPlugin {
     
     public MinigameManager getMinigameManager() {
         return minigameManager;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置音效管理器。
+     * 管理器在构造时通过 plugin.getSoundManager() 访问。
+     */
+    public void setSoundManagerInternal(SoundManager soundManager) {
+        this.soundManager = soundManager;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置调度器。
+     * Manager 构造时通过 SchedulerUtil 访问，需要提前注入。
+     */
+    public void setSchedulerInternal(SchedulerProvider scheduler) {
+        this.scheduler = scheduler;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置经济实例。
+     */
+    public void setEconomyInternal(Economy economy) {
+        this.economy = economy;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置 PlayerPoints API。
+     */
+    public void setPlayerPointsInternal(PlayerPointsAPI playerPointsAPI) {
+        this.playerPointsAPI = playerPointsAPI;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置数据库管理器。
+     * Manager 构造时通过 plugin.getDB() 访问。
+     */
+    public void setDBInternal(DB db) {
+        this.db = db;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置玩家上下文存储。
+     * Manager 构造时通过 plugin.getPlayerContextStore() 访问。
+     */
+    public void setPlayerContextStoreInternal(PlayerContextStore playerContextStore) {
+        this.playerContextStore = playerContextStore;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置 GUI。
+     * Manager 构造时通过 plugin.getGUI() 访问。
+     */
+    public void setGUIInternal(GUI gui) {
+        this.gui = gui;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置小游戏管理器。
+     * Manager 构造时通过 plugin.getMinigameManager() 访问。
+     */
+    public void setMinigameManagerInternal(MinigameManager minigameManager) {
+        this.minigameManager = minigameManager;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置钓鱼核心管理器。
+     * Manager 构造时通过 plugin.getFish() 访问。
+     */
+    public void setFishInternal(Fish fish) {
+        this.fish = fish;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置命令管理器。
+     */
+    public void setCmdInternal(Cmd cmd) {
+        this.cmd = cmd;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置 AuraSkills 处理器。
+     */
+    public void setAuraSkillsInternal(AuraSkills auraSkills) {
+        this.auraSkills = auraSkills;
+    }
+
+    /**
+     * 供 RootService 在启动期间设置竞赛管理器。
+     */
+    public void setCompeteInternal(Compete compete) {
+        this.compete = compete;
+    }
+
+    /**
+     * @return 组合根服务
+     */
+    public RootService getRootService() {
+        return rootService;
+    }
+
+    /**
+     * @return 玩家上下文存储
+     */
+    public PlayerContextStore getPlayerContextStore() {
+        return rootService != null ? rootService.getPlayerContextStore() : null;
+    }
+
+    /**
+     * @return 根事件总线
+     */
+    public EventBus getEventBus() {
+        return rootService != null ? rootService.getEventBus() : null;
     }
 }

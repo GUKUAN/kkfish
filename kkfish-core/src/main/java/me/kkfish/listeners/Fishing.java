@@ -97,6 +97,13 @@ public class Fishing implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+
+        // 创建并加载玩家上下文
+        me.kkfish.player.PlayerContextStore store = plugin.getPlayerContextStore();
+        if (store != null) {
+            store.onPlayerJoin(player);
+        }
+
         Compete compete = plugin.getCompete();
         
 
@@ -162,6 +169,12 @@ public class Fishing implements Listener {
         GUI gui = plugin.getGUI();
         if (gui != null) {
             gui.handlePlayerQuit(player);
+        }
+
+        // 保存并销毁玩家上下文（在所有清理之后）
+        me.kkfish.player.PlayerContextStore store = plugin.getPlayerContextStore();
+        if (store != null) {
+            store.onPlayerQuit(player);
         }
     }
     
@@ -233,13 +246,13 @@ public class Fishing implements Listener {
                 
             if (event.isSneaking()) {
                 if (fish.getActiveSession(player) == null && 
-                    !fish.getActiveChargeTasks().containsKey(player.getUniqueId())) {
+                    !fish.hasActiveChargeTask(player.getUniqueId())) {
                     if (checkRodDurability(player, rod)) {
                         fish.startCharging(player);
                     }
                 }
             } else {
-                if (fish.getActiveChargeTasks().containsKey(player.getUniqueId())) {
+                if (fish.hasActiveChargeTask(player.getUniqueId())) {
                     fish.stopCharging(player);
                 }
             }
@@ -535,7 +548,7 @@ public class Fishing implements Listener {
             return;
         }
         
-        if (fish.getActiveChargeTasks().containsKey(player.getUniqueId())) {
+        if (fish.hasActiveChargeTask(player.getUniqueId())) {
             event.setCancelled(true);
         }
     }

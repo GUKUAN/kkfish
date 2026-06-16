@@ -533,6 +533,54 @@ log.player_language_load_failed: "加载玩家语言文件失败: %s"
 log.save_message_failed: "保存消息配置失败: %s"
 
 # ==========================
+# 配置/数据库警告日志
+# ==========================
+log.config_save_failed: "无法保存配置文件"
+log.config_pool_fish_not_found: "鱼池 %s 中的鱼 '%s' 在 fish.yml 中不存在，请检查 pools.yml 和 fish.yml 配置是否一致"
+log.db_get_player_column_failed: "获取玩家%s失败！"
+log.db_set_player_column_failed: "设置玩家%s失败！"
+log.db_check_hook_material_failed: "检查玩家是否拥有鱼钩材质失败！"
+log.db_mark_hook_material_failed: "标记鱼钩材质为已购买失败！"
+log.db_get_hook_material_failed: "获取玩家已购买鱼钩材质失败！"
+log.db_set_hook_material_failed: "设置玩家鱼钩材质失败！"
+log.db_get_fish_records_failed: "获取玩家钓鱼记录失败！"
+log.db_get_fish_record_failed: "获取玩家特定鱼类记录失败！"
+log.db_save_fish_value_failed: "存储鱼UUID价值失败！"
+log.db_parse_fish_effect_failed: "解析鱼特效失败: %s - %s"
+log.db_save_fish_effect_failed: "存储鱼特效失败！"
+log.db_get_fish_effect_failed: "获取鱼特效失败！"
+log.db_get_fish_value_failed: "获取鱼UUID价值失败！"
+log.db_delete_fish_value_failed: "删除鱼UUID价值失败！"
+log.db_unlock_dex_failed: "解锁玩家鱼类图鉴失败！"
+log.db_lock_dex_failed: "锁定玩家鱼类图鉴失败！"
+log.db_get_all_fish_names_failed: "获取所有鱼类名称失败！"
+log.db_debug_set_hook_material: "[DEBUG] 开始设置玩家鱼钩材质 | 玩家: %s 材质: %s"
+
+# ==========================
+# GUI 警告日志
+# ==========================
+log.gui_menu_not_found: "菜单配置不存在: %s"
+log.gui_invalid_type: "无效的GUI类型: %s"
+log.gui_create_competition_item_failed: "创建比赛物品失败: %s"
+log.gui_create_hook_item_failed: "创建鱼钩展示物品失败: %s - %s"
+log.gui_create_menu_item_failed: "创建菜单物品失败: %s"
+
+# ==========================
+# 其他警告日志
+# ==========================
+log.gui_action_unknown_menu: "未知的菜单名称: %s"
+log.gui_action_player_selling: "玩家 %s 正在出售物品"
+log.gui_listener_sell_fish_failed: "出售鱼物品失败: %s"
+log.item_value_invalid_material: "item-value 中材质无效: %s"
+log.competition_invalid_bossbar_color: "无效的 BossBar 颜色: %s，使用默认值 BLUE"
+log.competition_invalid_bossbar_style: "无效的 BossBar 样式: %s，使用默认值 SEGMENTED_10"
+log.custom_compete_type_registered: "已注册自定义比赛类型: %s"
+log.message_default_not_found: "默认语言文件 (en_us) 未找到"
+log.message_complete_keys_added: "已为 %s 语言文件添加 %s 个缺失的语言键"
+log.message_complete_failed: "补全语言文件失败: %s"
+log.folia_detected: "检测到 Folia：将使用 region/entity/global 调度器。"
+
+# ==========================
 # 模式切换相关消息
 # ==========================
 mode_switch_command_disabled: "&c指令切换钓鱼模式功能已被禁用"

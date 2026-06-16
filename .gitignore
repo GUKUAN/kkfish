@@ -4,6 +4,7 @@ target/
 # IDE files
 .trae/
 .idea/
+.openclaude/
 *.iml
 *.ipr
 *.iws

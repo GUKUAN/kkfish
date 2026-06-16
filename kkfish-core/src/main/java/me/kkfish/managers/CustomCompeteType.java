@@ -23,7 +23,7 @@ public class CustomCompeteType {
     public void registerType(CustomCompetitionType type) {
         if (type != null && type.getTypeId() != null && !type.getTypeId().isEmpty()) {
             customTypes.put(type.getTypeId(), type);
-            kkfish.log("已注册自定义比赛类型: " + type.getTypeId());
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.custom_compete_type_registered", "已注册自定义比赛类型: " + type.getTypeId(), type.getTypeId()));
         }
     }
 

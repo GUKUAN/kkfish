@@ -6,7 +6,7 @@
 
     <groupId>me.kkfish</groupId>
     <artifactId>kkfish-parent</artifactId>
-    <version>1.6.1</version>
+    <version>1.7.0</version>
     <packaging>pom</packaging>
 
     <name>kkfish Parent</name>

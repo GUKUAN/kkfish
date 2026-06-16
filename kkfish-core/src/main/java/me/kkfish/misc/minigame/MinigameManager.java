@@ -2,59 +2,32 @@ package me.kkfish.misc.minigame;
 
 import org.bukkit.Bukkit;
 import java.util.ArrayList;
-import org.bukkit.Bukkit;
 import java.util.LinkedHashMap;
-import org.bukkit.Bukkit;
 import java.util.List;
-import org.bukkit.Bukkit;
 import java.util.Map;
-import org.bukkit.Bukkit;
 import java.util.Random;
-import org.bukkit.Bukkit;
 import java.util.UUID;
-import org.bukkit.Bukkit;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.ArmorStand;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.Bukkit;
 import me.kkfish.utils.NBTUtil;
-import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.Bukkit;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.Bukkit;
 import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.Bukkit;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.Bukkit;
 import org.bukkit.potion.PotionEffect;
-import org.bukkit.Bukkit;
 import me.kkfish.utils.SchedulerUtil;
-import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import org.bukkit.Bukkit;
 import me.kkfish.utils.ActionBarUtil.MessageType;
-import org.bukkit.Bukkit;
-import me.kkfish.managers.Compete;
-import org.bukkit.Bukkit;
 import me.kkfish.kkfish;
-import org.bukkit.Bukkit;
 import me.kkfish.managers.Config;
-import org.bukkit.Bukkit;
 import me.kkfish.fishing.WaterType;
-import org.bukkit.Bukkit;
 import me.kkfish.fishing.HookMechanicFactory;
 
 
@@ -62,12 +35,14 @@ public class MinigameManager {
     
     private final kkfish plugin;
     private final Config configManager;
+    private final me.kkfish.events.EventBus eventBus;
     private final Map<UUID, GameSession> gameSessions = new ConcurrentHashMap<>();
     private final Random random = new Random();
     
     public MinigameManager(kkfish plugin) {
         this.plugin = plugin;
         this.configManager = plugin.getCustomConfig();
+        this.eventBus = plugin.getEventBus();
     }
     
     private void deductRodDurabilityByFish(Player player, String fishName, ItemStack fishItem, double fishSize, String fishLevel) {
@@ -167,9 +142,12 @@ public class MinigameManager {
         
         if (session.isSuccess) {
             final String fishName = session.targetFish;
-            
+
             final double actualFishValue = session.getActualFishValue();
             final ItemStack fishItem = session.createFishItem();
+
+            final String fishDisplayName = fishItem.hasItemMeta() && fishItem.getItemMeta().hasDisplayName()
+                ? fishItem.getItemMeta().getDisplayName() : fishName;
             
             deductRodDurabilityByFish(player, fishName, fishItem, session.fishSize, session.fishLevel);
             
@@ -206,39 +184,13 @@ public class MinigameManager {
                                 applyRodEffects(player, rodEffects);
                             }
                             
-                            plugin.getFish().recordFishCatch(player, fishName, fishItem);
-                            
-                            Compete competitionManager = plugin.getCompete();
-                            if (competitionManager != null) {
-                                competitionManager.recordPlayerCatch(player, fishName, actualFishValue);
-                            }
-                            
-                            if (configManager.isFishAnnouncementEnabled(fishName)) {
-                                int level = 1;
-                                try {
-                                    String levelName = session.fishLevel;
-                                    
-                                    switch (levelName.toLowerCase()) {
-                                        case "legendary":
-                                            level = 5;
-                                            break;
-                                        case "epic":
-                                            level = 4;
-                                            break;
-                                        case "rare":
-                                            level = 3;
-                                            break;
-                                        case "uncommon":
-                                            level = 2;
-                                            break;
-                                        default:
-                                            level = 1;
-                                            break;
-                                    }
-                                } catch (Exception e) {
-                                    kkfish.log("§e" + "处理鱼等级时出错: " + session.fishLevel);
-                                }
-                                fishingManager.sendFishBroadcast(player, fishName, session.fishSize, level, actualFishValue);
+                            // Publish FishCaughtEvent - subscribers handle recording, competition scoring, and broadcast
+                            if (eventBus != null) {
+                                boolean announce = configManager.isFishAnnouncementEnabled(fishName);
+                                int fishRarity = getRarityValue(session.fishLevel);
+                                eventBus.publish(new me.kkfish.events.FishCaughtEvent(
+                                    player, fishName, fishDisplayName, session.fishSize, session.fishLevel,
+                                    fishRarity, actualFishValue, fishItem, announce));
                             }
                             
                             List<String> fishCommands = configManager.getFishCommands(fishName);
@@ -250,7 +202,7 @@ public class MinigameManager {
                                 @Override
                                 public void run() {
                                     me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player,
-                                        messageManager.getMessage("catch_success", "§a你钓到了 %s§a！", fishName), 80, MessageType.MINIGAME);
+                                        messageManager.getMessage("catch_success", "§a你钓到了 %s§a！", fishDisplayName), 80, MessageType.MINIGAME);
 
                                     if (plugin.getCustomConfig().isVanillaExpEnabled() && expReward > 0) {
                                         player.giveExp(expReward);
@@ -437,7 +389,7 @@ public class MinigameManager {
                     player.addPotionEffect(effect);
                 }
             } catch (Exception e) {
-                kkfish.log("§e" + "解析鱼竿特效失败: " + effectStr);
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.minigame_rod_effect_parse_failed", "§e解析鱼竿特效失败: " + effectStr, effectStr));
             }
         }
     }

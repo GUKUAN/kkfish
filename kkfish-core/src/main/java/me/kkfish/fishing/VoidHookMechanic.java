@@ -63,10 +63,9 @@ public class VoidHookMechanic implements HookMechanic {
                 Location currentLoc = floatStartLoc.clone();
                 currentLoc.setY(currentLoc.getY() + yOffset);
                 try {
-                java.lang.reflect.Method m = hookEntity.getClass().getMethod("teleportAsync", org.bukkit.Location.class);
-                m.invoke(hookEntity, currentLoc);
+                me.kkfish.utils.NmsAdapter.teleportEntityAsync(hookEntity, currentLoc);
             } catch (Exception e) {
-                try { java.lang.reflect.Method m = hookEntity.getClass().getMethod("teleportAsync", org.bukkit.Location.class); m.invoke(hookEntity, currentLoc); } catch (Exception ex) { hookEntity.teleport(currentLoc); }
+                hookEntity.teleport(currentLoc);
             }
 
                 if (floatTicks % 8 == 0) {
