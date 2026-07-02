@@ -28,3 +28,7 @@ build/
 
 # Dependency reduced POM
 dependency-reduced-pom.xml
+
+# Docs & local plugin.yml
+docs/
+plugin.yml
