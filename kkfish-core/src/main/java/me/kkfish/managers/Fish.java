@@ -426,15 +426,15 @@ public class Fish {
             ctx.getSession().clear();
         }
 
+        if (mechanic != null) {
+            mechanic.cleanup(player, armorStand);
+        }
+
         if (armorStand != null) {
             try {
                 armorStand.remove();
             } catch (Exception ignored) {
             }
-        }
-
-        if (mechanic != null) {
-            mechanic.cleanup(player, armorStand);
         }
 
         if (minigameManager != null) {

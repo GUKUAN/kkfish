@@ -65,14 +65,15 @@ public class BiteCheckScheduler {
         int maxDelay;
 
         if (waterType == WaterType.LAVA) {
-            minDelay = config.getLavaBiteTimeMin() * 50;
-            maxDelay = config.getLavaBiteTimeMax() * 50;
+            minDelay = config.getLavaBiteTimeMin();
+            maxDelay = config.getLavaBiteTimeMax();
         } else if (waterType == WaterType.VOID) {
-            minDelay = config.getVoidBiteTimeMin() * 50;
-            maxDelay = config.getVoidBiteTimeMax() * 50;
+            minDelay = config.getVoidBiteTimeMin();
+            maxDelay = config.getVoidBiteTimeMax();
         } else {
-            minDelay = mainConfig.getInt("fishing-settings.bite-check-delay-min", 5000);
-            maxDelay = mainConfig.getInt("fishing-settings.bite-check-delay-max", 15000);
+            // 水区咬钩时间config存的是ms，/50转成tick统一单位
+            minDelay = mainConfig.getInt("fishing-settings.bite-check-delay-min", 5000) / 50;
+            maxDelay = mainConfig.getInt("fishing-settings.bite-check-delay-max", 15000) / 50;
         }
 
         int delay = (int) (minDelay + Math.random() * (maxDelay - minDelay) * (1 - chargePercentage / 200));
@@ -95,7 +96,7 @@ public class BiteCheckScheduler {
         if (ctx != null) {
             ctx.getRuntime().setBiteCheckTask(biteTask);
         }
-        biteTask.runTaskLater(plugin, delay / 50);
+        biteTask.runTaskLater(plugin, delay);
     }
 
     private void checkFishBite(Player player, double chargePercentage, String baitName) {

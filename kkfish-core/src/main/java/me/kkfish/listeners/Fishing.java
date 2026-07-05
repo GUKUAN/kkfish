@@ -74,6 +74,11 @@ public class Fishing implements Listener {
             return;
         }
 
+        if (!player.hasPermission("kkfish.use")) {
+            event.setCancelled(true);
+            return;
+        }
+
         boolean isVanillaMode = plugin.isPlayerInVanillaMode(player.getUniqueId());
 
         if (!isVanillaMode) {
@@ -233,6 +238,10 @@ public class Fishing implements Listener {
             return;
         }
 
+        if (!player.hasPermission("kkfish.use")) {
+            return;
+        }
+
         if (plugin.isPlayerInVanillaMode(player.getUniqueId())) {
             return;
         }
@@ -301,6 +310,13 @@ public class Fishing implements Listener {
         String worldName = player.getWorld().getName();
         
         if (!plugin.getCustomConfig().isWorldAllowed(worldName)) {
+            return;
+        }
+
+        if (!player.hasPermission("kkfish.use")) {
+            if (plugin.getCmd().hasFishingRod(player)) {
+                event.setCancelled(true);
+            }
             return;
         }
 

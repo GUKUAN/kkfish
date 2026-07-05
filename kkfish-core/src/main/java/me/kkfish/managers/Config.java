@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -25,6 +26,11 @@ import me.kkfish.fishing.WaterType;
 import me.kkfish.kkfish;
 import me.kkfish.handlers.AuraSkills;
 import me.kkfish.managers.ItemValue;
+/**
+ * TODO: 拆分 —— 2000+行，管理8种配置文件+稀有度计算+鱼池逻辑+季节价格+权限检查
+ *       计划拆为：Config(编排加载) + FishCfg + RodCfg + HookCfg + BaitCfg + CompeteCfg + PoolCfg
+ *       分步进行：1)抽取HookCfg(最多getter) 2)抽取FishCfg 3)剩余逐步迁移
+ */
 import me.kkfish.utils.XSeriesUtil;
 
 public class Config {
@@ -46,6 +52,7 @@ public class Config {
     private File soundConfigFile;
     private File poolConfigFile;
     private final Map<WaterType, List<String>> validPoolFishCache = new EnumMap<>(WaterType.class);
+    private final Map<String, String> hookPathCache = new ConcurrentHashMap<>();
     private ItemValue itemValue;
 
     public Config(kkfish plugin) {
@@ -131,6 +138,7 @@ public class Config {
         }
         poolConfig = YamlConfiguration.loadConfiguration(poolConfigFile);
         reloadPoolCache();
+        rebuildHookPathCache();
     }
 
     public void saveConfigs() {
@@ -160,6 +168,8 @@ public class Config {
         competeConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "compete.yml"));
         soundConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "sounds.yml"));
         poolConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "pools.yml"));
+        reloadPoolCache();
+        rebuildHookPathCache();
     }
 
     public FileConfiguration getMainConfig() {
@@ -1241,21 +1251,41 @@ public class Config {
     }
     
     private String getHookConfigPath(String hookName) {
+        String cached = hookPathCache.get(hookName);
+        if (cached != null) return cached;
+
         if (hookConfig.contains("hooks")) {
             ConfigurationSection pagesSection = hookConfig.getConfigurationSection("hooks");
             for (String pageKey : pagesSection.getKeys(false)) {
                 ConfigurationSection pageSection = pagesSection.getConfigurationSection(pageKey);
                 if (pageSection != null && pageSection.contains(hookName)) {
-                    return "hooks." + pageKey + "." + hookName;
+                    String path = "hooks." + pageKey + "." + hookName;
+                    hookPathCache.put(hookName, path);
+                    return path;
                 }
             }
         }
         
         if (hookConfig.contains(hookName)) {
+            hookPathCache.put(hookName, hookName);
             return hookName;
         }
         
         return null;
+    }
+
+    private void rebuildHookPathCache() {
+        hookPathCache.clear();
+        if (!hookConfig.contains("hooks")) return;
+        ConfigurationSection pagesSection = hookConfig.getConfigurationSection("hooks");
+        if (pagesSection == null) return;
+        for (String pageKey : pagesSection.getKeys(false)) {
+            ConfigurationSection pageSection = pagesSection.getConfigurationSection(pageKey);
+            if (pageSection == null) continue;
+            for (String hookName : pageSection.getKeys(false)) {
+                hookPathCache.put(hookName, "hooks." + pageKey + "." + hookName);
+            }
+        }
     }
 
     public Material getHookMaterial(String hookName) {

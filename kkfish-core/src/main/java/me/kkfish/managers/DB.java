@@ -275,6 +275,7 @@ public class DB {
      * @param fishValue 鱼的价值
      */
     public void logFishing(Player player, String fishName, String fishLevel, double fishSize, int fishValue) {
+        if (!isDatabaseAvailable()) return;
         try {
             // 记录到钓鱼日志
             String insertLog = "INSERT INTO " + tablePrefix + "fishing_log (player_uuid, fish_name, fish_level, fish_size, fish_value, location_x, location_y, location_z, world_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -303,6 +304,7 @@ public class DB {
      * 更新玩家统计数据
      */
     private void updatePlayerStats(Player player, double fishSize, int fishValue, boolean isLegendary) throws SQLException {
+        if (!isDatabaseAvailable()) return;
         String uuid = player.getUniqueId().toString();
         String name = player.getName();
         int legendaryIncrement = isLegendary ? 1 : 0;
@@ -404,7 +406,8 @@ public class DB {
             connection = null;
         }
         if (connection == null) {
-            throw new RuntimeException("Failed to establish database connection");
+            kkfish.log("§c" + plugin.getMessageManager().getMessageWithoutPrefix("log.database_unavailable", "数据库不可用，降级跳过操作"));
+            return null;
         }
         return connection;
     }
@@ -550,6 +553,7 @@ public class DB {
     }
 
     private String getPlayerStringValue(String playerId, String columnName, String defaultValue, String cacheKeyPrefix, Consumer<String> setter) {
+        if (!isDatabaseAvailable()) return defaultValue;
         if (!isValidColumnName(columnName)) {
             return defaultValue;
         }
@@ -588,6 +592,7 @@ public class DB {
      * 通用方法：设置玩家统计数据表的字符串类型值
      */
     private void setPlayerStringValue(String playerId, String columnName, String value, String cacheKeyPrefix) {
+        if (!isDatabaseAvailable()) return;
         if (!isValidColumnName(columnName)) {
             return;
         }
@@ -641,6 +646,8 @@ public class DB {
      * 检查玩家是否拥有特定的鱼钩材质
      */
     public boolean hasPlayerPurchasedHook(String playerId, String hookMaterial) {
+        if (!isDatabaseAvailable()) return false;
+
         // 生成缓存键
         String cacheKey = "purchased_hook:" + playerId + ":" + hookMaterial;
         
@@ -672,6 +679,7 @@ public class DB {
      * 将鱼钩材质标记为玩家已购买
      */
     public void markHookAsPurchased(String playerId, String hookMaterial) {
+        if (!isDatabaseAvailable()) return;
         try {
             String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "player_purchased_hooks (player_uuid, hook_material) VALUES (?, ?)";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
@@ -692,6 +700,8 @@ public class DB {
      * 获取玩家已购买的所有鱼钩材质
      */
     public List<String> getPlayerPurchasedHooks(String playerId) {
+        if (!isDatabaseAvailable()) return new ArrayList<>();
+
         // 生成缓存键
         String cacheKey = "purchased_hooks:" + playerId;
         
@@ -731,6 +741,7 @@ public class DB {
      * 设置玩家鱼钩材质
      */
     public void setPlayerHookMaterial(String playerId, String materialType) {
+        if (!isDatabaseAvailable()) return;
         // 只有在debug模式下才记录调试日志
         if (plugin.getCustomConfig().isDebugMode()) {
             kkfish.log("[DEBUG] 开始设置玩家鱼钩材质 | 玩家: " + playerId + " 材质: " + materialType);
@@ -739,7 +750,6 @@ public class DB {
             setPlayerStringValue(playerId, "hook_material", materialType, "hook");
         } catch (Exception e) {
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_set_hook_material_failed", "§c设置玩家鱼钩材质失败！")); e.printStackTrace();
-            throw new RuntimeException("数据库操作失败", e); // 重新抛出异常以便调用者能够捕获
         }
     }
     
@@ -747,6 +757,7 @@ public class DB {
      * 获取玩家钓鱼记录
      */
     public FishRecord getPlayerFishRecord(String playerId) {
+        if (!isDatabaseAvailable()) return new FishRecord();
         FishRecord record = new FishRecord();
         try {
             String query = "SELECT * FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
@@ -769,6 +780,12 @@ public class DB {
      * 获取玩家特定鱼类的钓鱼记录（钓到次数和最大尺寸）
      */
     public Map<String, Object> getPlayerFishStats(String playerId, String fishName) {
+        if (!isDatabaseAvailable()) {
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("caughtCount", 0);
+            stats.put("maxSize", 0.0);
+            return stats;
+        }
         Map<String, Object> stats = new HashMap<>();
         stats.put("caughtCount", 0);
         stats.put("maxSize", 0.0);
@@ -803,6 +820,7 @@ public class DB {
      * 存储鱼的UUID和价值到数据库
      */
     public void storeFishUUIDValue(String fishUUID, int fishValue) {
+        if (!isDatabaseAvailable()) return;
         try {
             String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "fish_uuid_values (fish_uuid, fish_value) VALUES (?, ?)";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
@@ -822,6 +840,7 @@ public class DB {
         if (effects == null || effects.isEmpty()) {
             return;
         }
+        if (!isDatabaseAvailable()) return;
         
         try {
             String query = "INSERT INTO " + tablePrefix + "fish_effects (fish_uuid, effect_type, effect_level, effect_duration) VALUES (?, ?, ?, ?)";
@@ -861,6 +880,7 @@ public class DB {
      * 获取鱼的特殊效果
      */
     public List<String> getFishEffectsByUUID(String fishUUID) {
+        if (!isDatabaseAvailable()) return new ArrayList<>();
         List<String> effects = new ArrayList<>();
         
         try {
@@ -888,6 +908,7 @@ public class DB {
      * 从数据库中获取鱼的价值
      */
     public int getFishValueByUUID(String fishUUID) {
+        if (!isDatabaseAvailable()) return 0;
         try {
             String query = "SELECT fish_value FROM " + tablePrefix + "fish_uuid_values WHERE fish_uuid = ?";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
@@ -907,6 +928,7 @@ public class DB {
      * 从数据库中删除鱼的UUID记录
      */
     public void removeFishUUIDValue(String fishUUID) {
+        if (!isDatabaseAvailable()) return;
         try {
             String query = "DELETE FROM " + tablePrefix + "fish_uuid_values WHERE fish_uuid = ?";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
@@ -925,6 +947,7 @@ public class DB {
      * @param unlockSize 解锁时记录的鱼尺寸
      */
     public void unlockFishForPlayer(String playerId, String fishName, double unlockSize) {
+        if (!isDatabaseAvailable()) return;
         try {
             // 检查是否已经解锁
             Map<String, Object> stats = getPlayerFishStats(playerId, fishName);
@@ -957,6 +980,7 @@ public class DB {
      * @param fishName 鱼类名称
      */
     public void lockFishForPlayer(String playerId, String fishName) {
+        if (!isDatabaseAvailable()) return;
         try {
             String query;
             if ("all".equalsIgnoreCase(fishName)) {
@@ -985,6 +1009,7 @@ public class DB {
      * @return 所有鱼类名称列表
      */
     public List<String> getAllFishNames() {
+        if (!isDatabaseAvailable()) return new ArrayList<>();
         List<String> fishNames = new ArrayList<>();
         try {
             // 查询所有不同的鱼类名称

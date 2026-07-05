@@ -27,6 +27,7 @@ import me.kkfish.platform.VersionService;
 import me.kkfish.scheduler.SchedulerProvider;
 import me.kkfish.scheduler.SchedulerProviderFactory;
 import me.kkfish.utils.EntityBatchProcessor;
+import me.kkfish.scheduler.SchedulerTask;
 
 /**
  * 组合根与生命周期拥有者。
@@ -58,6 +59,7 @@ public class RootService implements AutoCloseable {
     private EconomyService economyService;
     private SeasonsService seasonsService;
     private EntityBatchProcessor entityBatchProcessor;
+    private SchedulerTask batchProcessorTask;
     private Metrics metrics;
     private EventBus eventBus;
     private EventSubscriberRegistry eventSubscriberRegistry;
@@ -162,7 +164,7 @@ public class RootService implements AutoCloseable {
 
         // 13. 实体批处理器
         entityBatchProcessor = new EntityBatchProcessor();
-        scheduler.runTaskTimer(entityBatchProcessor::flush, 20L, 20L);
+        batchProcessorTask = scheduler.runTaskTimer(entityBatchProcessor::flush, 20L, 20L);
 
         // 14. bStats
         initMetrics();
@@ -213,7 +215,10 @@ public class RootService implements AutoCloseable {
             db.close();
         }
 
-        // 4. 刷新实体批处理器
+        // 4. 取消并刷新实体批处理器
+        if (batchProcessorTask != null) {
+            batchProcessorTask.cancel();
+        }
         if (entityBatchProcessor != null) {
             entityBatchProcessor.flush();
             entityBatchProcessor.clear();

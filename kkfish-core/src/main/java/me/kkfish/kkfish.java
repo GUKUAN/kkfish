@@ -30,6 +30,10 @@ import me.kkfish.player.PlayerContextStore;
 import me.kkfish.scheduler.SchedulerProvider;
 import java.util.concurrent.ConcurrentHashMap;
 
+// TODO: 重构 —— 本类与 RootService 重复持有所有模块字段（setXxxInternal/getXxx双份状态）
+//       计划：移除所有 setXxxInternal 方法和对应的字段，改由 RootService 统一管理
+//       保持 getXxx() 公开接口不变，内部全委托到 rootService
+//       分步进行：1)移除Compete/Fish/SoundManager等派生字段 2)移除xInternal注入方法 3)统一代理
 public class kkfish extends JavaPlugin {
 
     private static kkfish instance;

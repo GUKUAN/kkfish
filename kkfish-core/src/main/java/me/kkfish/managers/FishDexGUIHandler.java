@@ -33,12 +33,34 @@ public class FishDexGUIHandler {
 
     // 存储玩家当前的鱼类图鉴页面
     private final Map<UUID, Integer> fishDexPages = new ConcurrentHashMap<>();
+    private final Map<String, ItemStack> fishItemCache = new ConcurrentHashMap<>();
 
     public FishDexGUIHandler(kkfish plugin, Config config, DB db, MessageManager messageManager) {
         this.plugin = plugin;
         this.config = config;
         this.db = db;
         this.messageManager = messageManager;
+        buildFishItemCache();
+    }
+
+    public void buildFishItemCache() {
+        fishItemCache.clear();
+        FileConfiguration fishConfig = config.getFishConfig();
+        if (!fishConfig.isConfigurationSection("fish")) return;
+
+        for (String fishName : fishConfig.getConfigurationSection("fish").getKeys(false)) {
+            try {
+                String materialName = fishConfig.getString("fish." + fishName + ".material", "COD");
+                Material material = XSeriesUtil.parseMaterial(materialName);
+                if (material == null) material = XSeriesUtil.getMaterial("COD");
+                ItemStack item = new ItemStack(material);
+                item.getItemMeta().setUnbreakable(true);
+                item.getItemMeta().addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+                fishItemCache.put(fishName, item);
+            } catch (Exception e) {
+                // 跳过构建失败的鱼
+            }
+        }
     }
 
     /**
@@ -98,20 +120,20 @@ public class FishDexGUIHandler {
 
         // 获取鱼的基本信息
         String fishDisplayName = fishConfig.getString("fish." + fishName + ".display-name", fishName);
-        String materialName = fishConfig.getString("fish." + fishName + ".material", "COD");
+
+        // 从缓存获取底座物品
+        ItemStack baseItem = fishItemCache.get(fishName);
+        ItemStack item = baseItem != null ? baseItem.clone() : new ItemStack(XSeriesUtil.getMaterial("COD"));
+        ItemMeta meta = item.getItemMeta();
 
         // 根据是否钓到过设置不同材质
-        Material material = XSeriesUtil.parseMaterial(materialName);
-        if (material == null) {
-            material = XSeriesUtil.getMaterial("COD");
-        }
-
         if (caughtCount == 0) {
-            material = XSeriesUtil.getMaterial("BLACK_WOOL"); // 没钓到过，显示黑色羊毛
+            item.setType(XSeriesUtil.getMaterial("BLACK_WOOL"));
+        } else {
+            String materialName = fishConfig.getString("fish." + fishName + ".material", "COD");
+            Material material = XSeriesUtil.parseMaterial(materialName);
+            if (material != null) item.setType(material);
         }
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
 
         // 根据解锁状态设置不同的显示信息
         if (caughtCount > 0) {

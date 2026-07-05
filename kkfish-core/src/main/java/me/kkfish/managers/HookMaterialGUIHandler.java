@@ -37,6 +37,7 @@ public class HookMaterialGUIHandler {
     private final Map<UUID, String> hookSortMethods = new ConcurrentHashMap<>();
     private final Map<UUID, String> hookSearchQueries = new ConcurrentHashMap<>();
     private final Map<UUID, Map<String, Map<Integer, String>>> slotToHookMap = new ConcurrentHashMap<>();
+    private final Map<String, ItemStack> hookItemCache = new ConcurrentHashMap<>();
 
     public HookMaterialGUIHandler(kkfish plugin, Config config, DB db, MessageManager messageManager, GUIMenuLoader menuLoader) {
         this.plugin = plugin;
@@ -44,6 +45,53 @@ public class HookMaterialGUIHandler {
         this.db = db;
         this.messageManager = messageManager;
         this.menuLoader = menuLoader;
+        buildHookItemCache();
+    }
+
+    public void buildHookItemCache() {
+        hookItemCache.clear();
+        GUIMenuLoader.MenuConfig menuConfig = menuLoader.getMenuConfig("hook_material");
+        if (menuConfig == null) return;
+
+        Map<String, Object> hookConfigs = config.getHookConfigs();
+        for (String hookName : hookConfigs.keySet()) {
+            try {
+                ItemStack baseItem = buildBaseHookItem(menuConfig, hookName);
+                if (baseItem != null) {
+                    hookItemCache.put(hookName, baseItem);
+                }
+            } catch (Exception e) {
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.hook_cache_build_failed", "鱼钩缓存构建失败: " + hookName, hookName));
+            }
+        }
+    }
+
+    private ItemStack buildBaseHookItem(GUIMenuLoader.MenuConfig menuConfig, String hookName) {
+        // 生成不含玩家状态的底座物品
+        String displayName = config.getHookDisplayName(hookName);
+        String rarity = config.getHookRarity(hookName);
+        double price = config.getHookVaultPrice(hookName);
+
+        Material material = config.getHookMaterial(hookName);
+        if (material == null) {
+            material = XSeriesUtil.getMaterial("STICK");
+        }
+
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        String displayNameConfig = menuConfig.getItems().values().iterator().next().getDisplayName();
+        if (displayNameConfig.startsWith("i18n:")) {
+            displayNameConfig = messageManager.getMessageWithoutPrefix(displayNameConfig.substring(5), displayNameConfig);
+        }
+        displayNameConfig = displayNameConfig.replace("%hook_name%", displayName);
+        displayNameConfig = ChatColor.translateAlternateColorCodes('&', displayNameConfig);
+        meta.setDisplayName(displayNameConfig);
+
+        meta.setUnbreakable(true);
+        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        item.setItemMeta(meta);
+        return item;
     }
 
     // ==================== 排序与搜索 ====================
@@ -156,43 +204,33 @@ public class HookMaterialGUIHandler {
      * 从配置创建鱼钩展示物品
      */
     public ItemStack createHookDisplayItemFromConfig(GUIMenuLoader.MenuConfig.MenuItem itemConfig, Player player, String hookName) {
-        // 获取鱼钩配置
+        // 检查玩家是否已拥有此鱼钩
+        boolean isOwned = config.hasHookMaterialPermission(player, hookName);
+        boolean isEquipped = hookName.equals(plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString()));
+
+        // 从缓存获取底座物品
+        ItemStack baseItem = hookItemCache.get(hookName);
+        ItemStack item;
+        if (baseItem != null) {
+            item = baseItem.clone();
+        } else {
+            item = buildBaseHookItem(menuLoader.getMenuConfig("hook_material"), hookName);
+            if (item == null) return null;
+        }
+        ItemMeta meta = item.getItemMeta();
+        String baseDisplayName = meta.getDisplayName();
+
+        // 获取鱼钩配置数据用于lore
         String displayName = config.getHookDisplayName(hookName);
         String description = config.getHookDescription(hookName);
         String rarity = config.getHookRarity(hookName);
         double price = config.getHookVaultPrice(hookName);
 
-        // 检查玩家是否已拥有此鱼钩
-        boolean isOwned = config.hasHookMaterialPermission(player, hookName);
-        boolean isEquipped = hookName.equals(plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString()));
-
-        // 获取材质
-        Material material = config.getHookMaterial(hookName);
-        if (material == null) {
-            material = XSeriesUtil.getMaterial("STICK");
-        }
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        // 设置显示名称
-        String displayNameConfig = itemConfig.getDisplayName();
-        // 检查是否是国际化键值（以i18n:开头）
-        if (displayNameConfig.startsWith("i18n:")) {
-            String key = displayNameConfig.substring(5);
-            displayNameConfig = messageManager.getMessageWithoutPrefix(player, key, displayNameConfig);
-        }
-        displayNameConfig = displayNameConfig.replace("%hook_name%", displayName);
-        displayNameConfig = ChatColor.translateAlternateColorCodes('&', displayNameConfig);
-        meta.setDisplayName(displayNameConfig);
-
-        // 设置lore
+        // 设置lore（含玩家状态信息）
         List<String> lore = new ArrayList<>();
         for (String line : itemConfig.getLore()) {
-            // 检查是否是国际化键值（以i18n:开头）
             if (line.startsWith("i18n:")) {
-                String key = line.substring(5);
-                line = messageManager.getMessageWithoutPrefix(player, key, line);
+                line = messageManager.getMessageWithoutPrefix(player, line.substring(5), line);
             }
             String replacedLine = line;
             replacedLine = replacedLine.replace("%hook_name%", displayName);
@@ -201,7 +239,6 @@ public class HookMaterialGUIHandler {
             replacedLine = replacedLine.replace("%hook_durability%", messageManager.getMessageWithoutPrefix("hook_durability_infinite", "无限"));
             replacedLine = replacedLine.replace("%hook_effect%", description);
 
-            // 添加状态信息占位符
             if (replacedLine.contains("%hook_status%")) {
                 if (isEquipped) {
                     replacedLine = replacedLine.replace("%hook_status%", messageManager.getMessageWithoutPrefix("hook_status_equipped", "✓ Currently Equipped"));
@@ -226,9 +263,8 @@ public class HookMaterialGUIHandler {
             lore.add(replacedLine);
         }
 
+        meta.setDisplayName(baseDisplayName);
         meta.setLore(lore);
-        meta.setUnbreakable(true);
-        meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
         item.setItemMeta(meta);
 
         return item;
