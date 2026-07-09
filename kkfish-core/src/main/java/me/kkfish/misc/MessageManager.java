@@ -85,6 +85,7 @@ public class MessageManager {
 
         msgConfig = YamlConfiguration.loadConfiguration(msgFile);
         msgMap.clear();
+        playerLangCache.clear();
 
         if (msgConfig.contains("prefix")) {
             prefix = msgConfig.getString("prefix", "[kkfish] ");
@@ -107,9 +108,23 @@ public class MessageManager {
         }
         
         kkfish kkPlugin = (kkfish) plugin;
-        String lang = kkPlugin.getDB().getPlayerLanguage(playerId.toString());
+        String savedLang = kkPlugin.getDB().getPlayerLanguage(playerId.toString());
+        String lang = chooseMessageLang(currLang, savedLang);
         playerLangCache.put(playerId, lang);
         return lang;
+    }
+
+    static String chooseMessageLang(String currentLang, String playerLang) {
+        if (currentLang == null || currentLang.isEmpty()) {
+            currentLang = "zh_cn";
+        }
+        if (playerLang == null || playerLang.isEmpty()) {
+            return currentLang;
+        }
+        if ("zh_cn".equals(playerLang) && !"zh_cn".equals(currentLang)) {
+            return currentLang;
+        }
+        return playerLang;
     }
     
     public void setPlayerLang(Player player, String lang) {

@@ -156,7 +156,7 @@ public class DB {
                 "last_fishing_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "legendary_fish_caught INT DEFAULT 0, " +
                 "hook_material VARCHAR(32) DEFAULT 'wood', " +
-                "player_language VARCHAR(16) DEFAULT 'zh_cn'" +
+                "player_language VARCHAR(16) DEFAULT NULL" +
                 ")";
         
         try (Statement stmt = connection.createStatement()) {
@@ -183,7 +183,7 @@ public class DB {
             }
             
             if (!hasPlayerLanguage) {
-                stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN player_language VARCHAR(16) DEFAULT 'zh_cn'");
+                stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN player_language VARCHAR(16) DEFAULT NULL");
                 kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "player_language"));
             }
         } catch (SQLException e) {
@@ -200,7 +200,7 @@ public class DB {
                     // 检查player_language列
                     rs = stmt.executeQuery("SHOW COLUMNS FROM " + tablePrefix + "player_fishing_stats LIKE 'player_language'");
                     if (!rs.next()) {
-                        stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN player_language VARCHAR(16) DEFAULT 'zh_cn'");
+                        stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN player_language VARCHAR(16) DEFAULT NULL");
                         kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "player_language"));
                     }
                 }
@@ -340,7 +340,7 @@ public class DB {
                     "CURRENT_TIMESTAMP, " +
                     "COALESCE(MAX(legendary_fish_caught), 0) + ?, " +
                     "COALESCE(MAX(hook_material), 'wood'), " +
-                    "COALESCE(MAX(player_language), 'zh_cn') " +
+                    "MAX(player_language) " +
                     "FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
                 pstmt.setString(1, uuid);
@@ -574,7 +574,7 @@ public class DB {
                 ResultSet rs = pstmt.executeQuery();
                 if (rs.next() && rs.getString(columnName) != null) {
                     value = rs.getString(columnName);
-                } else {
+                } else if (defaultValue != null && !defaultValue.isEmpty()) {
                     // 如果没有记录，先添加默认值
                     setter.accept(value);
                 }
@@ -632,7 +632,7 @@ public class DB {
      * 获取玩家语言设置
      */
     public String getPlayerLanguage(String playerId) {
-        return getPlayerStringValue(playerId, "player_language", "zh_cn", "language", language -> setPlayerLanguage(playerId, language));
+        return getPlayerStringValue(playerId, "player_language", null, "language", language -> setPlayerLanguage(playerId, language));
     }
     
     /**

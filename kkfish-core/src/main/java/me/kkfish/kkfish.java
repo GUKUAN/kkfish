@@ -76,6 +76,8 @@ public class kkfish extends JavaPlugin {
         config = new Config(this);
 
         config.checkAndAddMissingConfigs();
+        messageManager.loadMessages();
+        messageManager.completeAllLanguageFiles();
         
         DependencyManager dependencyManager = new DependencyManager(this);
         if (!dependencyManager.checkAndDownloadDependencies()) {

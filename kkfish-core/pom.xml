@@ -7,7 +7,7 @@
     <parent>
         <groupId>me.kkfish</groupId>
         <artifactId>kkfish-parent</artifactId>
-        <version>1.7.2</version>
+        <version>1.7.3</version>
     </parent>
 
     <artifactId>kkfish-core</artifactId>
@@ -61,6 +61,13 @@
             <groupId>com.github.cryptomorin</groupId>
             <artifactId>XSeries</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -73,5 +80,15 @@
                 </excludes>
             </resource>
         </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>false</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 </project>
