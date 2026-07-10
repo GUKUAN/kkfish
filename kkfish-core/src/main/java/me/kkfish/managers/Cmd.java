@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.StringUtil;
 
+import me.kkfish.economy.EconomyService;
 import me.kkfish.kkfish;
 import me.kkfish.misc.MessageManager;
 
@@ -234,7 +235,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
     }
 
     private void handleSellGui(CommandSender sender, String[] args) {
-        if (!plugin.getCustomConfig().isPriceEnabled()) {
+        if (!isPriceAvailable()) {
             sender.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法使用卖出功能！"));
             return;
         }
@@ -258,7 +259,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
     }
 
     private void handleSell(CommandSender sender, String[] args) {
-        if (!plugin.getCustomConfig().isPriceEnabled()) {
+        if (!isPriceAvailable()) {
             sender.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法使用出售功能！"));
             return;
         }
@@ -281,10 +282,18 @@ public class Cmd implements CommandExecutor, TabCompleter {
                 if (sender instanceof Player) {
                     sellHandler.sellAllFishForOther((Player) sender, targetPlayer);
                 } else {
+                    EconomyService.SellPay consolePay = sellHandler.sellAllFishConsole(sender, targetPlayer);
+                    if (consolePay != null) {
+                        return;
+                    }
                     int totalValue = sellHandler.sellAllFishConsole(targetPlayer);
                     if (totalValue > 0) {
-                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_all_success_op", "§a已帮助玩家 %s 出售所有鱼类！获得了 %s 金币～", targetPlayer.getName(), totalValue));
-                        targetPlayer.sendMessage(plugin.getMessageManager().getMessage("sell_help_all_success_player", "§a控制台已帮助你出售所有鱼类！获得了 %s 金币～", totalValue));
+                        sender.sendMessage(plugin.getMessageManager().getMessage(sellHandler.sellRewardKey("sell_help_all_success_op"),
+                                sellHandler.isPointRewardActive() ? "§a已帮助玩家 %s 出售所有鱼类！获得了 %s 点券～" : "§a已帮助玩家 %s 出售所有鱼类！获得了 %s 金币～",
+                                targetPlayer.getName(), totalValue));
+                        targetPlayer.sendMessage(plugin.getMessageManager().getMessage(sellHandler.sellRewardKey("sell_help_all_success_player"),
+                                sellHandler.isPointRewardActive() ? "§a控制台已帮助你出售所有鱼类！获得了 %s 点券～" : "§a控制台已帮助你出售所有鱼类！获得了 %s 金币～",
+                                totalValue));
                     } else {
                         sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_all_empty", "§c玩家 %s 的背包中没有可出售的鱼～", targetPlayer.getName()));
                     }
@@ -293,6 +302,10 @@ public class Cmd implements CommandExecutor, TabCompleter {
                 if (sender instanceof Player) {
                     sellHandler.sellHandheldFishForOther((Player) sender, targetPlayer);
                 } else {
+                    EconomyService.SellPay consolePay = sellHandler.sellHandheldFishConsole(sender, targetPlayer);
+                    if (consolePay != null) {
+                        return;
+                    }
                     ItemStack item = targetPlayer.getInventory().getItemInMainHand();
                     if (item == null || item.getType() == Material.AIR) {
                         sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_hand_empty", "§c玩家 %s 手中没有物品哦～", targetPlayer.getName()));
@@ -305,10 +318,18 @@ public class Cmd implements CommandExecutor, TabCompleter {
                         return;
                     }
 
+                    if (!sellHandler.addMoneyToPlayer(targetPlayer, value)) {
+                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                        return;
+                    }
+
                     item.setAmount(item.getAmount() - 1);
-                    sellHandler.addMoneyToPlayer(targetPlayer, value);
-                    sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_hand_success_op", "§a已帮助玩家 %s 出售手中物品！获得了 %s 金币～", targetPlayer.getName(), value));
-                    targetPlayer.sendMessage(plugin.getMessageManager().getMessage("sell_help_hand_success_player", "§a控制台已帮助你出售手中物品！获得了 %s 金币～", value));
+                    sender.sendMessage(plugin.getMessageManager().getMessage(sellHandler.sellRewardKey("sell_help_hand_success_op"),
+                            sellHandler.isPointRewardActive() ? "§a已帮助玩家 %s 出售手中物品！获得了 %s 点券～" : "§a已帮助玩家 %s 出售手中物品！获得了 %s 金币～",
+                            targetPlayer.getName(), value));
+                    targetPlayer.sendMessage(plugin.getMessageManager().getMessage(sellHandler.sellRewardKey("sell_help_hand_success_player"),
+                            sellHandler.isPointRewardActive() ? "§a控制台已帮助你出售手中物品！获得了 %s 点券～" : "§a控制台已帮助你出售手中物品！获得了 %s 金币～",
+                            value));
                 }
             } else {
                 sender.sendMessage(messageManager.getMessage("sell_invalid_option", "§d无效的选项，请使用all或hand"));
@@ -403,7 +424,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         List<String> completions = new ArrayList<>();
 
-        boolean isPriceEnabled = plugin.getCustomConfig().isPriceEnabled();
+        boolean isPriceEnabled = isPriceAvailable();
 
         if (args.length == 1) {
             List<String> availableCommands = new ArrayList<>(subCommands);
@@ -534,6 +555,12 @@ public class Cmd implements CommandExecutor, TabCompleter {
     }
 
     // ==================== 外部访问 ====================
+
+    private boolean isPriceAvailable() {
+        return plugin.getCustomConfig().isPriceEnabled()
+                && plugin.getEconomyService() != null
+                && plugin.getEconomyService().isEconomyEnabled();
+    }
 
     public List<String> getSubCommands() {
         return new ArrayList<>(subCommands);

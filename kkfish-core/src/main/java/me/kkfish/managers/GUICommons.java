@@ -14,6 +14,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import me.kkfish.gui.GUIHolder;
 import me.kkfish.gui.GUIMenuLoader;
 import me.kkfish.gui.FishRecord;
+import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.kkfish;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.utils.XSeriesUtil;
@@ -78,6 +79,7 @@ public class GUICommons {
         title = title.replace("%player%", player.getName());
         title = title.replace("%p", player.getName());
         title = title.replace("%page%", String.valueOf(page + 1));
+        title = CustomItemHook.replaceFontImages(title);
 
         GUI.GUIType guiType;
         try {
@@ -125,13 +127,18 @@ public class GUICommons {
 
     public ItemStack createMenuItemFromConfig(GUIMenuLoader.MenuConfig.MenuItem itemConfig, Player player, int page) {
         try {
-            // 解析材质
-            Material material = parseMaterial(itemConfig.getMaterial());
-            if (material == null) {
-                material = XSeriesUtil.getMaterial("STONE");
+            // 解析材质 — 优先尝试 IA 自定义物品
+            String materialStr = itemConfig.getMaterial();
+            ItemStack item;
+            if (CustomItemHook.isCustomItemStr(materialStr)) {
+                item = CustomItemHook.createItemStack(materialStr, 1);
+            } else {
+                Material material = parseMaterial(materialStr);
+                if (material == null) {
+                    material = XSeriesUtil.getMaterial("STONE");
+                }
+                item = new ItemStack(material);
             }
-
-            ItemStack item = new ItemStack(material);
             ItemMeta meta = item.getItemMeta();
 
             // 设置显示名称
@@ -142,7 +149,7 @@ public class GUICommons {
                 displayName = messageManager.getMessageWithoutPrefix(player, key, displayName);
             }
             displayName = replacePlaceholders(displayName, player, page, itemConfig);
-            meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', displayName));
+            meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', CustomItemHook.replaceFontImages(displayName)));
 
             // 设置 lore
             java.util.List<String> lore = new java.util.ArrayList<>();
@@ -153,7 +160,7 @@ public class GUICommons {
                     line = messageManager.getMessageWithoutPrefix(player, key, line);
                 }
                 line = replacePlaceholders(line, player, page, itemConfig);
-                lore.add(ChatColor.translateAlternateColorCodes('&', line));
+                lore.add(ChatColor.translateAlternateColorCodes('&', CustomItemHook.replaceFontImages(line)));
             }
             meta.setLore(lore);
 

@@ -247,7 +247,11 @@ public class Fishing implements Listener {
         }
 
         if (plugin.getCmd().hasFishingRod(player)) {
+            // 优先主手，主手没有则取副手
             ItemStack rod = player.getInventory().getItemInMainHand();
+            if (rod == null || rod.getType() == Material.AIR) {
+                rod = player.getInventory().getItemInOffHand();
+            }
                 
             if (fish.isPlayerInMinigame(player.getUniqueId())) {
                 return;
@@ -285,7 +289,9 @@ public class Fishing implements Listener {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND) {
+        // 只处理主手和副手事件，忽略其他槽位
+        EquipmentSlot hand = event.getHand();
+        if (hand != EquipmentSlot.HAND && hand != EquipmentSlot.OFF_HAND) {
             return;
         }
 
@@ -293,7 +299,8 @@ public class Fishing implements Listener {
         Fish fish = plugin.getFish();
         MessageManager messageManager = kkfish.getInstance().getMessageManager();
         
-        if (fish != null) {
+        // 小游戏相关逻辑只在主手触发时处理，避免重复
+        if (hand == EquipmentSlot.HAND && fish != null) {
             if (fish.isPlayerInMinigame(player.getUniqueId())) {
                 event.setCancelled(true);
                 fish.handlePlayerClick(player);
@@ -327,11 +334,15 @@ public class Fishing implements Listener {
         if ((event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) && 
             plugin.getCmd().hasFishingRod(player)) {
             
-            ItemStack rod = player.getInventory().getItemInMainHand();
+            // 根据触发事件的手获取鱼竿
+            ItemStack rod = (hand == EquipmentSlot.HAND)
+                    ? player.getInventory().getItemInMainHand()
+                    : player.getInventory().getItemInOffHand();
                 
             event.setCancelled(true);
             
-            if (fish.getActiveSession(player) != null) {
+            // 只在主手触发时处理收线，避免重复
+            if (hand == EquipmentSlot.HAND && fish.getActiveSession(player) != null) {
                 me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("reeling_in", "正在收线..."), 40, MessageType.FISHING);
                 plugin.getSoundManager().playReelSound(player.getLocation());
                 fish.endSession(player);

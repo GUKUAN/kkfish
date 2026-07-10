@@ -9,6 +9,10 @@
 #   min-size: 50
 #   max-size: 150
 #   value: 1000
+#   # Optional: split sell reward by economy. If omitted, value follows config.yml economy.primary/fallback.
+#   sell-value:
+#     vault: 1000
+#     playerpoints: 100
 #   biomes: ["OCEAN", "DEEP_OCEAN"]
 #   weather: ["THUNDER"]
 #   time: ["NIGHT"]

@@ -1,11 +1,11 @@
 name: kkfish
-version: 1.7.3
+version: 1.7.4
 main: me.kkfish.kkfish
 api-version: 1.13
 description: Stardew Valley Style Fishing Plugin (Foila compatible)
 author: gukuan
 folia-supported: true
-softdepend: [Vault, PlayerPoints, RealisticSeasons]
+softdepend: [Vault, PlayerPoints, RealisticSeasons, ItemsAdder, Oraxen, Nexo, CraftEngine]
 
 commands:
   kkfish:

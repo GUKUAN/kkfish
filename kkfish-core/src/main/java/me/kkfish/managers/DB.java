@@ -18,6 +18,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
 import me.kkfish.kkfish;
+import me.kkfish.economy.SellValue;
 import me.kkfish.gui.FishRecord;
 
 public class DB {
@@ -244,12 +245,15 @@ public class DB {
         String createFishUUIDValuesTable = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "fish_uuid_values (" +
                 "fish_uuid VARCHAR(36) PRIMARY KEY, " +
                 "fish_value INT NOT NULL, " +
+                "vault_value INT DEFAULT -1, " +
+                "points_value INT DEFAULT -1, " +
                 "create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                 ")";
         
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(createFishUUIDValuesTable);
         }
+        ensureFishUUIDValueColumns();
         
         // 创建鱼效果表
         String createFishEffectsTable = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "fish_effects (" +
@@ -263,6 +267,48 @@ public class DB {
         
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(createFishEffectsTable);
+        }
+    }
+
+    private void ensureFishUUIDValueColumns() {
+        try (Statement stmt = connection.createStatement()) {
+            if (dbType.equals("mysql")) {
+                ensureMysqlColumn(stmt, tablePrefix + "fish_uuid_values", "vault_value", "INT DEFAULT -1");
+                ensureMysqlColumn(stmt, tablePrefix + "fish_uuid_values", "points_value", "INT DEFAULT -1");
+                return;
+            }
+
+            ResultSet rs = stmt.executeQuery("PRAGMA table_info(" + tablePrefix + "fish_uuid_values)");
+            boolean hasVaultValue = false;
+            boolean hasPointsValue = false;
+            while (rs.next()) {
+                String columnName = rs.getString("name");
+                if ("vault_value".equals(columnName)) {
+                    hasVaultValue = true;
+                } else if ("points_value".equals(columnName)) {
+                    hasPointsValue = true;
+                }
+            }
+
+            if (!hasVaultValue) {
+                stmt.execute("ALTER TABLE " + tablePrefix + "fish_uuid_values ADD COLUMN vault_value INT DEFAULT -1");
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "vault_value"));
+            }
+            if (!hasPointsValue) {
+                stmt.execute("ALTER TABLE " + tablePrefix + "fish_uuid_values ADD COLUMN points_value INT DEFAULT -1");
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "points_value"));
+            }
+        } catch (SQLException e) {
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_check_error", "Error checking/adding columns"));
+            e.printStackTrace();
+        }
+    }
+
+    private void ensureMysqlColumn(Statement stmt, String tableName, String columnName, String columnDefine) throws SQLException {
+        ResultSet rs = stmt.executeQuery("SHOW COLUMNS FROM " + tableName + " LIKE '" + columnName + "'");
+        if (!rs.next()) {
+            stmt.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefine);
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", columnName));
         }
     }
 
@@ -820,12 +866,21 @@ public class DB {
      * 存储鱼的UUID和价值到数据库
      */
     public void storeFishUUIDValue(String fishUUID, int fishValue) {
+        storeFishUUIDValue(fishUUID, SellValue.oldValue(fishValue));
+    }
+
+    public void storeFishUUIDValue(String fishUUID, SellValue sellValue) {
         if (!isDatabaseAvailable()) return;
+        if (sellValue == null) {
+            sellValue = SellValue.oldValue(0);
+        }
         try {
-            String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "fish_uuid_values (fish_uuid, fish_value) VALUES (?, ?)";
+            String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "fish_uuid_values (fish_uuid, fish_value, vault_value, points_value) VALUES (?, ?, ?, ?)";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
                 pstmt.setString(1, fishUUID);
-                pstmt.setInt(2, fishValue);
+                pstmt.setInt(2, sellValue.getDisplayValue());
+                pstmt.setInt(3, sellValue.getVaultValue());
+                pstmt.setInt(4, sellValue.getPointsValue());
                 pstmt.executeUpdate();
             }
         } catch (SQLException e) {
@@ -908,20 +963,25 @@ public class DB {
      * 从数据库中获取鱼的价值
      */
     public int getFishValueByUUID(String fishUUID) {
-        if (!isDatabaseAvailable()) return 0;
+        SellValue sellValue = getFishSellValueByUUID(fishUUID);
+        return sellValue != null ? sellValue.getDisplayValue() : 0;
+    }
+
+    public SellValue getFishSellValueByUUID(String fishUUID) {
+        if (!isDatabaseAvailable()) return SellValue.oldValue(0);
         try {
-            String query = "SELECT fish_value FROM " + tablePrefix + "fish_uuid_values WHERE fish_uuid = ?";
+            String query = "SELECT fish_value, vault_value, points_value FROM " + tablePrefix + "fish_uuid_values WHERE fish_uuid = ?";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
                 pstmt.setString(1, fishUUID);
                 ResultSet rs = pstmt.executeQuery();
                 if (rs.next()) {
-                    return rs.getInt("fish_value");
+                    return SellValue.raw(rs.getInt("fish_value"), rs.getInt("vault_value"), rs.getInt("points_value"));
                 }
             }
         } catch (SQLException e) {
             kkfish.log("§c" + "获取鱼UUID价值失败！"); e.printStackTrace();
         }
-        return 0;
+        return SellValue.oldValue(0);
     }
     
     /**

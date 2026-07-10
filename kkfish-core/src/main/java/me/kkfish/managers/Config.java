@@ -82,6 +82,18 @@ public class Config {
         return mainConfig.getBoolean("economy.economy", true);
     }
 
+    public boolean isPlayerPointsEconomyEnabled() {
+        return mainConfig.getBoolean("economy.playerpoints", true);
+    }
+
+    public String getPrimaryEconomy() {
+        return mainConfig.getString("economy.primary", "vault");
+    }
+
+    public boolean isEconomyFallbackEnabled() {
+        return mainConfig.getBoolean("economy.fallback", true);
+    }
+
     public boolean isSellEnabled() {
         return mainConfig.getBoolean("economy.sell", true);
     }
@@ -876,7 +888,7 @@ public class Config {
     }
     
     public boolean isVaultEnabled() {
-        return isEconomyEnabled();
+        return isEconomyEnabled() && isEconomySystemEnabled();
     }
     
     public boolean isPriceEnabled() {
@@ -1301,6 +1313,17 @@ public class Config {
             return XSeriesUtil.getMaterial("OAK_LOG");
         }
     }
+
+    /**
+     * 获取鱼钩材质的原始配置字符串（不做Material解析，用于IA物品判断）
+     */
+    public String getHookMaterialStr(String hookName) {
+        String configPath = getHookConfigPath(hookName);
+        if (configPath == null) {
+            return "OAK_LOG";
+        }
+        return hookConfig.getString(configPath + ".material", "OAK_LOG");
+    }
     
     public String getHookDisplayNameKey(String hookName) {
         return "gui_hook_material_" + hookName;
@@ -1556,10 +1579,40 @@ public class Config {
         
         if (!mainConfig.contains("economy")) {
             mainConfig.set("economy.enabled", true);
+            mainConfig.set("economy.economy", true);
+            mainConfig.set("economy.playerpoints", true);
+            mainConfig.set("economy.primary", "vault");
+            mainConfig.set("economy.fallback", true);
+            mainConfig.set("economy.sell", true);
+            mainConfig.set("economy.sellgui", true);
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy"));
         } else if (!mainConfig.contains("economy.enabled")) {
             mainConfig.set("economy.enabled", true);
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.enabled"));
+        }
+        if (!mainConfig.contains("economy.economy")) {
+            mainConfig.set("economy.economy", true);
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.economy"));
+        }
+        if (!mainConfig.contains("economy.playerpoints")) {
+            mainConfig.set("economy.playerpoints", true);
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.playerpoints"));
+        }
+        if (!mainConfig.contains("economy.primary")) {
+            mainConfig.set("economy.primary", "vault");
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.primary"));
+        }
+        if (!mainConfig.contains("economy.fallback")) {
+            mainConfig.set("economy.fallback", true);
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.fallback"));
+        }
+        if (!mainConfig.contains("economy.sell")) {
+            mainConfig.set("economy.sell", true);
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.sell"));
+        }
+        if (!mainConfig.contains("economy.sellgui")) {
+            mainConfig.set("economy.sellgui", true);
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.sellgui"));
         }
     }
     

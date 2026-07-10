@@ -15,6 +15,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import me.kkfish.kkfish;
+import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.utils.XSeriesUtil;
 
@@ -117,12 +118,17 @@ public class GiveCommandHandler {
         }
 
         String materialStr = configManager.getRodConfig().getString("rods." + rodName + ".material", "FISHING_ROD");
-        Material material = XSeriesUtil.parseMaterial(materialStr);
-        if (material == null) {
-            material = XSeriesUtil.parseMaterial("FISHING_ROD");
+        // 优先尝试 IA 自定义物品
+        ItemStack rod;
+        if (CustomItemHook.isCustomItemStr(materialStr)) {
+            rod = CustomItemHook.createItemStack(materialStr, 1);
+        } else {
+            Material material = XSeriesUtil.parseMaterial(materialStr);
+            if (material == null) {
+                material = XSeriesUtil.parseMaterial("FISHING_ROD");
+            }
+            rod = new ItemStack(material, 1);
         }
-
-        ItemStack rod = new ItemStack(material, 1);
         ItemMeta meta = rod.getItemMeta();
         if (meta == null) {
             return rod;
@@ -158,6 +164,7 @@ public class GiveCommandHandler {
 
         String displayName = ChatColor.translateAlternateColorCodes('&',
                 configManager.getRodConfig().getString("rods." + rodName + ".display-name", "&f" + rodName));
+        displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
 
         int customModelData = configManager.getRodCustomModelData(rodName);
@@ -240,7 +247,7 @@ public class GiveCommandHandler {
         String[] lines = formattedTemplate.split("\\n");
         for (String line : lines) {
             if (!line.trim().isEmpty()) {
-                lore.add(ChatColor.translateAlternateColorCodes('&', line));
+                lore.add(ChatColor.translateAlternateColorCodes('&', CustomItemHook.replaceFontImages(line)));
             } else {
                 lore.add("");
             }
@@ -262,12 +269,17 @@ public class GiveCommandHandler {
         }
 
         String materialStr = configManager.getBaitConfig().getString("baits." + baitName + ".material", "MAGMA_CREAM");
-        Material material = XSeriesUtil.parseMaterial(materialStr);
-        if (material == null) {
-            material = XSeriesUtil.parseMaterial("MAGMA_CREAM");
+        // 优先尝试 IA 自定义物品
+        ItemStack bait;
+        if (CustomItemHook.isCustomItemStr(materialStr)) {
+            bait = CustomItemHook.createItemStack(materialStr, 64);
+        } else {
+            Material material = XSeriesUtil.parseMaterial(materialStr);
+            if (material == null) {
+                material = XSeriesUtil.parseMaterial("MAGMA_CREAM");
+            }
+            bait = new ItemStack(material, 64);
         }
-
-        ItemStack bait = new ItemStack(material, 64);
         ItemMeta meta = bait.getItemMeta();
         if (meta == null) {
             return bait;
@@ -280,6 +292,7 @@ public class GiveCommandHandler {
 
         String displayName = ChatColor.translateAlternateColorCodes('&',
                 configManager.getBaitConfig().getString("baits." + baitName + ".display-name", "&f" + baitName));
+        displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
 
         int customModelData = configManager.getBaitCustomModelData(baitName);
@@ -367,7 +380,7 @@ public class GiveCommandHandler {
         List<String> lore = new ArrayList<>();
 
         for (String line : loreContent.split("\\n")) {
-            lore.add(line);
+            lore.add(CustomItemHook.replaceFontImages(line));
         }
 
         String permission = "kkfish.baits.use." + baitName;

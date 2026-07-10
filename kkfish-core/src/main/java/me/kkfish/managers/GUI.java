@@ -99,7 +99,7 @@ public class GUI {
     }
 
     public void openGUI(Player player, GUIType type, int page) {
-        if (type == GUIType.SELL_GUI && !config.isEconomyEnabled()) {
+        if (type == GUIType.SELL_GUI && !canUseSellEconomy()) {
             player.sendMessage(messageManager.getMessage(player, "economy_not_enabled", "§c经济系统未启用，无法使用卖出功能！"));
             return;
         }
@@ -166,11 +166,17 @@ public class GUI {
 
     public void openSellGUI(Player player) {
         // 检查价格系统是否启用
-        if (!plugin.getCustomConfig().isPriceEnabled()) {
+        if (!canUseSellEconomy()) {
             player.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法使用卖出功能！"));
             return;
         }
         openGUI(player, GUIType.SELL_GUI);
+    }
+
+    private boolean canUseSellEconomy() {
+        return plugin.getCustomConfig().isPriceEnabled()
+                && plugin.getEconomyService() != null
+                && plugin.getEconomyService().isEconomyEnabled();
     }
 
     // ==================== 鱼钩材质委派 ====================

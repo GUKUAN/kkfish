@@ -20,6 +20,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import me.kkfish.kkfish;
+import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.managers.Config;
 import me.kkfish.misc.MessageManager;
 
@@ -75,12 +76,17 @@ public class ItemCraft implements Listener {
         String rodName = "default";
         
         String materialStr = config.getRodConfig().getString("rods.default.material", "FISHING_ROD");
-        Material material = Material.matchMaterial(materialStr);
-        if (material == null) {
-            material = Material.FISHING_ROD;
+        // 优先尝试 IA 自定义物品
+        ItemStack rod;
+        if (CustomItemHook.isCustomItemStr(materialStr)) {
+            rod = CustomItemHook.createItemStack(materialStr, 1);
+        } else {
+            Material material = Material.matchMaterial(materialStr);
+            if (material == null) {
+                material = Material.FISHING_ROD;
+            }
+            rod = new ItemStack(material, 1);
         }
-        
-        ItemStack rod = new ItemStack(material, 1);
         ItemMeta meta = rod.getItemMeta();
         if (meta == null) {
             return rod;
@@ -121,6 +127,7 @@ public class ItemCraft implements Listener {
         
         String displayName = ChatColor.translateAlternateColorCodes('&', 
                 config.getRodConfig().getString("rods.default.display-name", "&f普通钓鱼竿"));
+        displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
         
         int customModelData = config.getRodCustomModelData(rodName);
@@ -212,7 +219,7 @@ public class ItemCraft implements Listener {
         String[] lines = formattedTemplate.split("\\n");
         for (String line : lines) {
             if (!line.trim().isEmpty()) {
-                lore.add(ChatColor.translateAlternateColorCodes('&', line));
+                lore.add(ChatColor.translateAlternateColorCodes('&', CustomItemHook.replaceFontImages(line)));
             } else {
                 lore.add("");
             }

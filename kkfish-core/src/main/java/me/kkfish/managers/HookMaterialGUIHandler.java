@@ -16,6 +16,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import me.kkfish.gui.GUIMenuLoader;
+import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.kkfish;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.utils.XSeriesUtil;
@@ -72,12 +73,18 @@ public class HookMaterialGUIHandler {
         String rarity = config.getHookRarity(hookName);
         double price = config.getHookVaultPrice(hookName);
 
-        Material material = config.getHookMaterial(hookName);
-        if (material == null) {
-            material = XSeriesUtil.getMaterial("STICK");
+        // 优先尝试 IA 自定义物品
+        String materialStr = config.getHookMaterialStr(hookName);
+        ItemStack item;
+        if (CustomItemHook.isCustomItemStr(materialStr)) {
+            item = CustomItemHook.createItemStack(materialStr, 1);
+        } else {
+            Material material = config.getHookMaterial(hookName);
+            if (material == null) {
+                material = XSeriesUtil.getMaterial("STICK");
+            }
+            item = new ItemStack(material);
         }
-
-        ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
 
         String displayNameConfig = menuConfig.getItems().values().iterator().next().getDisplayName();
@@ -86,6 +93,7 @@ public class HookMaterialGUIHandler {
         }
         displayNameConfig = displayNameConfig.replace("%hook_name%", displayName);
         displayNameConfig = ChatColor.translateAlternateColorCodes('&', displayNameConfig);
+        displayNameConfig = CustomItemHook.replaceFontImages(displayNameConfig);
         meta.setDisplayName(displayNameConfig);
 
         meta.setUnbreakable(true);
@@ -260,6 +268,7 @@ public class HookMaterialGUIHandler {
             }
 
             replacedLine = ChatColor.translateAlternateColorCodes('&', replacedLine);
+            replacedLine = CustomItemHook.replaceFontImages(replacedLine);
             lore.add(replacedLine);
         }
 

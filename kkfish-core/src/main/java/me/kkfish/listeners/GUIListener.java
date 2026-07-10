@@ -28,6 +28,7 @@ import net.milkbowl.vault.economy.Economy;
 import me.kkfish.kkfish;
 import me.kkfish.managers.Config;
 import me.kkfish.managers.GUI;
+import me.kkfish.managers.SellCommandHandler;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.managers.Compete;
 import me.kkfish.competition.CompetitionConfig;
@@ -327,6 +328,72 @@ public class GUIListener implements Listener {
                         configuredSlots.addAll(item.getSlots());
                     }
                 }
+
+                {
+                    SellCommandHandler batchSell = plugin.getCmd().getSellHandler();
+                    if (batchSell != null) {
+                        MessageManager guiMessage = guiManager.getPlugin().getMessageManager();
+                        SellCommandHandler.SellBatch batch = batchSell.collectSellItems(inventory, configuredSlots);
+
+                        if (batch.getPay().hasAny() && !batchSell.addSellPayToPlayer(player, batch.getPay())) {
+                            for (int i = 0; i < inventory.getSize(); i++) {
+                                if (configuredSlots.contains(i)) {
+                                    continue;
+                                }
+                                ItemStack item = inventory.getItem(i);
+                                if (item != null && item.getType() != AIR_MATERIAL) {
+                                    player.getInventory().addItem(item).values().forEach(remaining ->
+                                            player.getWorld().dropItemNaturally(player.getLocation(), remaining));
+                                    refundCount++;
+                                    inventory.setItem(i, null);
+                                }
+                            }
+                            player.sendMessage(guiMessage.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                            if (refundCount > 0) {
+                                player.sendMessage(guiMessage.getMessage("sell_refund", "§c无法卖出 &e%s &c个物品，已退还到背包", refundCount));
+                            }
+                            return;
+                        }
+
+                        if (batch.hasAny()) {
+                            batchSell.applySellBatch(player, inventory, batch);
+                            soldCount = batch.getSoldCount();
+                        }
+
+                        for (int i = 0; i < inventory.getSize(); i++) {
+                            if (configuredSlots.contains(i)) {
+                                continue;
+                            }
+                            ItemStack item = inventory.getItem(i);
+                            if (item != null && item.getType() != AIR_MATERIAL) {
+                                player.getInventory().addItem(item).values().forEach(remaining ->
+                                        player.getWorld().dropItemNaturally(player.getLocation(), remaining));
+                                refundCount++;
+                                inventory.setItem(i, null);
+                            }
+                        }
+
+                        if (soldCount > 0) {
+                            if (batch.getPay().hasAny()) {
+                                player.sendMessage(batchSell.sellRewardMessage("sell_success", batch.getPay(),
+                                        "§a成功卖出 &e%s &a条鱼，获得 &e%s &a金币",
+                                        "§a成功卖出 &e%s &a条鱼，获得 &e%s &a点券",
+                                        "§a成功卖出 &e%s &a条鱼，获得 &e%s &a金币和 &e%s &a点券",
+                                        soldCount));
+                            } else if (batch.hasItemRewards()) {
+                                player.sendMessage(guiMessage.getMessage("sell_success_items", "§a成功卖出 &e%s &a条鱼，获得物品奖励", soldCount));
+                            }
+                        }
+                        if (refundCount > 0) {
+                            player.sendMessage(guiMessage.getMessage("sell_refund", "§c无法卖出 &e%s &c个物品，已退还到背包", refundCount));
+                        }
+                        if (soldCount == 0 && refundCount == 0) {
+                            player.sendMessage(guiMessage.getMessage("sell_empty", "§e卖出界面中没有可处理的物品"));
+                        }
+
+                        return;
+                    }
+                }
                 
                 for (int i = 0; i < inventory.getSize(); i++) {
                     if (configuredSlots.contains(i)) {
@@ -351,7 +418,10 @@ public class GUIListener implements Listener {
                 
                 MessageManager messageManager = guiManager.getPlugin().getMessageManager();
                 if (soldCount > 0) {
-                    player.sendMessage(messageManager.getMessage("sell_success", "§a成功卖出 &e%s &a条鱼，获得 &e%s &a金币", soldCount, totalValue));
+                    me.kkfish.managers.SellCommandHandler sellHandler = plugin.getCmd().getSellHandler();
+                    player.sendMessage(messageManager.getMessage(sellHandler.sellRewardKey("sell_success"),
+                            sellHandler.isPointRewardActive() ? "§a成功卖出 &e%s &a条鱼，获得 &e%s &a点券" : "§a成功卖出 &e%s &a条鱼，获得 &e%s &a金币",
+                            soldCount, totalValue));
                 }
                 if (refundCount > 0) {
                     player.sendMessage(messageManager.getMessage("sell_refund", "§c无法卖出 &e%s &c个物品，已退还到背包", refundCount));
@@ -417,10 +487,9 @@ public class GUIListener implements Listener {
                 }
             }
             
-            if (value > 0 && plugin.getCustomConfig().isEconomyEnabled()) {
-                Economy economy = plugin.getEconomy();
-                if (economy != null) {
-                    economy.depositPlayer(player, value);
+            if (value > 0) {
+                me.kkfish.managers.SellCommandHandler sellHandler = plugin.getCmd().getSellHandler();
+                if (sellHandler.canGiveSellReward() && sellHandler.addMoneyToPlayer(player, value)) {
                     if (fishUUIDStr != null) {
                         plugin.getDB().removeFishUUIDValue(fishUUIDStr);
                     }

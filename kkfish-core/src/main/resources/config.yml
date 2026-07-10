@@ -282,6 +282,12 @@ economy:
   enabled: true
   # Vault 经济集成开关
   economy: true
+  # PlayerPoints 经济集成开关
+  playerpoints: true
+  # 旧版 fish.yml 的 value 使用哪个经济系统: vault / playerpoints
+  primary: vault
+  # primary 不可用时，是否自动尝试另一个可用经济系统
+  fallback: true
   # 出售功能开关
   sell: true
   # 出售 GUI 功能开关

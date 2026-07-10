@@ -15,6 +15,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import me.kkfish.competition.CompetitionConfig;
 import me.kkfish.gui.GUIMenuLoader;
+import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.kkfish;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.utils.XSeriesUtil;
@@ -133,10 +134,28 @@ public class CompetitionGUIHandler {
                         // 格式: give player item amount
                         if (parts.length >= 4) {
                             rewardAmount = parts[2] + " × " + parts[3];
-                            material = GUICommons.parseMaterial(parts[2]);
+                            if (CustomItemHook.isCustomItemStr(parts[2])) {
+                                ItemStack iaItem = CustomItemHook.createItemStack(parts[2], 1);
+                                if (iaItem != null) {
+                                    material = iaItem.getType();
+                                } else {
+                                    material = GUICommons.parseMaterial(parts[2]);
+                                }
+                            } else {
+                                material = GUICommons.parseMaterial(parts[2]);
+                            }
                         } else if (parts.length >= 3) {
                             rewardAmount = parts[2] + " × 1";
-                            material = GUICommons.parseMaterial(parts[2]);
+                            if (CustomItemHook.isCustomItemStr(parts[2])) {
+                                ItemStack iaItem = CustomItemHook.createItemStack(parts[2], 1);
+                                if (iaItem != null) {
+                                    material = iaItem.getType();
+                                } else {
+                                    material = GUICommons.parseMaterial(parts[2]);
+                                }
+                            } else {
+                                material = GUICommons.parseMaterial(parts[2]);
+                            }
                         }
                     }
                     if (material == null) {
@@ -158,6 +177,7 @@ public class CompetitionGUIHandler {
         }
         displayName = displayName.replace("%reward_name%", messageManager.getMessageWithoutPrefix("gui_reward_name", "第" + rank + "名奖励"));
         displayName = ChatColor.translateAlternateColorCodes('&', displayName);
+        displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
 
         // 设置lore
@@ -177,6 +197,7 @@ public class CompetitionGUIHandler {
                     for (String infoLine : displayInfo) {
                         String displayLine = "&7| &f" + infoLine;
                         displayLine = ChatColor.translateAlternateColorCodes('&', displayLine);
+                        displayLine = CustomItemHook.replaceFontImages(displayLine);
                         lore.add(displayLine);
                     }
                     continue; // 跳过默认处理
@@ -188,6 +209,7 @@ public class CompetitionGUIHandler {
             replacedLine = replacedLine.replace("%reward_amount%", rewardAmount);
             replacedLine = replacedLine.replace("%reward_condition%", rewardCondition);
             replacedLine = ChatColor.translateAlternateColorCodes('&', replacedLine);
+            replacedLine = CustomItemHook.replaceFontImages(replacedLine);
             lore.add(replacedLine);
         }
 
@@ -210,14 +232,18 @@ public class CompetitionGUIHandler {
      */
     public ItemStack createCompetitionItemFromConfig(GUIMenuLoader.MenuConfig.MenuItem itemConfig, Player player, CompetitionConfig competitionConfig) {
         try {
-            // 解析材质
+            // 解析材质 — 优先尝试 IA 自定义物品
             String materialStr = itemConfig.getMaterial().replace("%competition_item%", getCompetitionMaterial(competitionConfig.getType()));
-            Material material = GUICommons.parseMaterial(materialStr);
-            if (material == null) {
-                material = XSeriesUtil.getMaterial("FISHING_ROD");
+            ItemStack item;
+            if (CustomItemHook.isCustomItemStr(materialStr)) {
+                item = CustomItemHook.createItemStack(materialStr, 1);
+            } else {
+                Material material = GUICommons.parseMaterial(materialStr);
+                if (material == null) {
+                    material = XSeriesUtil.getMaterial("FISHING_ROD");
+                }
+                item = new ItemStack(material);
             }
-
-            ItemStack item = new ItemStack(material);
             ItemMeta meta = item.getItemMeta();
 
             // 设置显示名称
@@ -231,6 +257,7 @@ public class CompetitionGUIHandler {
             displayName = displayName.replace("%player_name%", player.getName());
             displayName = displayName.replace("%player%", player.getName());
             displayName = displayName.replace("%p", player.getName());
+            displayName = CustomItemHook.replaceFontImages(displayName);
             meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', displayName));
 
             // 设置 lore
@@ -250,7 +277,7 @@ public class CompetitionGUIHandler {
                 line = line.replace("%player_name%", player.getName());
                 line = line.replace("%player%", player.getName());
                 line = line.replace("%p", player.getName());
-                lore.add(ChatColor.translateAlternateColorCodes('&', line));
+                lore.add(ChatColor.translateAlternateColorCodes('&', CustomItemHook.replaceFontImages(line)));
             }
             meta.setLore(lore);
 

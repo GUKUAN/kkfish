@@ -16,6 +16,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import me.kkfish.gui.GUIMenuLoader;
+import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.kkfish;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.utils.XSeriesUtil;
@@ -51,11 +52,20 @@ public class FishDexGUIHandler {
         for (String fishName : fishConfig.getConfigurationSection("fish").getKeys(false)) {
             try {
                 String materialName = fishConfig.getString("fish." + fishName + ".material", "COD");
-                Material material = XSeriesUtil.parseMaterial(materialName);
-                if (material == null) material = XSeriesUtil.getMaterial("COD");
-                ItemStack item = new ItemStack(material);
-                item.getItemMeta().setUnbreakable(true);
-                item.getItemMeta().addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+                ItemStack item;
+                if (CustomItemHook.isCustomItemStr(materialName)) {
+                    item = CustomItemHook.createItemStack(materialName, 1);
+                } else {
+                    Material material = XSeriesUtil.parseMaterial(materialName);
+                    if (material == null) material = XSeriesUtil.getMaterial("COD");
+                    item = new ItemStack(material);
+                }
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    meta.setUnbreakable(true);
+                    meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+                    item.setItemMeta(meta);
+                }
                 fishItemCache.put(fishName, item);
             } catch (Exception e) {
                 // 跳过构建失败的鱼
@@ -131,8 +141,22 @@ public class FishDexGUIHandler {
             item.setType(XSeriesUtil.getMaterial("BLACK_WOOL"));
         } else {
             String materialName = fishConfig.getString("fish." + fishName + ".material", "COD");
-            Material material = XSeriesUtil.parseMaterial(materialName);
-            if (material != null) item.setType(material);
+            if (CustomItemHook.isCustomItemStr(materialName)) {
+                ItemStack iaItem = CustomItemHook.createItemStack(materialName, 1);
+                if (iaItem != null) {
+                    item.setType(iaItem.getType());
+                    if (iaItem.hasItemMeta()) {
+                        // IA物品可能有自定义model data等，保留到item上
+                        ItemMeta iaMeta = iaItem.getItemMeta();
+                        if (iaMeta.hasCustomModelData()) {
+                            meta.setCustomModelData(iaMeta.getCustomModelData());
+                        }
+                    }
+                }
+            } else {
+                Material material = XSeriesUtil.parseMaterial(materialName);
+                if (material != null) item.setType(material);
+            }
         }
 
         // 根据解锁状态设置不同的显示信息
@@ -148,6 +172,7 @@ public class FishDexGUIHandler {
                 }
                 displayNameConfig = displayNameConfig.replace("%fish_name%", fishDisplayName);
                 displayNameConfig = ChatColor.translateAlternateColorCodes('&', displayNameConfig);
+                displayNameConfig = CustomItemHook.replaceFontImages(displayNameConfig);
                 meta.setDisplayName(displayNameConfig);
 
                 // 设置lore
@@ -222,6 +247,7 @@ public class FishDexGUIHandler {
 
                     // 转换颜色代码并添加到lore
                     replacedLine = ChatColor.translateAlternateColorCodes('&', replacedLine);
+                    replacedLine = CustomItemHook.replaceFontImages(replacedLine);
                     lore.add(replacedLine);
                 }
                 meta.setLore(lore);
@@ -237,6 +263,7 @@ public class FishDexGUIHandler {
                     displayNameConfig = messageManager.getMessageWithoutPrefix(player, key, displayNameConfig);
                 }
                 displayNameConfig = ChatColor.translateAlternateColorCodes('&', displayNameConfig);
+                displayNameConfig = CustomItemHook.replaceFontImages(displayNameConfig);
                 meta.setDisplayName(displayNameConfig);
 
                 // 设置lore
@@ -248,6 +275,7 @@ public class FishDexGUIHandler {
                         line = messageManager.getMessageWithoutPrefix(player, key, line);
                     }
                     line = ChatColor.translateAlternateColorCodes('&', line);
+                    line = CustomItemHook.replaceFontImages(line);
                     lore.add(line);
                 }
                 meta.setLore(lore);

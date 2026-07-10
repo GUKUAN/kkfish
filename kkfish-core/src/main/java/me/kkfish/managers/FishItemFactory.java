@@ -18,6 +18,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import me.kkfish.kkfish;
+import me.kkfish.economy.SellValue;
+import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.utils.XSeriesUtil;
 
@@ -88,15 +90,21 @@ public class FishItemFactory {
         String displayName = fishConfig.getString("fish." + fishName + ".display-name", fishName);
         String description = fishConfig.getString("fish." + fishName + ".description", plugin.getMessageManager().getMessageWithoutPrefix("fish_default_description", "一条普通的鱼"));
         String materialStr = fishConfig.getString("fish." + fishName + ".material", "COD");
-        Material material;
-        try {
-            material = XSeriesUtil.parseMaterial(materialStr);
-        } catch (Exception e) {
-            kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("log.invalid_fish_material", "无效的鱼材质: %s, 使用默认材质COD", materialStr));
-            material = XSeriesUtil.getMaterial("COD");
-        }
 
-        ItemStack fishItem = new ItemStack(material);
+        // 优先尝试 ItemsAdder 自定义物品，失败则回退原版材质
+        ItemStack fishItem;
+        if (CustomItemHook.isCustomItemStr(materialStr)) {
+            fishItem = CustomItemHook.createItemStack(materialStr, 1);
+        } else {
+            Material material;
+            try {
+                material = XSeriesUtil.parseMaterial(materialStr);
+            } catch (Exception e) {
+                kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("log.invalid_fish_material", "无效的鱼材质: %s, 使用默认材质COD", materialStr));
+                material = XSeriesUtil.getMaterial("COD");
+            }
+            fishItem = new ItemStack(material);
+        }
         ItemMeta meta = fishItem.getItemMeta();
 
         boolean hasCustomNBT = fishConfig.getBoolean("fish." + fishName + ".has-custom-nbt", false);
@@ -106,6 +114,7 @@ public class FishItemFactory {
 
         if (meta != null) {
             displayName = displayName.replace('&', '§');
+            displayName = CustomItemHook.replaceFontImages(displayName);
             meta.setDisplayName(displayName);
 
             List<String> lore = new ArrayList<>();
@@ -180,13 +189,19 @@ public class FishItemFactory {
             String rarityDisplayName = config.getRarityDisplayName(rarityName);
 
             int value;
+            double baseValueForSell = fishConfig.getDouble("fish." + fishName + ".value", 10.0);
+            double finalValue;
+            double sellMultiplier;
             if (preCalculatedValue != null) {
+                finalValue = preCalculatedValue;
                 value = (int) Math.round(preCalculatedValue);
+                sellMultiplier = baseValueForSell > 0 ? finalValue / baseValueForSell : 1.0;
             } else {
-                double baseValue = fishConfig.getDouble("fish." + fishName + ".value", 10.0);
+                double baseValue = baseValueForSell;
                 double rarityMultiplier = config.getRarityValueMultiplier(rarityName);
 
-                double finalValue = baseValue * fishSize / maxSize * rarityMultiplier * valueBonus;
+                sellMultiplier = fishSize / maxSize * rarityMultiplier * valueBonus;
+                finalValue = baseValue * sellMultiplier;
 
                 if (config.isDebugMode()) {
                     kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_calculation", "[Debug] 计算鱼的价值: 基础价值=%s, 鱼大小=%s, 最大大小=%s, 稀有度倍率=%s, 鱼钩材质加成=%s, 最终价值=%s", baseValue, fishSize, maxSize, rarityMultiplier, valueBonus, finalValue));
@@ -197,10 +212,12 @@ public class FishItemFactory {
                     if (currentSeason != null) {
                         double seasonalMultiplier = config.getSeasonalPriceMultiplier(currentSeason);
                         finalValue *= seasonalMultiplier;
+                        sellMultiplier *= seasonalMultiplier;
 
                         double baseFluctuation = config.getBasePriceFluctuation();
                         double randomFluctuation = 1.0 + (random.nextDouble() - 0.5) * 2 * baseFluctuation;
                         finalValue *= randomFluctuation;
+                        sellMultiplier *= randomFluctuation;
 
                         if (config.isDebugMode()) {
                             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_seasonal_price_fluctuation", "[Debug] 应用季节性价格浮动: 当前季节=%s, 季节倍率=%s, 随机浮动=%s, 浮动后价值=%s", currentSeason, seasonalMultiplier, randomFluctuation, finalValue));
@@ -210,6 +227,9 @@ public class FishItemFactory {
 
                 value = Math.max(1, (int) Math.round(finalValue));
             }
+
+            SellValue sellValue = buildSellValue(fishConfig, fishName, value, sellMultiplier);
+            value = sellValue.getDisplayValue();
 
             String sizeQuality;
             if (fishSize < minSize + (maxSize - minSize) * 0.3) {
@@ -263,6 +283,7 @@ public class FishItemFactory {
             }
 
             formattedLore = ChatColor.translateAlternateColorCodes('&', formattedLore);
+            formattedLore = CustomItemHook.replaceFontImages(formattedLore);
 
             String[] lines = formattedLore.split("\\n");
             for (String line : lines) {
@@ -300,7 +321,7 @@ public class FishItemFactory {
                 kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_stored", "[Debug] 存储鱼的价值到数据库: UUID=%s, 价值=%s", uuidStr, value));
             }
 
-            plugin.getDB().storeFishUUIDValue(uuidStr, value);
+            plugin.getDB().storeFishUUIDValue(uuidStr, sellValue);
 
             List<String> fishEffects = fishConfig.getStringList("fish." + fishName + ".effects");
 
@@ -324,6 +345,41 @@ public class FishItemFactory {
         }
 
         return fishItem;
+    }
+
+    private SellValue buildSellValue(FileConfiguration fishConfig, String fishName, int oldValue, double multiplier) {
+        String sellPath = "fish." + fishName + ".sell-value";
+        boolean hasVault = fishConfig.contains(sellPath + ".vault");
+        boolean hasPoints = fishConfig.contains(sellPath + ".playerpoints");
+
+        if (!hasPoints) {
+            hasPoints = fishConfig.contains(sellPath + ".points") || fishConfig.contains(sellPath + ".pp");
+        }
+
+        if (!hasVault && !hasPoints) {
+            return SellValue.oldValue(oldValue);
+        }
+
+        int vaultValue = readSellValue(fishConfig, sellPath + ".vault", multiplier);
+        int pointsValue = readSellValue(fishConfig, sellPath + ".playerpoints", multiplier);
+        if (pointsValue == SellValue.NOT_SET) {
+            pointsValue = readSellValue(fishConfig, sellPath + ".points", multiplier);
+        }
+        if (pointsValue == SellValue.NOT_SET) {
+            pointsValue = readSellValue(fishConfig, sellPath + ".pp", multiplier);
+        }
+
+        return SellValue.raw(oldValue, vaultValue, pointsValue);
+    }
+
+    private int readSellValue(FileConfiguration fishConfig, String path, double multiplier) {
+        if (!fishConfig.contains(path)) {
+            return SellValue.NOT_SET;
+        }
+
+        double base = fishConfig.getDouble(path, 0.0);
+        if (base <= 0) return 0;
+        return Math.max(1, (int) Math.round(base * multiplier));
     }
 
     public String getEffectDisplayName(String effect) {

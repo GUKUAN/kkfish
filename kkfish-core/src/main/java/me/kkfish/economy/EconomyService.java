@@ -2,6 +2,7 @@ package me.kkfish.economy;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.UUID;
 
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.OfflinePlayer;
@@ -20,6 +21,52 @@ import me.kkfish.misc.MessageManager;
  * 提供单一入口查询经济可用性、存款、取款、查询余额、点数操作。</p>
  */
 public class EconomyService {
+
+    public enum RewardType {
+        VAULT,
+        PLAYER_POINTS,
+        NONE
+    }
+
+    public static class SellPay {
+        private final int vaultAmount;
+        private final int pointsAmount;
+
+        public SellPay(int vaultAmount, int pointsAmount) {
+            this.vaultAmount = Math.max(0, vaultAmount);
+            this.pointsAmount = Math.max(0, pointsAmount);
+        }
+
+        public int getVaultAmount() {
+            return vaultAmount;
+        }
+
+        public int getPointsAmount() {
+            return pointsAmount;
+        }
+
+        public boolean hasAny() {
+            return vaultAmount > 0 || pointsAmount > 0;
+        }
+
+        public boolean hasBoth() {
+            return vaultAmount > 0 && pointsAmount > 0;
+        }
+
+        public int getTotalAmount() {
+            return vaultAmount + pointsAmount;
+        }
+
+        public SellPay add(SellPay other) {
+            if (other == null) return this;
+            return new SellPay(vaultAmount + other.vaultAmount, pointsAmount + other.pointsAmount);
+        }
+
+        public SellPay multiply(int amount) {
+            if (amount <= 0) return new SellPay(0, 0);
+            return new SellPay(vaultAmount * amount, pointsAmount * amount);
+        }
+    }
 
     private final kkfish plugin;
     private Economy economy;
@@ -92,10 +139,101 @@ public class EconomyService {
     }
 
     /**
-     * @return Vault 经济是否可用
+     * 按配置和插件可用性选择出售奖励落点。
+     *
+     * @param economyEnabled 经济总开关
+     * @param vaultEnabled   Vault 开关
+     * @param vaultReady     Vault 服务是否已连接
+     * @param pointsReady    PlayerPoints API 是否已连接
+     * @return 本次应该使用的经济类型
+     */
+    public static RewardType chooseRewardType(boolean economyEnabled, boolean vaultEnabled, boolean vaultReady, boolean pointsReady) {
+        if (!economyEnabled) {
+            return RewardType.NONE;
+        }
+        if (vaultEnabled && vaultReady) {
+            return RewardType.VAULT;
+        }
+        if (pointsReady) {
+            return RewardType.PLAYER_POINTS;
+        }
+        return RewardType.NONE;
+    }
+
+    public static RewardType chooseRewardType(boolean economyEnabled, boolean vaultEnabled, boolean pointsEnabled,
+                                              boolean vaultReady, boolean pointsReady, String primary, boolean fallback) {
+        if (!economyEnabled) {
+            return RewardType.NONE;
+        }
+
+        boolean canVault = vaultEnabled && vaultReady;
+        boolean canPoints = pointsEnabled && pointsReady;
+        boolean primaryPoints = isPlayerPointsName(primary);
+
+        if (primaryPoints) {
+            if (canPoints) return RewardType.PLAYER_POINTS;
+            if (fallback && canVault) return RewardType.VAULT;
+            return RewardType.NONE;
+        }
+
+        if (canVault) return RewardType.VAULT;
+        if (fallback && canPoints) return RewardType.PLAYER_POINTS;
+        return RewardType.NONE;
+    }
+
+    public static SellPay resolveSellPay(SellValue value, String primary, boolean fallback, boolean economyEnabled,
+                                         boolean vaultEnabled, boolean pointsEnabled, boolean vaultReady, boolean pointsReady) {
+        if (value == null || !economyEnabled) {
+            return new SellPay(0, 0);
+        }
+
+        boolean canVault = vaultEnabled && vaultReady;
+        boolean canPoints = pointsEnabled && pointsReady;
+
+        if (value.hasSplitValue()) {
+            int vaultAmount = value.getVaultValue() > 0 && canVault ? value.getVaultValue() : 0;
+            int pointsAmount = value.getPointsValue() > 0 && canPoints ? value.getPointsValue() : 0;
+            return new SellPay(vaultAmount, pointsAmount);
+        }
+
+        int oldValue = value.getOldValue();
+        if (oldValue <= 0) {
+            return new SellPay(0, 0);
+        }
+
+        boolean primaryPoints = isPlayerPointsName(primary);
+
+        if (primaryPoints) {
+            if (canPoints) return new SellPay(0, oldValue);
+            if (fallback && canVault) return new SellPay(oldValue, 0);
+            return new SellPay(0, 0);
+        }
+
+        if (canVault) return new SellPay(oldValue, 0);
+        if (fallback && canPoints) return new SellPay(0, oldValue);
+        return new SellPay(0, 0);
+    }
+
+    public RewardType getRewardType() {
+        return chooseRewardType(
+                plugin.getCustomConfig().isEconomyEnabled(),
+                plugin.getCustomConfig().isEconomySystemEnabled(),
+                plugin.getCustomConfig().isPlayerPointsEconomyEnabled(),
+                economy != null,
+                playerPointsAPI != null,
+                plugin.getCustomConfig().getPrimaryEconomy(),
+                plugin.getCustomConfig().isEconomyFallbackEnabled());
+    }
+
+    /**
+     * @return Vault 或 PlayerPoints 其中之一是否可用
      */
     public boolean isEconomyEnabled() {
-        return economy != null;
+        if (!plugin.getCustomConfig().isEconomyEnabled()) {
+            return false;
+        }
+        return (plugin.getCustomConfig().isEconomySystemEnabled() && economy != null)
+                || (plugin.getCustomConfig().isPlayerPointsEconomyEnabled() && playerPointsAPI != null);
     }
 
     /**
@@ -113,16 +251,52 @@ public class EconomyService {
         return playerPointsAPI;
     }
 
+    public SellPay resolveSellPay(SellValue value) {
+        return resolveSellPay(
+                value,
+                plugin.getCustomConfig().getPrimaryEconomy(),
+                plugin.getCustomConfig().isEconomyFallbackEnabled(),
+                plugin.getCustomConfig().isEconomyEnabled(),
+                plugin.getCustomConfig().isEconomySystemEnabled(),
+                plugin.getCustomConfig().isPlayerPointsEconomyEnabled(),
+                economy != null,
+                playerPointsAPI != null);
+    }
+
+    public boolean depositSellPay(OfflinePlayer player, SellPay pay) {
+        if (player == null || pay == null || !pay.hasAny()) return false;
+
+        boolean success = true;
+        if (pay.getVaultAmount() > 0) {
+            success = economy != null
+                    && economy.depositPlayer(player, pay.getVaultAmount()).transactionSuccess()
+                    && success;
+        }
+
+        if (pay.getPointsAmount() > 0) {
+            success = givePoints(player.getUniqueId(), pay.getPointsAmount()) && success;
+        }
+
+        return success;
+    }
+
     /**
-     * 给玩家存款。
+     * 给玩家发放经济奖励，Vault 可用时优先走 Vault，否则落到 PlayerPoints。
      *
      * @param player 目标玩家
      * @param amount 金额
      * @return 是否成功
      */
     public boolean deposit(OfflinePlayer player, double amount) {
-        if (economy == null) return false;
-        return economy.depositPlayer(player, amount).transactionSuccess();
+        if (player == null || amount <= 0) return false;
+        RewardType rewardType = getRewardType();
+        if (rewardType == RewardType.VAULT) {
+            return economy.depositPlayer(player, amount).transactionSuccess();
+        }
+        if (rewardType == RewardType.PLAYER_POINTS) {
+            return givePoints(player.getUniqueId(), amountToPoints(amount));
+        }
+        return false;
     }
 
     /**
@@ -133,8 +307,15 @@ public class EconomyService {
      * @return 是否成功
      */
     public boolean withdraw(OfflinePlayer player, double amount) {
-        if (economy == null) return false;
-        return economy.withdrawPlayer(player, amount).transactionSuccess();
+        if (player == null || amount <= 0) return false;
+        RewardType rewardType = getRewardType();
+        if (rewardType == RewardType.VAULT) {
+            return economy.withdrawPlayer(player, amount).transactionSuccess();
+        }
+        if (rewardType == RewardType.PLAYER_POINTS) {
+            return takePoints(player.getUniqueId(), amountToPoints(amount));
+        }
+        return false;
     }
 
     /**
@@ -144,8 +325,15 @@ public class EconomyService {
      * @return 余额，经济不可用时返回 0
      */
     public double getBalance(OfflinePlayer player) {
-        if (economy == null) return 0;
-        return economy.getBalance(player);
+        if (player == null) return 0;
+        RewardType rewardType = getRewardType();
+        if (rewardType == RewardType.VAULT) {
+            return economy.getBalance(player);
+        }
+        if (rewardType == RewardType.PLAYER_POINTS) {
+            return getPoints(player.getUniqueId());
+        }
+        return 0;
     }
 
     /**
@@ -155,9 +343,14 @@ public class EconomyService {
      * @param amount   点数
      * @return 是否成功
      */
-    public boolean givePoints(java.util.UUID playerId, int amount) {
+    public boolean givePoints(UUID playerId, int amount) {
         if (playerPointsAPI == null) return false;
         return playerPointsAPI.give(playerId, amount);
+    }
+
+    public boolean takePoints(UUID playerId, int amount) {
+        if (playerPointsAPI == null) return false;
+        return playerPointsAPI.take(playerId, amount);
     }
 
     /**
@@ -166,8 +359,18 @@ public class EconomyService {
      * @param playerId 玩家 UUID
      * @return 点数，不可用时返回 0
      */
-    public int getPoints(java.util.UUID playerId) {
+    public int getPoints(UUID playerId) {
         if (playerPointsAPI == null) return 0;
         return playerPointsAPI.look(playerId);
+    }
+
+    private int amountToPoints(double amount) {
+        return (int) Math.max(1, Math.round(amount));
+    }
+
+    private static boolean isPlayerPointsName(String name) {
+        return "playerpoints".equalsIgnoreCase(name)
+                || "points".equalsIgnoreCase(name)
+                || "pp".equalsIgnoreCase(name);
     }
 }

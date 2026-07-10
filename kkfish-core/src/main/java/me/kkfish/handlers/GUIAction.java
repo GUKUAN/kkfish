@@ -242,7 +242,7 @@ public class GUIAction {
     
     private void handleSellAction(Player player) {
         me.kkfish.kkfish kkfishPlugin = (me.kkfish.kkfish) plugin;
-        if (!kkfishPlugin.getCustomConfig().isEconomyEnabled()) {
+        if (!canUseSellEconomy(kkfishPlugin)) {
             player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "economy_not_enabled", "§c经济系统未启用，无法使用卖出功能！"));
             return;
         }
@@ -266,7 +266,7 @@ public class GUIAction {
         
         if (menuName.equalsIgnoreCase("sell_gui")) {
             me.kkfish.kkfish kkfishPlugin = (me.kkfish.kkfish) plugin;
-            if (!kkfishPlugin.getCustomConfig().isEconomyEnabled()) {
+            if (!canUseSellEconomy(kkfishPlugin)) {
                 player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "economy_not_enabled", "§c经济系统未启用，无法使用卖出功能！"));
                 return;
             }
@@ -386,5 +386,11 @@ public class GUIAction {
             command = command.replace("%p", player.getName());
             player.performCommand(command);
         }
+    }
+
+    private boolean canUseSellEconomy(me.kkfish.kkfish kkfishPlugin) {
+        return kkfishPlugin.getCustomConfig().isEconomyEnabled()
+                && kkfishPlugin.getEconomyService() != null
+                && kkfishPlugin.getEconomyService().isEconomyEnabled();
     }
 }

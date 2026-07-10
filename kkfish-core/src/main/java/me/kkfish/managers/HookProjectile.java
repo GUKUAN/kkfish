@@ -21,6 +21,7 @@ import me.kkfish.kkfish;
 import me.kkfish.fishing.HookMechanic;
 import me.kkfish.fishing.HookMechanicFactory;
 import me.kkfish.fishing.WaterType;
+import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.player.PlayerContext;
 import me.kkfish.player.PlayerContextStore;
@@ -151,9 +152,16 @@ public class HookProjectile {
             player.sendMessage(plugin.getMessageManager().getMessage("hook_no_permission", "§d你没有权限使用这个鱼钩材质！已自动切换为木质鱼钩。"));
         }
 
-        Material hookMaterial = fish.getPlayerHookMaterial(player);
-
-        hookEntity.getEquipment().setHelmet(new ItemStack(hookMaterial));
+        // 鱼钩头盔：优先尝试 IA 自定义物品
+        String hookMaterialStr = plugin.getCustomConfig().getHookMaterialStr(hookMaterialNameFromDB);
+        ItemStack helmetItem;
+        if (CustomItemHook.isCustomItemStr(hookMaterialStr)) {
+            helmetItem = CustomItemHook.createItemStack(hookMaterialStr, 1);
+        } else {
+            Material hookMaterial = fish.getPlayerHookMaterial(player);
+            helmetItem = new ItemStack(hookMaterial);
+        }
+        hookEntity.getEquipment().setHelmet(helmetItem);
         try {
             hookEntity.getEquipment().setHelmetDropChance(0);
         } catch (Exception e) {

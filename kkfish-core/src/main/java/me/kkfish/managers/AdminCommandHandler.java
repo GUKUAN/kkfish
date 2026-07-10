@@ -185,10 +185,17 @@ public class AdminCommandHandler {
     }
 
     /**
-     * 判断玩家是否手持鱼竿（含自定义鱼竿检测）。
+     * 判断玩家是否手持鱼竿（含自定义鱼竿检测），主手和副手都会检查。
      */
     public boolean hasFishingRod(Player player) {
         ItemStack item = player.getInventory().getItemInMainHand();
+        if (isFishingRod(item)) return true;
+        // 副手也检查
+        ItemStack offhand = player.getInventory().getItemInOffHand();
+        return isFishingRod(offhand);
+    }
+
+    private boolean isFishingRod(ItemStack item) {
         if (item == null || item.getType() == Material.AIR) {
             return false;
         }
