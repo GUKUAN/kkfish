@@ -369,12 +369,21 @@ public class MessageManager {
                 }
             }
 
+            // 修正旧版中文语言文件中参数顺序错误的 AuraSkills 提示，避免更新后继续刷屏。
+            if ("已为 %s 添加 %.1f 点钓鱼经验".equals(targetConfig.getString("aura_skills_added_xp"))) {
+                missingKeys.add("aura_skills_added_xp");
+            }
+
             if (missingKeys.isEmpty()) {
                 return true;
             }
 
             for (String key : missingKeys) {
-                targetConfig.set(key, defaultConfig.get(key));
+                if (key.equals("aura_skills_added_xp")) {
+                    targetConfig.set(key, "已为 %2$s 添加 %1$.1f 点钓鱼经验");
+                } else {
+                    targetConfig.set(key, defaultConfig.get(key));
+                }
             }
 
             targetConfig.save(targetLangFile);
