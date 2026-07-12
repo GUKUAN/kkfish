@@ -43,19 +43,19 @@ public class GiveCommandHandler {
      */
     public void giveItem(CommandSender sender, String targetName, String itemSpec, int amount) {
         if (!sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return;
         }
 
         Player target = plugin.getServer().getPlayer(targetName);
         if (target == null) {
-            sender.sendMessage(messageManager.getMessage("player_not_found", "§d找不到玩家: %s", targetName));
+            sender.sendMessage(messageManager.getMessage("player_not_found", "§dPlayer not found: %s", targetName));
             return;
         }
 
         String[] parts = itemSpec.split(":");
         if (parts.length != 2) {
-            sender.sendMessage(messageManager.getMessage("item_format_error", "§d物品格式错误，请使用: fish:鱼名 或 rod:鱼竿名 或 baits:鱼饵名"));
+            sender.sendMessage(messageManager.getMessage("item_format_error", "§dItem format error, use: fish:<name> or rod:<name> or baits:<name>"));
             return;
         }
 
@@ -72,7 +72,7 @@ public class GiveCommandHandler {
             } else if ("baits".equals(itemType)) {
                 item = createBaitItem(itemName);
             } else {
-                sender.sendMessage(messageManager.getMessage("unknown_item_type", "§d未知物品类型，请使用: fish 或 rod 或 baits"));
+                sender.sendMessage(messageManager.getMessage("unknown_item_type", "§dUnknown item type, use: fish, rod or baits"));
                 return;
             }
 
@@ -80,8 +80,8 @@ public class GiveCommandHandler {
                 item.setAmount(amount);
 
                 target.getInventory().addItem(item);
-                sender.sendMessage(messageManager.getMessage("give_success", "§d已给予玩家 %s 物品: %s x%d", targetName, itemName, amount));
-                target.sendMessage(messageManager.getMessage("receive_item", "§d你收到了物品: %s x%d", itemName, amount));
+                sender.sendMessage(messageManager.getMessage("give_success", "§dGave player %s item: %s x%d", targetName, itemName, amount));
+                target.sendMessage(messageManager.getMessage("receive_item", "§dReceived item: %s x%d", itemName, amount));
 
                 if ("baits".equals(itemType) && plugin.getCustomConfig().isAutoEquipBaitEnabled()) {
                     ItemStack offhandItem = target.getInventory().getItemInOffHand();
@@ -96,14 +96,14 @@ public class GiveCommandHandler {
                             target.getInventory().remove(item);
                         }
 
-                        target.sendMessage(plugin.getMessageManager().getMessage("bait_auto_equipped", "§a已自动装备一个鱼饵到副手！"));
+                        target.sendMessage(plugin.getMessageManager().getMessage("bait_auto_equipped", "§aAuto-equipped a bait to offhand!"));
                     }
                 }
             } else {
-                sender.sendMessage(messageManager.getMessage("item_not_found", "§d找不到物品: %s", itemName));
+                sender.sendMessage(messageManager.getMessage("item_not_found", "§dItem not found: %s", itemName));
             }
         } catch (Exception e) {
-            sender.sendMessage(messageManager.getMessage("give_error", "§d给予物品时发生错误"));
+            sender.sendMessage(messageManager.getMessage("give_error", "§dError giving item"));
             e.printStackTrace();
         }
     }
@@ -204,29 +204,29 @@ public class GiveCommandHandler {
 
         int durability = configManager.getRodDurability(rodName);
         if (durability > 0) {
-            String unit = messageManager.getMessageWithoutPrefix("rod_durability_unit", "点");
-            String full = messageManager.getMessageWithoutPrefix("rod_durability_full", "(满)");
+            String unit = messageManager.getMessageWithoutPrefix("rod_durability_unit", "points");
+            String full = messageManager.getMessageWithoutPrefix("rod_durability_full", "(full)");
             variables.put("%durability%", durability + unit + " " + full);
         } else {
-            variables.put("%durability%", messageManager.getMessageWithoutPrefix("rod_durability_infinite", "无限耐久"));
+            variables.put("%durability%", messageManager.getMessageWithoutPrefix("rod_durability_infinite", "Unlimited durability"));
         }
 
         double chargeSpeed = configManager.getRodChargeSpeed(rodName);
         String speedText;
         if (chargeSpeed != 1.0) {
             String speedType = chargeSpeed > 1.0 ?
-                    messageManager.getMessageWithoutPrefix("rod_charge_speed_fast", "加速") :
-                    messageManager.getMessageWithoutPrefix("rod_charge_speed_slow", "减速");
+                    messageManager.getMessageWithoutPrefix("rod_charge_speed_fast", "faster") :
+                    messageManager.getMessageWithoutPrefix("rod_charge_speed_slow", "slower");
             speedText = String.format("%.1f倍 (" + speedType + ")", chargeSpeed);
         } else {
-            speedText = messageManager.getMessageWithoutPrefix("rod_charge_speed_normal", "正常");
+            speedText = messageManager.getMessageWithoutPrefix("rod_charge_speed_normal", "normal");
         }
         variables.put("%charge_speed%", speedText);
 
         double biteRateBonus = configManager.getRodBiteRateBonus(rodName);
         variables.put("%bite_rate_bonus%", biteRateBonus > 0 ?
                 String.format("+%.1f%%", biteRateBonus * 100) :
-                messageManager.getMessageWithoutPrefix("rod_bite_rate_bonus_none", "无"));
+                messageManager.getMessageWithoutPrefix("rod_bite_rate_bonus_none", "none"));
 
         List<String> effects = configManager.getRodEffects(rodName);
         StringBuilder effectsBuilder = new StringBuilder();
@@ -235,7 +235,7 @@ public class GiveCommandHandler {
                 effectsBuilder.append("&7  └─ &r").append(ChatColor.translateAlternateColorCodes('&', effect)).append("\n");
             }
         } else {
-            effectsBuilder.append("&7  └─ " + messageManager.getMessageWithoutPrefix("rod_effects_none", "无特殊效果") + "\n");
+            effectsBuilder.append("&7  └─ " + messageManager.getMessageWithoutPrefix("rod_effects_none", "No special effects") + "\n");
         }
         variables.put("%effects%", effectsBuilder.toString());
 
@@ -321,15 +321,15 @@ public class GiveCommandHandler {
 
                     if (effectType.equals("rare")) {
                             effectDesc = ChatColor.translateAlternateColorCodes('&',
-                                messageManager.getMessageWithoutPrefix("bait_effect_rare", "稀有鱼几率 +") +
+                                messageManager.getMessageWithoutPrefix("bait_effect_rare", "Rare fish chance +") +
                                 String.format("%.1f%%", value * 100));
                         } else if (effectType.equals("size")) {
                             effectDesc = ChatColor.translateAlternateColorCodes('&',
-                                messageManager.getMessageWithoutPrefix("bait_effect_size", "鱼的大小 +") +
+                                messageManager.getMessageWithoutPrefix("bait_effect_size", "Fish size +") +
                                 String.format("%.1f%%", value * 100));
                         } else if (effectType.equals("bite")) {
                             effectDesc = ChatColor.translateAlternateColorCodes('&',
-                                messageManager.getMessageWithoutPrefix("bait_effect_bite", "咬钩几率 +") +
+                                messageManager.getMessageWithoutPrefix("bait_effect_bite", "Bite chance +") +
                                 String.format("%.1f%%", value * 100));
                         }
 
@@ -348,26 +348,26 @@ public class GiveCommandHandler {
                 if (!effect.equals("none")) {
                     if (effect.equals("rare")) {
                         effectsBuilder.append(ChatColor.translateAlternateColorCodes('&',
-                            messageManager.getMessageWithoutPrefix("bait_effect_rare", "稀有鱼几率 +") +
+                            messageManager.getMessageWithoutPrefix("bait_effect_rare", "Rare fish chance +") +
                             String.format("%.1f%%", value * 100)));
                     } else if (effect.equals("size")) {
                         effectsBuilder.append(ChatColor.translateAlternateColorCodes('&',
-                            messageManager.getMessageWithoutPrefix("bait_effect_size", "鱼的大小 +") +
+                            messageManager.getMessageWithoutPrefix("bait_effect_size", "Fish size +") +
                             String.format("%.1f%%", value * 100)));
                     } else if (effect.equals("bite")) {
                         effectsBuilder.append(ChatColor.translateAlternateColorCodes('&',
-                            messageManager.getMessageWithoutPrefix("bait_effect_bite", "咬钩几率 +") +
+                            messageManager.getMessageWithoutPrefix("bait_effect_bite", "Bite chance +") +
                             String.format("%.1f%%", value * 100)));
                     }
                 }
             }
         } else {
-            effectsBuilder.append(ChatColor.translateAlternateColorCodes('&', messageManager.getMessageWithoutPrefix("bait_no_effects", "无特殊效果")));
+            effectsBuilder.append(ChatColor.translateAlternateColorCodes('&', messageManager.getMessageWithoutPrefix("bait_no_effects", "No special effects")));
         }
 
         String description = configManager.getBaitConfig().getString("baits." + baitName + ".description", "");
         if (description.isEmpty()) {
-            description = ChatColor.translateAlternateColorCodes('&', messageManager.getMessageWithoutPrefix("bait_default_description", "一种特殊的鱼饵"));
+            description = ChatColor.translateAlternateColorCodes('&', messageManager.getMessageWithoutPrefix("bait_default_description", "A special bait"));
         } else {
             description = ChatColor.translateAlternateColorCodes('&', description);
         }
@@ -385,9 +385,9 @@ public class GiveCommandHandler {
 
         String permission = "kkfish.baits.use." + baitName;
         lore.add("");
-        lore.add(ChatColor.translateAlternateColorCodes('&', messageManager.getMessageWithoutPrefix("bait_permission_text", "权限: ") + ChatColor.WHITE + permission));
+        lore.add(ChatColor.translateAlternateColorCodes('&', messageManager.getMessageWithoutPrefix("bait_permission_text", "Permission: ") + ChatColor.WHITE + permission));
 
-        lore.add(ChatColor.translateAlternateColorCodes('&', messageManager.getMessageWithoutPrefix("bait_usage_text", "放于副手，蓄力抛出时消耗")));
+        lore.add(ChatColor.translateAlternateColorCodes('&', messageManager.getMessageWithoutPrefix("bait_usage_text", "Hold in offhand, consumed when casting")));
 
         meta.setLore(lore);
 

@@ -189,7 +189,7 @@ public class BiteCheckScheduler {
     }
 
     private void handleFishEscape(Player player) {
-        ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("fish_escape", "鱼儿跑掉了..."), 40, MessageType.FISHING);
+        ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("fish_escape", "The fish got away..."), 40, MessageType.FISHING);
         plugin.getSoundManager().playFailSound(player.getLocation());
 
         PlayerContext ctx = getContext(player);
@@ -225,7 +225,7 @@ public class BiteCheckScheduler {
 
         sendFloatingText(player, hookLocation, hintText, 20, 20, 20);
 
-        ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("fish_bite", "有鱼咬钩了！点击右键或蹲下开始钓鱼小游戏！"), hintTimeoutSeconds * 20, MessageType.FISHING);
+        ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("fish_bite", "A fish is biting! Right-click or sneak to start the minigame!"), hintTimeoutSeconds * 20, MessageType.FISHING);
 
         BukkitRunnable expireTask = new BukkitRunnable() {
             @Override
@@ -358,7 +358,14 @@ public class BiteCheckScheduler {
 
             Player player = Bukkit.getPlayer(playerId);
             if (player != null && player.isOnline() && sendEscapeMessage) {
-                ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("fish_escape", "鱼儿跑掉了..."), 40, MessageType.FISHING);
+                ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("fish_escape", "The fish got away..."), 40, MessageType.FISHING);
+            }
+            // 咬钩超时也要清理钓鱼会话，否则玩家无法再次钓鱼
+            if (fish != null) {
+                Player player2 = Bukkit.getPlayer(playerId);
+                if (player2 != null) {
+                    fish.endSession(player2);
+                }
             }
         }
     }
@@ -370,7 +377,7 @@ public class BiteCheckScheduler {
         RuntimeData.BiteHintData data = ctx.getRuntime().getBiteHintData();
 
         if (data != null && !data.isExpired()) {
-            String hookedText = messageManager.getMessageWithoutPrefix("fishing_hooked", "上钩了!");
+            String hookedText = messageManager.getMessageWithoutPrefix("fishing_hooked", "Hooked!");
 
             Location hookLocation = player.getLocation();
             ArmorStand hookEntity = ctx.getSession().getFishingSession();

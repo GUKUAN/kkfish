@@ -41,6 +41,7 @@ public class GUI {
     // 拆分后的组件
     private final GUICommons commons;
     private final HookMaterialGUIHandler hookMaterialHandler;
+    private final RodShopGUIHandler rodShopHandler;
     private final FishDexGUIHandler fishDexHandler;
     private final CompetitionGUIHandler competitionHandler;
 
@@ -48,6 +49,7 @@ public class GUI {
     public enum GUIType {
         MAIN_MENU,
         HOOK_MATERIAL,
+        ROD_SHOP,
         FISH_DEX,
         FISH_RECORD,
         HELP_GUI,
@@ -71,11 +73,13 @@ public class GUI {
         // 初始化拆分后的组件
         this.commons = new GUICommons(plugin, config, db, messageManager, menuLoader);
         this.hookMaterialHandler = new HookMaterialGUIHandler(plugin, config, db, messageManager, menuLoader);
+        this.rodShopHandler = new RodShopGUIHandler(plugin, config, db, messageManager, menuLoader);
         this.fishDexHandler = new FishDexGUIHandler(plugin, config, db, messageManager);
         this.competitionHandler = new CompetitionGUIHandler(plugin, config, messageManager);
 
         // 注入 Handler 引用，使 GUICommons.fillMenuItems 能分派到各 Handler
         this.commons.setHookMaterialHandler(this.hookMaterialHandler);
+        this.commons.setRodShopHandler(this.rodShopHandler);
         this.commons.setFishDexHandler(this.fishDexHandler);
         this.commons.setCompetitionHandler(this.competitionHandler);
 
@@ -111,6 +115,8 @@ public class GUI {
             menuName = "main_menu";
         } else if (type == GUIType.HOOK_MATERIAL) {
             menuName = "hook_material";
+        } else if (type == GUIType.ROD_SHOP) {
+            menuName = "rod_shop";
         } else if (type == GUIType.FISH_DEX) {
             menuName = "fish_dex";
         } else if (type == GUIType.FISH_RECORD) {
@@ -217,6 +223,28 @@ public class GUI {
         return hookMaterialHandler.getCurrentHookMaterialPage(player);
     }
 
+    // ==================== 鱼竿商店委派 ====================
+
+    public void openRodShop(Player player) {
+        openGUI(player, GUIType.ROD_SHOP);
+    }
+
+    public void handleRodShopPage(Player player, boolean next) {
+        rodShopHandler.handleRodShopPage(player, next);
+    }
+
+    public String getRodIdFromSlot(Player player, int slot, int page) {
+        return rodShopHandler.getRodIdFromSlot(player, slot, page);
+    }
+
+    public int getCurrentRodShopPage(Player player) {
+        return rodShopHandler.getCurrentRodShopPage(player);
+    }
+
+    public RodShopGUIHandler getRodShopHandler() {
+        return rodShopHandler;
+    }
+
     // ==================== 鱼类图鉴委派 ====================
 
     public void handleFishDexPage(Player player, boolean next) {
@@ -228,6 +256,7 @@ public class GUI {
     public void handlePlayerQuit(Player player) {
         fishDexHandler.handlePlayerQuit(player);
         hookMaterialHandler.handlePlayerQuit(player);
+        rodShopHandler.handlePlayerQuit(player);
     }
 
     // ==================== 访问器 ====================

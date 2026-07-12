@@ -113,6 +113,31 @@ sell_success_points: "&a成功出售 &e%s &a条鱼，获得 &e%s &a点券!"
 sell_success_both: "&a成功出售 &e%s &a条鱼，获得 &e%s &a金币和 &e%s &a点券!"
 sell_success_items: "&a成功出售 &e%s &a条鱼，获得物品奖励!"
 sell_operation_failed: "§c出售操作失败，请稍后再试。"
+sell_usage: "§d用法: /kf sell <all|hand>"
+sell_invalid_option: "§d无效的选项，请使用all或hand"
+
+# 解锁/锁定命令
+unlock_all_success_op: "§a已成功为玩家%s解锁了%s种鱼类图鉴！"
+unlock_all_success_player: "§a管理员已为你解锁了所有鱼类图鉴！"
+unlock_success_op: "§a已成功为玩家%s解锁了鱼类图鉴: %s"
+unlock_success_player: "§a管理员已为你解锁了鱼类图鉴: %s"
+lock_all_success_op: "§a已成功为玩家%s锁定了所有鱼类图鉴！"
+lock_all_success_player: "§a管理员已为你锁定了所有鱼类图鉴！"
+lock_success_op: "§a已成功为玩家%s锁定了鱼类图鉴: %s"
+lock_success_player: "§a管理员已为你锁定了鱼类图鉴: %s"
+
+# 杂项
+fish_not_found: "§c未找到鱼类: %s"
+empty_hand: "§c请手持要添加的物品"
+player_only_command: "§c此命令只能由玩家在游戏内执行！"
+default_rod_crafted: "§a你的钓鱼竿已升级为默认钓鱼竿！"
+rod_durability_unit: "点"
+rod_durability_full: "(满)"
+rod_charge_speed_fast: "加速"
+rod_charge_speed_slow: "减速"
+rod_charge_speed_normal: "正常"
+rod_bite_rate_bonus_none: "无"
+rod_effects_none: "无特殊效果"
 
 # 管理员帮助出售
 sell_help_all_success_op: "&a已帮助玩家 %s 出售所有鱼类！获得了 %s 金币～"

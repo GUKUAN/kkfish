@@ -348,9 +348,9 @@ public class GUIListener implements Listener {
                                     inventory.setItem(i, null);
                                 }
                             }
-                            player.sendMessage(guiMessage.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                            player.sendMessage(guiMessage.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
                             if (refundCount > 0) {
-                                player.sendMessage(guiMessage.getMessage("sell_refund", "§c无法卖出 &e%s &c个物品，已退还到背包", refundCount));
+                                player.sendMessage(guiMessage.getMessage("sell_refund", "§cUnable to sell &e%s &citems, returned to inventory", refundCount));
                             }
                             return;
                         }
@@ -376,19 +376,19 @@ public class GUIListener implements Listener {
                         if (soldCount > 0) {
                             if (batch.getPay().hasAny()) {
                                 player.sendMessage(batchSell.sellRewardMessage("sell_success", batch.getPay(),
-                                        "§a成功卖出 &e%s &a条鱼，获得 &e%s &a金币",
-                                        "§a成功卖出 &e%s &a条鱼，获得 &e%s &a点券",
-                                        "§a成功卖出 &e%s &a条鱼，获得 &e%s &a金币和 &e%s &a点券",
+                                        "§aSuccessfully sold &e%s &afish, received &e%s &acoins",
+                                        "§aSuccessfully sold &e%s &afish, received &e%s &apoints",
+                                        "§aSuccessfully sold &e%s &afish, received &e%s &acoins and &e%s &apoints",
                                         soldCount));
                             } else if (batch.hasItemRewards()) {
-                                player.sendMessage(guiMessage.getMessage("sell_success_items", "§a成功卖出 &e%s &a条鱼，获得物品奖励", soldCount));
+                                player.sendMessage(guiMessage.getMessage("sell_success_items", "§aSuccessfully sold &e%s &afish, received item rewards", soldCount));
                             }
                         }
                         if (refundCount > 0) {
-                            player.sendMessage(guiMessage.getMessage("sell_refund", "§c无法卖出 &e%s &c个物品，已退还到背包", refundCount));
+                            player.sendMessage(guiMessage.getMessage("sell_refund", "§cUnable to sell &e%s &citems, returned to inventory", refundCount));
                         }
                         if (soldCount == 0 && refundCount == 0) {
-                            player.sendMessage(guiMessage.getMessage("sell_empty", "§e卖出界面中没有可处理的物品"));
+                            player.sendMessage(guiMessage.getMessage("sell_empty", "§eNo items to process in the sell GUI"));
                         }
 
                         return;
@@ -420,14 +420,14 @@ public class GUIListener implements Listener {
                 if (soldCount > 0) {
                     me.kkfish.managers.SellCommandHandler sellHandler = plugin.getCmd().getSellHandler();
                     player.sendMessage(messageManager.getMessage(sellHandler.sellRewardKey("sell_success"),
-                            sellHandler.isPointRewardActive() ? "§a成功卖出 &e%s &a条鱼，获得 &e%s &a点券" : "§a成功卖出 &e%s &a条鱼，获得 &e%s &a金币",
+                            sellHandler.isPointRewardActive() ? "§aSuccessfully sold &e%s &afish, received &e%s &apoints" : "§aSuccessfully sold &e%s &afish, received &e%s &acoins",
                             soldCount, totalValue));
                 }
                 if (refundCount > 0) {
-                    player.sendMessage(messageManager.getMessage("sell_refund", "§c无法卖出 &e%s &c个物品，已退还到背包", refundCount));
+                    player.sendMessage(messageManager.getMessage("sell_refund", "§cUnable to sell &e%s &citems, returned to inventory", refundCount));
                 }
                 if (soldCount == 0 && refundCount == 0) {
-                    player.sendMessage(messageManager.getMessage("sell_empty", "§e卖出界面中没有可处理的物品"));
+                    player.sendMessage(messageManager.getMessage("sell_empty", "§eNo items to process in the sell GUI"));
                 }
                 
                 return;

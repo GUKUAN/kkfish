@@ -33,7 +33,7 @@ public class AdminCommandHandler {
 
         if ("all".equalsIgnoreCase(fishName)) {
             if (!configManager.getFishConfig().contains("fish")) {
-                sender.sendMessage(plugin.getMessageManager().getMessage("no_fish_data", "§c配置文件中没有鱼类数据！"));
+                sender.sendMessage(plugin.getMessageManager().getMessage("no_fish_data", "§cNo fish data found in config!"));
                 return;
             }
 
@@ -47,11 +47,11 @@ public class AdminCommandHandler {
                 unlockedCount++;
             }
 
-            sender.sendMessage(plugin.getMessageManager().getMessage("unlock_all_success_op", "§a已成功为玩家%s解锁了%s种鱼类图鉴！", targetPlayer.getName(), unlockedCount));
-            targetPlayer.sendMessage(plugin.getMessageManager().getMessage("unlock_all_success_player", "§a管理员已为你解锁了所有鱼类图鉴！"));
+            sender.sendMessage(plugin.getMessageManager().getMessage("unlock_all_success_op", "§aSuccessfully unlocked %s fish dex entries for player %s!", targetPlayer.getName(), unlockedCount));
+            targetPlayer.sendMessage(plugin.getMessageManager().getMessage("unlock_all_success_player", "§aAn admin has unlocked all fish dex entries for you!"));
         } else {
             if (!configManager.getFishConfig().contains("fish." + fishName)) {
-                sender.sendMessage(plugin.getMessageManager().getMessage("fish_not_found", "§c未找到鱼类: %s", fishName));
+                sender.sendMessage(plugin.getMessageManager().getMessage("fish_not_found", "§cFish not found: %s", fishName));
                 return;
             }
 
@@ -61,8 +61,8 @@ public class AdminCommandHandler {
 
             dbManager.unlockFishForPlayer(targetPlayer.getUniqueId().toString(), fishName, unlockSize);
 
-            sender.sendMessage(plugin.getMessageManager().getMessage("unlock_success_op", "§a已成功为玩家%s解锁了鱼类图鉴: %s", targetPlayer.getName(), fishName));
-            targetPlayer.sendMessage(plugin.getMessageManager().getMessage("unlock_success_player", "§a管理员已为你解锁了鱼类图鉴: %s", fishName));
+            sender.sendMessage(plugin.getMessageManager().getMessage("unlock_success_op", "§aSuccessfully unlocked fish dex entry %s for player %s", targetPlayer.getName(), fishName));
+            targetPlayer.sendMessage(plugin.getMessageManager().getMessage("unlock_success_player", "§aAn admin has unlocked fish dex entry %s for you", fishName));
         }
     }
 
@@ -75,18 +75,18 @@ public class AdminCommandHandler {
 
         if ("all".equalsIgnoreCase(fishName)) {
             dbManager.lockFishForPlayer(targetPlayer.getUniqueId().toString(), fishName);
-            sender.sendMessage(plugin.getMessageManager().getMessage("lock_all_success_op", "§a已成功为玩家%s锁定了所有鱼类图鉴！", targetPlayer.getName()));
-            targetPlayer.sendMessage(plugin.getMessageManager().getMessage("lock_all_success_player", "§a管理员已为你锁定了所有鱼类图鉴！"));
+            sender.sendMessage(plugin.getMessageManager().getMessage("lock_all_success_op", "§aSuccessfully locked all fish dex entries for player %s!", targetPlayer.getName()));
+            targetPlayer.sendMessage(plugin.getMessageManager().getMessage("lock_all_success_player", "§aAn admin has locked all fish dex entries for you!"));
         } else {
             if (!configManager.getFishConfig().contains("fish." + fishName)) {
-                sender.sendMessage(plugin.getMessageManager().getMessage("fish_not_found", "§c未找到鱼类: %s", fishName));
+                sender.sendMessage(plugin.getMessageManager().getMessage("fish_not_found", "§cFish not found: %s", fishName));
                 return;
             }
 
             dbManager.lockFishForPlayer(targetPlayer.getUniqueId().toString(), fishName);
 
-            sender.sendMessage(plugin.getMessageManager().getMessage("lock_success_op", "§a已成功为玩家%s锁定了鱼类图鉴: %s", targetPlayer.getName(), fishName));
-            targetPlayer.sendMessage(plugin.getMessageManager().getMessage("lock_success_player", "§a管理员已为你锁定了鱼类图鉴: %s", fishName));
+            sender.sendMessage(plugin.getMessageManager().getMessage("lock_success_op", "§aSuccessfully locked fish dex entry %s for player %s", targetPlayer.getName(), fishName));
+            targetPlayer.sendMessage(plugin.getMessageManager().getMessage("lock_success_player", "§aAn admin has locked fish dex entry %s for you", fishName));
         }
     }
 
@@ -95,7 +95,7 @@ public class AdminCommandHandler {
      */
     public void checkVersion(CommandSender sender) {
         final String currentVersion = plugin.getDescription().getVersion();
-        sender.sendMessage(messageManager.getMessage("checking_update", "§e正在检查更新..."));
+        sender.sendMessage(messageManager.getMessage("checking_update", "§eChecking for updates..."));
 
         final UpdateChecker updateChecker = new UpdateChecker(plugin);
         final CommandSender finalSender = sender;
@@ -157,12 +157,12 @@ public class AdminCommandHandler {
      */
     public void handleModeCommand(CommandSender sender, String[] args) {
         if (!plugin.getCustomConfig().isCommandSwitchEnabled()) {
-            sender.sendMessage(messageManager.getMessage("mode_switch_command_disabled", "&c指令切换钓鱼模式功能已被禁用"));
+            sender.sendMessage(messageManager.getMessage("mode_switch_command_disabled", "&cCommand mode switching is disabled"));
             return;
         }
 
         if (!(sender instanceof Player)) {
-            sender.sendMessage(messageManager.getMessage("command_in_game_only", "&d此命令只能在游戏内使用！"));
+            sender.sendMessage(messageManager.getMessage("command_in_game_only", "&dThis command can only be used in-game!"));
             return;
         }
 
@@ -170,7 +170,7 @@ public class AdminCommandHandler {
         String worldName = player.getWorld().getName();
 
         if (!plugin.getCustomConfig().isWorldAllowed(worldName)) {
-            sender.sendMessage(messageManager.getMessage("mode_switch_world_not_allowed", "&c当前世界不允许切换钓鱼模式"));
+            sender.sendMessage(messageManager.getMessage("mode_switch_world_not_allowed", "&cMode switching is not allowed in this world"));
             return;
         }
 
@@ -180,8 +180,8 @@ public class AdminCommandHandler {
         plugin.setPlayerFishingMode(player.getUniqueId(), newIsVanilla);
 
         String modeKey = newIsVanilla ? "mode_switch_mode_vanilla" : "mode_switch_mode_plugin";
-        String modeName = messageManager.getMessageWithoutPrefix(modeKey, newIsVanilla ? "原版钓鱼模式" : "插件钓鱼模式");
-        sender.sendMessage(messageManager.getMessage("mode_switch_success", "&a钓鱼模式切换成功！当前模式: %s", modeName));
+        String modeName = messageManager.getMessageWithoutPrefix(modeKey, newIsVanilla ? "Vanilla fishing mode" : "Plugin fishing mode");
+        sender.sendMessage(messageManager.getMessage("mode_switch_success", "&aFishing mode switched! Current mode: %s", modeName));
     }
 
     /**

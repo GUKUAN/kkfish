@@ -113,7 +113,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
                 adminHandler.handleModeCommand(sender, args);
                 break;
             default:
-                sender.sendMessage(messageManager.getMessage("unknown_command", "§c未知命令，请使用 /kkfish help 查看可用命令。"));
+                sender.sendMessage(messageManager.getMessage("unknown_command", "§cUnknown command, use /kkfish help to see available commands."));
                 break;
         }
 
@@ -124,7 +124,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
 
     private void handleGive(CommandSender sender, String[] args) {
         if (!sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return;
         }
 
@@ -139,13 +139,13 @@ public class Cmd implements CommandExecutor, TabCompleter {
                         amount = 64;
                     }
                 } catch (NumberFormatException e) {
-                    sender.sendMessage(messageManager.getMessage("invalid_number", "§d无效的数量，将使用默认值1"));
+                    sender.sendMessage(messageManager.getMessage("invalid_number", "§dInvalid amount, using default value 1"));
                     amount = 1;
                 }
             }
             giveHandler.giveItem(sender, args[1], args[2], amount);
         } else {
-            sender.sendMessage(messageManager.getMessage("give_usage", "§d用法: /kkfish give <玩家名> <物品名> [数量]"));
+            sender.sendMessage(messageManager.getMessage("give_usage", "§dUsage: /kkfish give <player> <item_name> [amount]"));
         }
     }
 
@@ -156,7 +156,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
             Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
 
             if (targetPlayer == null) {
-                sender.sendMessage(messageManager.getMessage("player_not_found", "§d找不到玩家: %s", targetPlayerName));
+                sender.sendMessage(messageManager.getMessage("player_not_found", "§dPlayer not found: %s", targetPlayerName));
                 return;
             }
 
@@ -187,19 +187,24 @@ public class Cmd implements CommandExecutor, TabCompleter {
                     plugin.getGUI().openHelp(targetPlayer);
                     guiOpened = true;
                     break;
+                case "rodshop":
+                case "rods":
+                    plugin.getGUI().openRodShop(targetPlayer);
+                    guiOpened = true;
+                    break;
                 default:
-                    sender.sendMessage(messageManager.getMessage("gui_unknown_type", "§c未知的GUI类型，请使用 main, hook, dex, record 或 help"));
+                    sender.sendMessage(messageManager.getMessage("gui_unknown_type", "§cUnknown GUI type, use main, hook, dex, record, help or rodshop"));
                     break;
             }
 
             if (guiOpened && !(sender instanceof Player)) {
-                sender.sendMessage(messageManager.getMessage("gui_opened_for_player", "§a已为玩家%s打开了%s界面～", targetPlayer.getName(), guiType));
+                sender.sendMessage(messageManager.getMessage("gui_opened_for_player", "§aOpened %s GUI for player %s~", targetPlayer.getName(), guiType));
             }
         } else if (sender instanceof Player) {
             Player player = (Player) sender;
 
             if (args.length < 2) {
-                plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("command_gui_permission_check", "玩家 %s 尝试使用GUI命令，权限检查结果: kkfish.use=%s", player.getName(), player.hasPermission("kkfish.use")));
+                plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("command_gui_permission_check", "Player %s attempted to use GUI command, permission check: kkfish.use=%s", player.getName(), player.hasPermission("kkfish.use")));
                 plugin.getGUI().openMainMenu(player);
             } else {
                 String guiType = args[1].toLowerCase();
@@ -224,19 +229,23 @@ public class Cmd implements CommandExecutor, TabCompleter {
                     case "help":
                         plugin.getGUI().openHelp(player);
                         break;
+                    case "rodshop":
+                    case "rods":
+                        plugin.getGUI().openRodShop(player);
+                        break;
                     default:
-                        player.sendMessage(messageManager.getMessage("gui_unknown_type", "§c未知的GUI类型，请使用 main, hook, dex, record 或 help"));
+                        player.sendMessage(messageManager.getMessage("gui_unknown_type", "§cUnknown GUI type, use main, hook, dex, record, help or rodshop"));
                         break;
                 }
             }
         } else {
-            sender.sendMessage(messageManager.getMessage("gui_console_usage", "§c控制台必须指定玩家名，请使用: /kf gui <gui类型> <玩家名>"));
+            sender.sendMessage(messageManager.getMessage("gui_console_usage", "§cConsole must specify player name, use: /kf gui <gui_type> <player>"));
         }
     }
 
     private void handleSellGui(CommandSender sender, String[] args) {
         if (!isPriceAvailable()) {
-            sender.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法使用卖出功能！"));
+            sender.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, selling is unavailable!"));
             return;
         }
         if (sender instanceof Player) {
@@ -248,25 +257,25 @@ public class Cmd implements CommandExecutor, TabCompleter {
                 Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
                 if (targetPlayer != null) {
                     plugin.getGUI().openSellGUI(targetPlayer);
-                    sender.sendMessage(messageManager.getMessage("gui_opened_for_player", "已为玩家%s打开了卖出界面", targetPlayer.getName()));
+                    sender.sendMessage(messageManager.getMessage("gui_opened_for_player", "Opened sell GUI for player %s", targetPlayer.getName()));
                 } else {
-                    sender.sendMessage(messageManager.getMessage("player_not_found", "找不到玩家: %s", targetPlayerName));
+                    sender.sendMessage(messageManager.getMessage("player_not_found", "Player not found: %s", targetPlayerName));
                 }
             } else {
-                sender.sendMessage(messageManager.getMessage("gui_console_usage", "控制台必须指定玩家名，请使用: /kf sellgui <玩家名>"));
+                sender.sendMessage(messageManager.getMessage("gui_console_usage", "Console must specify player name, use: /kf sellgui <player>"));
             }
         }
     }
 
     private void handleSell(CommandSender sender, String[] args) {
         if (!isPriceAvailable()) {
-            sender.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法使用出售功能！"));
+            sender.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, selling is unavailable!"));
             return;
         }
         if (args.length < 2) {
-            sender.sendMessage(messageManager.getMessage("sell_usage", "§d用法: /kf sell <all|hand>"));
+            sender.sendMessage(messageManager.getMessage("sell_usage", "§dUsage: /kf sell <all|hand>"));
             if (sender.hasPermission("kkfish.admin")) {
-                sender.sendMessage(plugin.getMessageManager().getMessage("sell_admin_usage", "§d管理员用法: /kf sell <all|hand> <玩家名>"));
+                sender.sendMessage(plugin.getMessageManager().getMessage("sell_admin_usage", "§dAdmin usage: /kf sell <all|hand> <player>"));
             }
         } else if (args.length == 3 && sender.hasPermission("kkfish.admin")) {
             String option = args[1].toLowerCase();
@@ -274,7 +283,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
             Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
 
             if (targetPlayer == null) {
-                sender.sendMessage(messageManager.getMessage("player_not_found", "§d找不到玩家: %s", targetPlayerName));
+                sender.sendMessage(messageManager.getMessage("player_not_found", "§dPlayer not found: %s", targetPlayerName));
                 return;
             }
 
@@ -289,13 +298,13 @@ public class Cmd implements CommandExecutor, TabCompleter {
                     int totalValue = sellHandler.sellAllFishConsole(targetPlayer);
                     if (totalValue > 0) {
                         sender.sendMessage(plugin.getMessageManager().getMessage(sellHandler.sellRewardKey("sell_help_all_success_op"),
-                                sellHandler.isPointRewardActive() ? "§a已帮助玩家 %s 出售所有鱼类！获得了 %s 点券～" : "§a已帮助玩家 %s 出售所有鱼类！获得了 %s 金币～",
+                                sellHandler.isPointRewardActive() ? "§aHelped player %s sell all fish! Received %s points~" : "§aHelped player %s sell all fish! Received %s coins~",
                                 targetPlayer.getName(), totalValue));
                         targetPlayer.sendMessage(plugin.getMessageManager().getMessage(sellHandler.sellRewardKey("sell_help_all_success_player"),
-                                sellHandler.isPointRewardActive() ? "§a控制台已帮助你出售所有鱼类！获得了 %s 点券～" : "§a控制台已帮助你出售所有鱼类！获得了 %s 金币～",
+                                sellHandler.isPointRewardActive() ? "§aConsole helped you sell all fish! Received %s points~" : "§aConsole helped you sell all fish! Received %s coins~",
                                 totalValue));
                     } else {
-                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_all_empty", "§c玩家 %s 的背包中没有可出售的鱼～", targetPlayer.getName()));
+                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_all_empty", "§cPlayer %s has no fish that can be sold~", targetPlayer.getName()));
                     }
                 }
             } else if ("hand".equals(option)) {
@@ -308,36 +317,36 @@ public class Cmd implements CommandExecutor, TabCompleter {
                     }
                     ItemStack item = targetPlayer.getInventory().getItemInMainHand();
                     if (item == null || item.getType() == Material.AIR) {
-                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_hand_empty", "§c玩家 %s 手中没有物品哦～", targetPlayer.getName()));
+                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_hand_empty", "§cPlayer %s has no item in their hand~", targetPlayer.getName()));
                         return;
                     }
 
                     int value = sellHandler.getFishValueFromItem(item);
                     if (value <= 0) {
-                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_not_fish", "§c这不是可以出售的鱼～"));
+                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_help_not_fish", "§cThis item cannot be sold~"));
                         return;
                     }
 
                     if (!sellHandler.addMoneyToPlayer(targetPlayer, value)) {
-                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                        sender.sendMessage(plugin.getMessageManager().getMessage("sell_operation_failed", "§cSale failed, please try again later."));
                         return;
                     }
 
                     item.setAmount(item.getAmount() - 1);
                     sender.sendMessage(plugin.getMessageManager().getMessage(sellHandler.sellRewardKey("sell_help_hand_success_op"),
-                            sellHandler.isPointRewardActive() ? "§a已帮助玩家 %s 出售手中物品！获得了 %s 点券～" : "§a已帮助玩家 %s 出售手中物品！获得了 %s 金币～",
+                            sellHandler.isPointRewardActive() ? "§aHelped player %s sell hand item! Received %s points~" : "§aHelped player %s sell hand item! Received %s coins~",
                             targetPlayer.getName(), value));
                     targetPlayer.sendMessage(plugin.getMessageManager().getMessage(sellHandler.sellRewardKey("sell_help_hand_success_player"),
-                            sellHandler.isPointRewardActive() ? "§a控制台已帮助你出售手中物品！获得了 %s 点券～" : "§a控制台已帮助你出售手中物品！获得了 %s 金币～",
+                            sellHandler.isPointRewardActive() ? "§aConsole helped you sell hand item! Received %s points~" : "§aConsole helped you sell hand item! Received %s coins~",
                             value));
                 }
             } else {
-                sender.sendMessage(messageManager.getMessage("sell_invalid_option", "§d无效的选项，请使用all或hand"));
+                sender.sendMessage(messageManager.getMessage("sell_invalid_option", "§dInvalid option, use all or hand"));
             }
         } else if (sender instanceof Player) {
             Player player = (Player) sender;
             if (!player.hasPermission("kkfish.sell") && !player.hasPermission("kkfish.admin")) {
-                player.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+                player.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
                 return;
             }
 
@@ -347,39 +356,39 @@ public class Cmd implements CommandExecutor, TabCompleter {
             } else if ("hand".equals(option)) {
                 sellHandler.sellHandheldFish(player);
             } else {
-                player.sendMessage(messageManager.getMessage("sell_invalid_option", "§d无效的选项，请使用all或hand"));
+                player.sendMessage(messageManager.getMessage("sell_invalid_option", "§dInvalid option, use all or hand"));
             }
         } else {
-            sender.sendMessage(plugin.getMessageManager().getMessage("command_console_gui_usage", "§c控制台必须指定玩家名，请使用: /kf sell <all|hand> <玩家名>"));
+            sender.sendMessage(plugin.getMessageManager().getMessage("command_console_gui_usage", "§cConsole must specify player name, use: /kf sell <all|hand> <player>"));
         }
     }
 
     private void handleAdd(CommandSender sender, String[] args) {
         if (!sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return;
         }
         if (sender instanceof Player) {
             Player player = (Player) sender;
             if (args.length < 2) {
-                sender.sendMessage(messageManager.getMessage("add_usage", "§d用法: /kkfish add <fish|rods|baits> [物品名]"));
+                sender.sendMessage(messageManager.getMessage("add_usage", "§dUsage: /kkfish add <fish|rods|baits> [item_name]"));
                 return;
             }
             String addType = args[1].toLowerCase();
             configHandler.handleAddCommand(player, addType, args);
         } else {
-            sender.sendMessage(messageManager.getMessage("player_only_command", "§c此命令只能由玩家在游戏内执行！"));
+            sender.sendMessage(messageManager.getMessage("player_only_command", "§cThis command can only be executed by a player in-game!"));
         }
     }
 
     private void handleUnlock(CommandSender sender, String[] args) {
         if (!sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return;
         }
 
         if (args.length < 3) {
-            sender.sendMessage(messageManager.getMessage("unlock_usage", "§d用法: /kkfish unlock <玩家名> <fish_name|all>"));
+            sender.sendMessage(messageManager.getMessage("unlock_usage", "§dUsage: /kkfish unlock <player> <fish_name|all>"));
             return;
         }
 
@@ -387,22 +396,22 @@ public class Cmd implements CommandExecutor, TabCompleter {
         String fishName = args[2];
 
         Player targetPlayer = plugin.getServer().getPlayer(targetPlayerName);
-        if (targetPlayer == null) {
-            sender.sendMessage(messageManager.getMessage("player_not_found", "§d找不到玩家: %s", targetPlayerName));
-            return;
-        }
+if (targetPlayer == null) {
+                sender.sendMessage(messageManager.getMessage("player_not_found", "§dPlayer not found: %s", targetPlayerName));
+                return;
+            }
 
         adminHandler.unlockFishForPlayer(sender, targetPlayer, fishName);
     }
 
     private void handleLock(CommandSender sender, String[] args) {
         if (!sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return;
         }
 
         if (args.length < 3) {
-            sender.sendMessage(plugin.getMessageManager().getMessage("lock_command_usage", "§d用法: /kkfish lock <玩家名> <fish_name|all>"));
+            sender.sendMessage(plugin.getMessageManager().getMessage("lock_command_usage", "§dUsage: /kkfish lock <player> <fish_name|all>"));
             return;
         }
 
@@ -411,7 +420,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
 
         Player lockTargetPlayer = plugin.getServer().getPlayer(lockTargetPlayerName);
         if (lockTargetPlayer == null) {
-            sender.sendMessage(messageManager.getMessage("player_not_found", "§d找不到玩家: %s", lockTargetPlayerName));
+            sender.sendMessage(messageManager.getMessage("player_not_found", "§dPlayer not found: %s", lockTargetPlayerName));
             return;
         }
 
@@ -551,7 +560,7 @@ public class Cmd implements CommandExecutor, TabCompleter {
     // ==================== Help ====================
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage(messageManager.getMessage("help_message", "§6===== 钓鱼插件帮助 =====\n§a/kf give <玩家名> <鱼名> [数量] - 给予指定玩家一条鱼\n§a/kf reload - 重载插件配置\n§a/kf debug - 切换调试模式\n§a/kf version - 检查插件版本\n§a/kf gui [main|hook|dex|record|help] - 打开钓鱼系统界面\n§a/kf sell <all|hand> - 出售背包中的鱼或手中的鱼\n§a/kf sell <all|hand> <玩家名> - [OP]帮助其他玩家出售物品\n§a/kf compete <start|stop|list> [比赛ID] [持续时间] - [OP]管理钓鱼比赛\n§a/kf unlock <玩家名> <fish_name|all> - [OP]解锁指定玩家的鱼类图鉴\n§a/kf lock <玩家名> <fish_name|all> - [OP]锁定指定玩家的鱼类图鉴\n§6===== 钓鱼插件帮助 ====="));
+        sender.sendMessage(messageManager.getMessage("help_message", "§6===== KKFish Help =====\n§a/kf give <player> <fish_name> [amount] - Give a fish to a player\n§a/kf reload - Reload plugin config\n§a/kf debug - Toggle debug mode\n§a/kf version - Check plugin version\n§a/kf gui [main|hook|dex|record|help] - Open fishing GUI\n§a/kf sell <all|hand> - Sell fish from inventory or hand\n§a/kf sell <all|hand> <player> - [OP] Help another player sell items\n§a/kf compete <start|stop|list> [compete_id] [duration] - [OP] Manage fishing competitions\n§a/kf unlock <player> <fish_name|all> - [OP] Unlock fish dex entries for a player\n§a/kf lock <player> <fish_name|all> - [OP] Lock fish dex entries for a player\n§6===== KKFish Help ====="));
     }
 
     // ==================== 外部访问 ====================

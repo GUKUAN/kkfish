@@ -33,6 +33,7 @@ public class GUICommons {
     private final GUIMenuLoader menuLoader;
 
     private HookMaterialGUIHandler hookMaterialHandler;
+    private RodShopGUIHandler rodShopHandler;
     private FishDexGUIHandler fishDexHandler;
     private CompetitionGUIHandler competitionHandler;
 
@@ -46,6 +47,10 @@ public class GUICommons {
 
     public void setHookMaterialHandler(HookMaterialGUIHandler handler) {
         this.hookMaterialHandler = handler;
+    }
+
+    public void setRodShopHandler(RodShopGUIHandler handler) {
+        this.rodShopHandler = handler;
     }
 
     public void setFishDexHandler(FishDexGUIHandler handler) {
@@ -106,6 +111,8 @@ public class GUICommons {
                 fishDexHandler.handleFishDexItems(gui, item, player, page);
             } else if (item.getId().equals("hook_material_items")) {
                 hookMaterialHandler.handleHookMaterialItems(gui, item, player, page);
+            } else if (item.getId().equals("rod_shop_items")) {
+                rodShopHandler.handleRodShopItems(gui, item, player, page);
             } else if (item.getId().equals("competition_items")) {
                 competitionHandler.handleCompetitionItems(gui, item, player, page);
             } else if (item.getId().equals("reward_items")) {

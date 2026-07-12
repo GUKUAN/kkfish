@@ -42,7 +42,7 @@ public class ConfigCommandHandler {
      */
     public void reloadConfig(CommandSender sender) {
         if (!sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return;
         }
         plugin.getCustomConfig().reloadConfigs();
@@ -63,7 +63,7 @@ public class ConfigCommandHandler {
 
         plugin.initMetrics();
 
-        sender.sendMessage(messageManager.getMessage("config_reloaded", "§a配置已成功重载！"));
+        sender.sendMessage(messageManager.getMessage("config_reloaded", "§aConfig reloaded successfully!"));
     }
 
     /**
@@ -71,13 +71,13 @@ public class ConfigCommandHandler {
      */
     public void toggleDebug(CommandSender sender) {
         if (!sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return;
         }
         Config configManager = plugin.getCustomConfig();
         boolean newState = !configManager.isDebugMode();
         configManager.setDebugMode(newState);
-        sender.sendMessage(messageManager.getMessage("debug_toggled", "§d调试模式已%s", newState ? "开启" : "关闭"));
+        sender.sendMessage(messageManager.getMessage("debug_toggled", "§dDebug mode %s", newState ? "enabled" : "disabled"));
     }
 
     /**
@@ -86,7 +86,7 @@ public class ConfigCommandHandler {
     public void handleAddCommand(Player player, String addType, String[] args) {
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item == null || item.getType() == Material.AIR) {
-            player.sendMessage(messageManager.getMessage("empty_hand", "§c请手持要添加的物品"));
+            player.sendMessage(messageManager.getMessage("empty_hand", "§cPlease hold the item you want to add"));
             return;
         }
 
@@ -125,27 +125,27 @@ public class ConfigCommandHandler {
             switch (addType) {
                 case "fish":
                     addFishToConfig(configManager, item, itemName);
-                    player.sendMessage(messageManager.getMessage("add_fish_success", "§a成功将鱼类 '" + itemName + "' 添加到配置文件"));
+                    player.sendMessage(messageManager.getMessage("add_fish_success", "§aSuccessfully added fish '" + itemName + "' to config file"));
                     break;
                 case "rods":
                     addRodToConfig(configManager, item, itemName, displayName);
-                    player.sendMessage(messageManager.getMessage("add_rod_success", "§a成功将鱼竿 '" + displayName + "' 添加到配置文件"));
+                    player.sendMessage(messageManager.getMessage("add_rod_success", "§aSuccessfully added rod '" + displayName + "' to config file"));
                     break;
                 case "baits":
                     addBaitToConfig(configManager, item, itemName);
-                    player.sendMessage(messageManager.getMessage("add_bait_success", "§a成功将鱼饵 '" + itemName + "' 添加到配置文件"));
+                    player.sendMessage(messageManager.getMessage("add_bait_success", "§aSuccessfully added bait '" + itemName + "' to config file"));
                     break;
                 default:
-                    player.sendMessage(messageManager.getMessage("add_invalid_type", "§c未知的添加类型，请使用: fish, rods 或 baits"));
+                    player.sendMessage(messageManager.getMessage("add_invalid_type", "§cUnknown add type, use: fish, rods or baits"));
                     break;
             }
 
             configManager.saveConfigs();
             configManager.reloadConfigs();
 
-            player.sendMessage(messageManager.getMessage("add_config_edit_hint", "§e请在配置文件中进行详细修改以完善物品属性"));
+            player.sendMessage(messageManager.getMessage("add_config_edit_hint", "§ePlease edit the config file to customize item properties"));
         } catch (Exception e) {
-            player.sendMessage(messageManager.getMessage("add_error", "§c添加物品时发生错误: " + e.getMessage()));
+            player.sendMessage(messageManager.getMessage("add_error", "§cError adding item: " + e.getMessage()));
             e.printStackTrace();
         }
     }

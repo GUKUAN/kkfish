@@ -113,6 +113,31 @@ sell_success_points: "&aSuccessfully sold &e%s &afish, gained &e%s &apoints!"
 sell_success_both: "&aSuccessfully sold &e%s &afish, gained &e%s &acoins and &e%s &apoints!"
 sell_success_items: "&aSuccessfully sold &e%s &afish, gained item rewards!"
 sell_operation_failed: "§cSell operation failed, please try again later."
+sell_usage: "§dUsage: /kf sell <all|hand>"
+sell_invalid_option: "§dInvalid option, use all or hand"
+
+# Unlock/Lock Commands
+unlock_all_success_op: "§aSuccessfully unlocked %s fish dex entries for player %s!"
+unlock_all_success_player: "§aAn admin has unlocked all fish dex entries for you!"
+unlock_success_op: "§aSuccessfully unlocked fish dex entry %s for player %s"
+unlock_success_player: "§aAn admin has unlocked fish dex entry %s for you"
+lock_all_success_op: "§aSuccessfully locked all fish dex entries for player %s!"
+lock_all_success_player: "§aAn admin has locked all fish dex entries for you!"
+lock_success_op: "§aSuccessfully locked fish dex entry %s for player %s"
+lock_success_player: "§aAn admin has locked fish dex entry %s for you"
+
+# Misc
+fish_not_found: "§cFish not found: %s"
+empty_hand: "§cPlease hold the item you want to add"
+player_only_command: "§cThis command can only be executed by a player in-game!"
+default_rod_crafted: "§aYour fishing rod has been upgraded to the default rod!"
+rod_durability_unit: " points"
+rod_durability_full: "(full)"
+rod_charge_speed_fast: "faster"
+rod_charge_speed_slow: "slower"
+rod_charge_speed_normal: "normal"
+rod_bite_rate_bonus_none: "none"
+rod_effects_none: "No special effects"
 
 # Admin Help Sell
 sell_help_all_success_op: "&aHelped player %s sell all fish! Gained %s coins～"

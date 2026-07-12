@@ -2,12 +2,14 @@ package me.kkfish.economy;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.UUID;
 
 import org.black_ixx.playerpoints.PlayerPointsAPI;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.plugin.ServicesManager;
 
 import net.milkbowl.vault.economy.Economy;
 
@@ -131,10 +133,58 @@ public class EconomyService {
             kkfish.log(mm.getMessageWithoutPrefix("log.player_points_success",
                     "Successfully connected to PlayerPoints system~"));
         } catch (Exception e) {
-            kkfish.log("§e" + mm.getMessageWithoutPrefix("log.player_points_failed",
-                    "Failed to get PlayerPoints API: %s", e.getMessage()));
-            e.printStackTrace();
-            playerPointsAPI = null;
+            kkfish.log("§e=== PlayerPoints 诊断信息 ===");
+            kkfish.log("§e插件类名: " + playerPointsPlugin.getClass().getName());
+            kkfish.log("§e插件类加载器: " + playerPointsPlugin.getClass().getClassLoader());
+
+            // 检查 getAPI 方法是否存在
+            Method[] methods = playerPointsPlugin.getClass().getMethods();
+            boolean hasGetAPI = false;
+            for (Method m : methods) {
+                if ("getAPI".equals(m.getName())) {
+                    hasGetAPI = true;
+                    kkfish.log("§e找到 getAPI 方法，参数类型: "
+                            + Arrays.toString(m.getParameterTypes())
+                            + "，返回类型: " + m.getReturnType().getName()
+                            + "，是否静态: " + Modifier.isStatic(m.getModifiers()));
+                }
+            }
+            if (!hasGetAPI) {
+                kkfish.log("§e未找到 getAPI 方法！可用公共方法:");
+                for (Method m : methods) {
+                    if (m.getDeclaringClass() != Object.class) {
+                        kkfish.log("§e  - " + m.getName()
+                                + "(" + Arrays.toString(m.getParameterTypes()) + ")");
+                    }
+                }
+            }
+
+            kkfish.log("§e异常类型: " + e.getClass().getName());
+            kkfish.log("§e异常信息: " + e.getMessage());
+            kkfish.log("§e=== 尝试通过 ServicesManager 获取 ===");
+
+            // 备用方案：通过 Bukkit ServicesManager 获取
+            try {
+                ServicesManager sm = plugin.getServer().getServicesManager();
+                RegisteredServiceProvider<PlayerPointsAPI> rsp =
+                        sm.getRegistration(PlayerPointsAPI.class);
+                if (rsp != null) {
+                    playerPointsAPI = rsp.getProvider();
+                    kkfish.log(mm.getMessageWithoutPrefix("log.player_points_success",
+                            "Successfully connected to PlayerPoints system (via ServicesManager)~"));
+                } else {
+                    kkfish.log("§eServicesManager 中未注册 PlayerPointsAPI 服务");
+                    playerPointsAPI = null;
+                }
+            } catch (Exception fallbackEx) {
+                kkfish.log("§eServicesManager 备用方案也失败: "
+                        + fallbackEx.getClass().getName() + " - " + fallbackEx.getMessage());
+                playerPointsAPI = null;
+            }
+
+            if (playerPointsAPI == null) {
+                e.printStackTrace();
+            }
         }
     }
 

@@ -702,7 +702,17 @@ public class Fish {
             return null;
         }
         PlayerContext ctx = getContext(player);
-        return ctx != null ? ctx.getSession().getFishingSession() : null;
+        if (ctx == null) return null;
+        Object session = ctx.getSession().getFishingSession();
+        // 检查实体是否仍然有效，死掉的实体引用自动清理
+        if (session instanceof org.bukkit.entity.Entity) {
+            org.bukkit.entity.Entity entity = (org.bukkit.entity.Entity) session;
+            if (entity.isDead() || !entity.isValid()) {
+                ctx.getSession().clear();
+                return null;
+            }
+        }
+        return session;
     }
 
     public WaterType getWaterType(Player player) {

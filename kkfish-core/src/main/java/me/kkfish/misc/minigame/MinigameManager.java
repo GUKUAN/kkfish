@@ -243,6 +243,8 @@ public class MinigameManager {
                         messageManager.getMessage("fish_escape", "§c鱼儿跑掉了..."), 60, MessageType.MINIGAME);
                 }
             }, 5);
+            // 小游戏失败也要清理钓鱼会话，否则玩家无法再次钓鱼
+            plugin.getFish().endSession(player);
         }
         
         if (session.isSuccess) {

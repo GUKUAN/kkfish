@@ -31,7 +31,7 @@ public class CompeteCommandHandler {
 
         Compete competitionManager = plugin.getCompete();
         if (competitionManager == null) {
-            sender.sendMessage(messageManager.getMessage("competition_not_initialized", "§c比赛功能未初始化!"));
+            sender.sendMessage(messageManager.getMessage("competition_not_initialized", "§cCompetition system not initialized!"));
             return true;
         }
 
@@ -47,19 +47,19 @@ public class CompeteCommandHandler {
             case "list":
                 return handleList(sender);
             default:
-                sender.sendMessage(messageManager.getMessage("competition_unknown_subcommand", "§c未知的子命令: %command%", subCommand));
+                sender.sendMessage(messageManager.getMessage("competition_unknown_subcommand", "§cUnknown subcommand: %command%", subCommand));
                 return false;
         }
     }
 
     private boolean handleStart(CommandSender sender, String[] args) {
         if (sender instanceof org.bukkit.entity.Player && !sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return true;
         }
 
         if (args.length < 2) {
-            sender.sendMessage(messageManager.getMessage("competition_specify_config_id", "§c请指定比赛配置ID!"));
+            sender.sendMessage(messageManager.getMessage("competition_specify_config_id", "§cPlease specify competition config ID!"));
             return true;
         }
 
@@ -69,57 +69,57 @@ public class CompeteCommandHandler {
             try {
                 duration = Integer.parseInt(args[2]);
             } catch (NumberFormatException e) {
-                sender.sendMessage(messageManager.getMessage("competition_invalid_duration", "§c无效的持续时间，将使用配置中的默认值"));
+                sender.sendMessage(messageManager.getMessage("competition_invalid_duration", "§cInvalid duration, using config default"));
             }
         }
 
         boolean started = plugin.getCompete().startCompetitionManually(configId, duration);
         if (started) {
-            sender.sendMessage(messageManager.getMessage("competition_started_success", "§a成功启动比赛: %id%", configId));
+            sender.sendMessage(messageManager.getMessage("competition_started_success", "§aCompetition started: %id%", configId));
         } else {
-            sender.sendMessage(messageManager.getMessage("competition_started_failed", "§c启动比赛失败: 配置不存在或比赛已在进行中"));
+            sender.sendMessage(messageManager.getMessage("competition_started_failed", "§cFailed to start competition: config not found or already running"));
         }
         return true;
     }
 
     private boolean handleStop(CommandSender sender, String[] args) {
         if (sender instanceof org.bukkit.entity.Player && !sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return true;
         }
 
         if (args.length < 2) {
-            sender.sendMessage(messageManager.getMessage("competition_specify_competition_id", "§c请指定要停止的比赛ID!"));
+            sender.sendMessage(messageManager.getMessage("competition_specify_competition_id", "§cPlease specify competition ID to stop!"));
             return true;
         }
 
         String competitionId = args[1];
         boolean stopped = plugin.getCompete().stopCompetitionManually(competitionId);
         if (stopped) {
-            sender.sendMessage(messageManager.getMessage("competition_stopped_success", "§a成功停止比赛: %id%", competitionId));
+            sender.sendMessage(messageManager.getMessage("competition_stopped_success", "§aCompetition stopped: %id%", competitionId));
         } else {
-            sender.sendMessage(messageManager.getMessage("competition_stopped_failed", "§c停止比赛失败: 比赛不存在或未在进行中"));
+            sender.sendMessage(messageManager.getMessage("competition_stopped_failed", "§cFailed to stop competition: not found or not running"));
         }
         return true;
     }
 
     private boolean handleForceStop(CommandSender sender, String[] args) {
         if (sender instanceof org.bukkit.entity.Player && !sender.hasPermission("kkfish.admin")) {
-            sender.sendMessage(messageManager.getMessage("no_permission", "§d你没有权限执行此命令"));
+            sender.sendMessage(messageManager.getMessage("no_permission", "§dYou do not have permission to execute this command"));
             return true;
         }
 
         if (args.length < 2) {
-            sender.sendMessage(messageManager.getMessage("competition_specify_competition_id", "§c请指定要强制停止的比赛ID!"));
+            sender.sendMessage(messageManager.getMessage("competition_specify_competition_id", "§cPlease specify competition ID to force stop!"));
             return true;
         }
 
         String forceCompetitionId = args[1];
         boolean forceStopped = plugin.getCompete().forceStopCompetitionManually(forceCompetitionId);
         if (forceStopped) {
-            sender.sendMessage(messageManager.getMessage("competition_force_stopped_success", "§a成功强制停止并结算比赛: %id%", forceCompetitionId));
+            sender.sendMessage(messageManager.getMessage("competition_force_stopped_success", "§aCompetition force stopped and settled: %id%", forceCompetitionId));
         } else {
-            sender.sendMessage(messageManager.getMessage("competition_force_stopped_failed", "§c强制停止比赛失败: 比赛不存在或未在进行中"));
+            sender.sendMessage(messageManager.getMessage("competition_force_stopped_failed", "§cFailed to force stop competition: not found or not running"));
         }
         return true;
     }
@@ -128,9 +128,9 @@ public class CompeteCommandHandler {
         Compete competitionManager = plugin.getCompete();
         Set<String> configIds = competitionManager.getCompetitionConfigIds();
         if (configIds.isEmpty()) {
-            sender.sendMessage(messageManager.getMessage("competition_no_configs", "§e当前没有比赛配置"));
+            sender.sendMessage(messageManager.getMessage("competition_no_configs", "§eNo competition configs available"));
         } else {
-            sender.sendMessage(messageManager.getMessage("competition_config_list_title", "§e===== 比赛配置列表 ====="));
+            sender.sendMessage(messageManager.getMessage("competition_config_list_title", "§e===== Competition Config List ====="));
             for (String id : configIds) {
                 sender.sendMessage(messageManager.getMessage("competition_config_item", "§f- %id%", id));
             }
@@ -138,7 +138,7 @@ public class CompeteCommandHandler {
 
         Set<String> activeIds = competitionManager.getActiveCompetitionIds();
         if (!activeIds.isEmpty()) {
-            sender.sendMessage(messageManager.getMessage("competition_active_title", "§a正在进行的比赛:"));
+            sender.sendMessage(messageManager.getMessage("competition_active_title", "§aActive competitions:"));
             for (String id : activeIds) {
                 sender.sendMessage(messageManager.getMessage("competition_active_item", "§f- %id%", id));
             }

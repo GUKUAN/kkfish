@@ -108,6 +108,9 @@ public class GUIAction {
             case "hook_page":
                 handleHookPageAction(player, parts);
                 break;
+            case "rod_page":
+                handleRodPageAction(player, parts);
+                break;
             case "view_competition":
                 handleViewCompetitionAction(player, parts);
                 break;
@@ -143,11 +146,43 @@ public class GUIAction {
                     if (hookName != null) {
                         itemId = hookName;
                     } else {
-                        player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "hook_id_not_recognized", "§c无法识别鱼钩ID，请联系管理员。"));
+                        player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "hook_id_not_recognized", "§cUnable to recognize hook ID, please contact an admin."));
                         hookIdResolved = false;
                     }
                 } else {
-                    player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "hook_id_not_recognized", "§c无法识别鱼钩ID，请联系管理员。"));
+                    player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "hook_id_not_recognized", "§cUnable to recognize hook ID, please contact an admin."));
+                    hookIdResolved = false;
+                }
+            }
+        }
+        
+        if (itemId.equals("%rod_id%")) {
+            me.kkfish.kkfish kkfishPlugin = (me.kkfish.kkfish) plugin;
+            GUI guiManager = kkfishPlugin.getGUI();
+            
+            int clickedSlot = event.getRawSlot();
+            
+            int currentPage = guiManager.getCurrentRodShopPage(player);
+            
+            String rodName = guiManager.getRodIdFromSlot(player, clickedSlot, currentPage);
+            
+            if (rodName != null) {
+                itemId = rodName;
+                itemType = "rod";
+            } else {
+                if (event.getInventory().getHolder() instanceof GUIHolder) {
+                    GUIHolder holder = (GUIHolder) event.getInventory().getHolder();
+                    int holderPage = holder.getPage();
+                    rodName = guiManager.getRodIdFromSlot(player, clickedSlot, holderPage);
+                    if (rodName != null) {
+                        itemId = rodName;
+                        itemType = "rod";
+                    } else {
+                        player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "rod_id_not_recognized", "§c无法识别鱼竿ID，请联系管理员！"));
+                        hookIdResolved = false;
+                    }
+                } else {
+                    player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "rod_id_not_recognized", "§c无法识别鱼竿ID，请联系管理员！"));
                     hookIdResolved = false;
                 }
             }
@@ -162,6 +197,14 @@ public class GUIAction {
         Config configManager = kkfishPlugin.getCustomConfig();
         me.kkfish.misc.MessageManager messageManager = kkfishPlugin.getMessageManager();
         
+        // 处理鱼竿购买
+        if (itemType.equals("rod")) {
+            guiManager.getRodShopHandler().handleRodPurchase(player, itemId, event.isLeftClick());
+            // 刷新GUI
+            guiManager.openGUI(player, GUI.GUIType.ROD_SHOP, guiManager.getCurrentRodShopPage(player));
+            return;
+        }
+        
         if (configManager.hasHookMaterialPermission(player, itemId)) {
             guiManager.setPlayerHookMaterial(player, itemId);
             return;
@@ -172,7 +215,7 @@ public class GUIAction {
         }
         
         if (!configManager.isHookNeedPurchase(itemId)) {
-            player.sendMessage(messageManager.getMessage(player, "hook_no_permission", "§c你没有权限使用这个鱼钩！"));
+            player.sendMessage(messageManager.getMessage(player, "hook_no_permission", "§cYou do not have permission to use this hook!"));
             return;
         }
         
@@ -184,7 +227,7 @@ public class GUIAction {
         if (isLeftClick && configManager.canPurchaseWithVault(itemId)) {
             net.milkbowl.vault.economy.Economy economy = kkfishPlugin.getEconomy();
             if (economy == null) {
-                player.sendMessage(messageManager.getMessage(player, "hook_purchase_vault_unavailable", "§c经济系统未启用，无法使用金币购买！"));
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_vault_unavailable", "§cEconomy system is not enabled, unable to purchase with coins!"));
                 return;
             }
             
@@ -192,13 +235,13 @@ public class GUIAction {
             double balance = economy.getBalance(player);
             
             if (balance < vaultPrice) {
-                player.sendMessage(messageManager.getMessage(player, "hook_purchase_insufficient_vault", "§c金币不足！还需 %.2f 金币", vaultPrice - balance));
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_insufficient_vault", "§cNot enough coins! Need %.2f more", vaultPrice - balance));
                 return;
             }
             
             net.milkbowl.vault.economy.EconomyResponse response = economy.withdrawPlayer(player, vaultPrice);
             if (!response.transactionSuccess()) {
-                player.sendMessage(messageManager.getMessage(player, "hook_purchase_deduct_failed", "§c扣除金币失败，请稍后再试。"));
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_deduct_failed", "§cFailed to deduct coins, please try again later."));
                 return;
             }
             
@@ -206,7 +249,7 @@ public class GUIAction {
         } else if (isRightClick && configManager.canPurchaseWithPoints(itemId)) {
             org.black_ixx.playerpoints.PlayerPointsAPI pointsAPI = kkfishPlugin.getPlayerPointsAPI();
             if (pointsAPI == null) {
-                player.sendMessage(messageManager.getMessage(player, "hook_purchase_points_unavailable", "§c点卷系统未启用，无法使用点卷购买！"));
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_points_unavailable", "§cPoints system is not enabled, unable to purchase with points!"));
                 return;
             }
             
@@ -214,18 +257,18 @@ public class GUIAction {
             int currentPoints = pointsAPI.look(player.getUniqueId());
             
             if (currentPoints < pointsPrice) {
-                player.sendMessage(messageManager.getMessage(player, "hook_purchase_insufficient_points", "§c点卷不足！还需 %d 点卷", pointsPrice - currentPoints));
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_insufficient_points", "§cNot enough points! Need %d more", pointsPrice - currentPoints));
                 return;
             }
             
             if (!pointsAPI.take(player.getUniqueId(), pointsPrice)) {
-                player.sendMessage(messageManager.getMessage(player, "hook_purchase_deduct_failed", "§c扣除点卷失败，请稍后再试。"));
+                player.sendMessage(messageManager.getMessage(player, "hook_purchase_deduct_failed", "§cFailed to deduct points, please try again later."));
                 return;
             }
             
             purchaseSuccess = true;
         } else {
-            player.sendMessage(messageManager.getMessage(player, "hook_purchase_invalid_click", "§c请使用左键 (金币) 或右键 (点卷) 购买"));
+            player.sendMessage(messageManager.getMessage(player, "hook_purchase_invalid_click", "§cUse left-click (coins) or right-click (points) to purchase"));
             return;
         }
         
@@ -234,7 +277,7 @@ public class GUIAction {
             
             String displayName = configManager.getHookDisplayName(itemId);
             displayName = displayName.replace('§', '&');
-            player.sendMessage(messageManager.getMessage(player, "hook_purchase_success", "§a成功购买鱼钩: %s！", displayName));
+            player.sendMessage(messageManager.getMessage(player, "hook_purchase_success", "§aSuccessfully purchased hook: %s!", displayName));
             
             guiManager.setPlayerHookMaterial(player, itemId);
         }
@@ -243,7 +286,7 @@ public class GUIAction {
     private void handleSellAction(Player player) {
         me.kkfish.kkfish kkfishPlugin = (me.kkfish.kkfish) plugin;
         if (!canUseSellEconomy(kkfishPlugin)) {
-            player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "economy_not_enabled", "§c经济系统未启用，无法使用卖出功能！"));
+            player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "economy_not_enabled", "§cEconomy system is not enabled, selling is unavailable!"));
             return;
         }
         
@@ -253,7 +296,7 @@ public class GUIAction {
             kkfishPlugin.getCmd().getSellHandler().sellAllFish(player);
         } catch (Exception e) {
             kkfish.log("§e" + kkfishPlugin.getMessageManager().getMessageWithoutPrefix("log.sell_operation_failed", "执行出售操作失败: ") + e.getMessage());
-            player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+            player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "sell_operation_failed", "§cSale failed, please try again later."));
         }
     }
     
@@ -267,7 +310,7 @@ public class GUIAction {
         if (menuName.equalsIgnoreCase("sell_gui")) {
             me.kkfish.kkfish kkfishPlugin = (me.kkfish.kkfish) plugin;
             if (!canUseSellEconomy(kkfishPlugin)) {
-                player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "economy_not_enabled", "§c经济系统未启用，无法使用卖出功能！"));
+                player.sendMessage(kkfishPlugin.getMessageManager().getMessage(player, "economy_not_enabled", "§cEconomy system is not enabled, selling is unavailable!"));
                 return;
             }
         }
@@ -281,6 +324,9 @@ public class GUIAction {
                 break;
             case "hook_material":
                 guiManager.openGUI(player, GUI.GUIType.HOOK_MATERIAL);
+                break;
+            case "rod_shop":
+                guiManager.openGUI(player, GUI.GUIType.ROD_SHOP);
                 break;
             case "fish_dex":
                 guiManager.openGUI(player, GUI.GUIType.FISH_DEX);
@@ -301,7 +347,7 @@ public class GUIAction {
                 guiManager.openGUI(player, GUI.GUIType.SELL_GUI);
                 break;
             default:
-                kkfish.log(kkfishPlugin.getMessageManager().getMessageWithoutPrefix("log.gui_action_unknown_menu", "§e未知的菜单名称: " + menuName, menuName));
+                kkfish.log(kkfishPlugin.getMessageManager().getMessageWithoutPrefix("log.gui_action_unknown_menu", "§eUnknown menu name: " + menuName, menuName));
         }
     }
     
@@ -336,6 +382,23 @@ public class GUIAction {
             guiManager.handleHookMaterialPage(player, false);
         } else if (direction.equals("next")) {
             guiManager.handleHookMaterialPage(player, true);
+        }
+    }
+    
+    private void handleRodPageAction(Player player, String[] parts) {
+        if (parts.length < 2) {
+            return;
+        }
+        
+        String direction = parts[1].toLowerCase();
+        
+        me.kkfish.kkfish kkfishPlugin = (me.kkfish.kkfish) plugin;
+        GUI guiManager = kkfishPlugin.getGUI();
+        
+        if (direction.equals("previous")) {
+            guiManager.handleRodShopPage(player, false);
+        } else if (direction.equals("next")) {
+            guiManager.handleRodShopPage(player, true);
         }
     }
     

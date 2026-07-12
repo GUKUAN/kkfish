@@ -97,7 +97,7 @@ public class SellCommandHandler {
         if (player != null) {
             ItemStack item = player.getInventory().getItemInMainHand();
             if (item == null || item.getType() == Material.AIR) {
-                player.sendMessage(messageManager.getMessage("sell_hand_empty", "§c你手中没有物品哦～"));
+                player.sendMessage(messageManager.getMessage("sell_hand_empty", "§cYou have no item in your hand~"));
                 return;
             }
 
@@ -107,17 +107,17 @@ public class SellCommandHandler {
             boolean hasRewards = hasItemRewards(item);
 
             if (!sellValue.hasAnyValue() && !hasRewards) {
-                player.sendMessage(messageManager.getMessage("sell_not_fish", "§c这不是可以出售的鱼～"));
+                player.sendMessage(messageManager.getMessage("sell_not_fish", "§cThis is not a fish that can be sold~"));
                 return;
             }
 
             if (sellValue.hasAnyValue() && !pay.hasAny() && !hasRewards) {
-                player.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法获得经济奖励!"));
+                player.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
                 return;
             }
 
             if (pay.hasAny() && !addSellPayToPlayer(player, pay)) {
-                player.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                player.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
                 return;
             }
 
@@ -126,11 +126,11 @@ public class SellCommandHandler {
 
             if (pay.hasAny()) {
                 player.sendMessage(sellRewardMessage("sell_hand_success", pay,
-                        "§a成功出售！获得了 %s 金币～",
-                        "§a成功出售！获得了 %s 点券～",
-                        "§a成功出售！获得了 %s 金币和 %s 点券～"));
+                        "§aSuccessfully sold! Received %s coins~",
+                        "§aSuccessfully sold! Received %s points~",
+                        "§aSuccessfully sold! Received %s coins and %s points~"));
             } else {
-                player.sendMessage(messageManager.getMessage("sell_hand_success_items", "§a成功出售！获得了物品奖励～"));
+                player.sendMessage(messageManager.getMessage("sell_hand_success_items", "§aSuccessfully sold! Received item rewards~"));
             }
 
             if (fishUUIDStr != null) {
@@ -140,19 +140,19 @@ public class SellCommandHandler {
         }
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item == null || item.getType() == Material.AIR) {
-            player.sendMessage(messageManager.getMessage("sell_hand_empty", "§c你手中没有物品哦～"));
+            player.sendMessage(messageManager.getMessage("sell_hand_empty", "§cYou have no item in your hand~"));
             return;
         }
 
         if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_sell_hand_item", "[Debug] 尝试出售手中物品: %s", item.getType().name()));
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_sell_hand_item", "[Debug] Attempting to sell hand item: %s", item.getType().name()));
             if (item.hasItemMeta()) {
                 ItemMeta meta = item.getItemMeta();
                 if (meta.hasDisplayName()) {
-                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_display_name", "[Debug] 物品显示名称: %s", meta.getDisplayName()));
+                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_display_name", "[Debug] Item display name: %s", meta.getDisplayName()));
                 }
                 if (meta.hasLore()) {
-                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_has_lore", "[Debug] 物品有Lore: %s行", meta.getLore().size()));
+                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_has_lore", "[Debug] Item has lore: %s lines", meta.getLore().size()));
                 }
             }
         }
@@ -160,7 +160,7 @@ public class SellCommandHandler {
         String fishUUIDStr = getFishUUIDString(item);
 
         if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_uuid_obtained", "[Debug] 获取到的鱼UUID: %s", (fishUUIDStr != null ? fishUUIDStr : "null")));
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_uuid_obtained", "[Debug] Obtained fish UUID: %s", (fishUUIDStr != null ? fishUUIDStr : "null")));
         }
 
         int value = getFishValueFromItem(item);
@@ -168,16 +168,16 @@ public class SellCommandHandler {
         boolean canMoneyReward = canGiveSellReward();
 
         if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_reward", "[Debug] 鱼的价值: %s, 是否有物品奖励: %s", value, hasRewards));
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_reward", "[Debug] Fish value: %s, has item rewards: %s", value, hasRewards));
         }
 
         if (value <= 0 && !hasRewards) {
-            player.sendMessage(messageManager.getMessage("sell_not_fish", "§c这不是可以出售的鱼～"));
+            player.sendMessage(messageManager.getMessage("sell_not_fish", "§cThis is not a fish that can be sold~"));
             return;
         }
 
         if (value > 0 && !canMoneyReward && !hasRewards) {
-            player.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法获得经济奖励!"));
+            player.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
             return;
         }
 
@@ -188,12 +188,12 @@ public class SellCommandHandler {
         if (value > 0 && canMoneyReward) {
             if (addMoneyToPlayer(player, value)) {
                 player.sendMessage(messageManager.getMessage(sellRewardKey("sell_hand_success"),
-                        sellRewardDefault("§a成功出售！获得了 %s 金币～", "§a成功出售！获得了 %s 点券～"), value));
+                        sellRewardDefault("§aSuccessfully sold! Received %s coins~", "§aSuccessfully sold! Received %s points~"), value));
             } else {
-                player.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                player.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
             }
         } else {
-            player.sendMessage(messageManager.getMessage("sell_hand_success", "§a成功出售！获得了物品奖励～"));
+            player.sendMessage(messageManager.getMessage("sell_hand_success", "§aSuccessfully sold! Received item rewards~"));
         }
 
         if (fishUUIDStr != null) {
@@ -208,7 +208,7 @@ public class SellCommandHandler {
         if (opPlayer != null && targetPlayer != null) {
             ItemStack item = targetPlayer.getInventory().getItemInMainHand();
             if (item == null || item.getType() == Material.AIR) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_empty", "§c玩家%s手中没有物品哦～", targetPlayer.getName()));
+                opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_empty", "§cPlayer %s has no item in their hand~", targetPlayer.getName()));
                 return;
             }
 
@@ -218,17 +218,17 @@ public class SellCommandHandler {
             boolean hasRewards = hasItemRewards(item);
 
             if (!sellValue.hasAnyValue() && !hasRewards) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_not_fish", "§c这不是可以出售的鱼～"));
+                opPlayer.sendMessage(messageManager.getMessage("sell_not_fish", "§cThis is not a fish that can be sold~"));
                 return;
             }
 
             if (sellValue.hasAnyValue() && !pay.hasAny() && !hasRewards) {
-                opPlayer.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法获得经济奖励!"));
+                opPlayer.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
                 return;
             }
 
             if (pay.hasAny() && !addSellPayToPlayer(targetPlayer, pay)) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
                 return;
             }
 
@@ -237,17 +237,17 @@ public class SellCommandHandler {
 
             if (pay.hasAny()) {
                 opPlayer.sendMessage(sellRewardMessage("sell_other_hand_success_op", pay,
-                        "§a已帮助玩家%s出售物品！获得了 %s 金币～",
-                        "§a已帮助玩家%s出售物品！获得了 %s 点券～",
-                        "§a已帮助玩家%s出售物品！获得了 %s 金币和 %s 点券～",
+                        "§aHelped player %s sell item! Received %s coins~",
+                        "§aHelped player %s sell item! Received %s points~",
+                        "§aHelped player %s sell item! Received %s coins and %s points~",
                         targetPlayer.getName()));
                 targetPlayer.sendMessage(sellRewardMessage("sell_other_hand_success_player", pay,
-                        "§a管理员已帮助你出售物品！获得了 %s 金币～",
-                        "§a管理员已帮助你出售物品！获得了 %s 点券～",
-                        "§a管理员已帮助你出售物品！获得了 %s 金币和 %s 点券～"));
+                        "§aAn admin helped you sell your item! Received %s coins~",
+                        "§aAn admin helped you sell your item! Received %s points~",
+                        "§aAn admin helped you sell your item! Received %s coins and %s points~"));
             } else {
-                opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_op_items", "§a已帮助玩家%s出售物品！获得了物品奖励～", targetPlayer.getName()));
-                targetPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_player_items", "§a管理员已帮助你出售物品！获得了物品奖励～"));
+                opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_op_items", "§aHelped player %s sell item! Received item rewards~", targetPlayer.getName()));
+                targetPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_player_items", "§aAn admin helped you sell your item! Received item rewards~"));
             }
 
             if (fishUUIDStr != null) {
@@ -257,7 +257,7 @@ public class SellCommandHandler {
         }
         ItemStack item = targetPlayer.getInventory().getItemInMainHand();
         if (item == null || item.getType() == Material.AIR) {
-            opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_empty", "§c玩家%s手中没有物品哦～", targetPlayer.getName()));
+            opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_empty", "§cPlayer %s has no item in their hand~", targetPlayer.getName()));
             return;
         }
 
@@ -267,12 +267,12 @@ public class SellCommandHandler {
         boolean hasRewards = hasItemRewards(item);
         boolean canMoneyReward = canGiveSellReward();
         if (value <= 0 && !hasRewards) {
-            opPlayer.sendMessage(messageManager.getMessage("sell_not_fish", "§c这不是可以出售的鱼～"));
+            opPlayer.sendMessage(messageManager.getMessage("sell_not_fish", "§cThis is not a fish that can be sold~"));
             return;
         }
 
         if (value > 0 && !canMoneyReward && !hasRewards) {
-            opPlayer.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法获得经济奖励!"));
+            opPlayer.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
             return;
         }
 
@@ -283,15 +283,15 @@ public class SellCommandHandler {
         if (value > 0 && canMoneyReward) {
             if (addMoneyToPlayer(targetPlayer, value)) {
                 opPlayer.sendMessage(messageManager.getMessage(sellRewardKey("sell_other_hand_success_op"),
-                        sellRewardDefault("§a已帮助玩家%s出售物品！获得了 %s 金币～", "§a已帮助玩家%s出售物品！获得了 %s 点券～"), targetPlayer.getName(), value));
+                        sellRewardDefault("§aHelped player %s sell item! Received %s coins~", "§aHelped player %s sell item! Received %s points~"), targetPlayer.getName(), value));
                 targetPlayer.sendMessage(messageManager.getMessage(sellRewardKey("sell_other_hand_success_player"),
-                        sellRewardDefault("§a管理员已帮助你出售物品！获得了 %s 金币～", "§a管理员已帮助你出售物品！获得了 %s 点券～"), value));
+                        sellRewardDefault("§aAn admin helped you sell your item! Received %s coins~", "§aAn admin helped you sell your item! Received %s points~"), value));
             } else {
-                opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
             }
         } else {
-            opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_op", "§a已帮助玩家%s出售物品！获得了物品奖励～", targetPlayer.getName()));
-            targetPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_player", "§a管理员已帮助你出售物品！获得了物品奖励～"));
+            opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_op", "§aHelped player %s sell item! Received item rewards~", targetPlayer.getName()));
+            targetPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_player", "§aAn admin helped you sell your item! Received item rewards~"));
         }
 
         if (fishUUIDStr != null) {
@@ -306,12 +306,12 @@ public class SellCommandHandler {
         if (player != null) {
             SellBatch batch = collectSellItems(player);
             if (!batch.hasAny()) {
-                player.sendMessage(messageManager.getMessage("sell_all_empty", "§c你的背包里没有可以出售的鱼～"));
+                player.sendMessage(messageManager.getMessage("sell_all_empty", "§cYou have no fish in your inventory that can be sold~"));
                 return;
             }
 
             if (batch.getPay().hasAny() && !addSellPayToPlayer(player, batch.getPay())) {
-                player.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                player.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
                 return;
             }
 
@@ -319,12 +319,12 @@ public class SellCommandHandler {
 
             if (batch.getPay().hasAny()) {
                 player.sendMessage(sellRewardMessage("sell_all_success", batch.getPay(),
-                        "§a成功出售了 %s 条鱼！获得了 %s 金币～",
-                        "§a成功出售了 %s 条鱼！获得了 %s 点券～",
-                        "§a成功出售了 %s 条鱼！获得了 %s 金币和 %s 点券～",
+                        "§aSuccessfully sold %s fish! Received %s coins~",
+                        "§aSuccessfully sold %s fish! Received %s points~",
+                        "§aSuccessfully sold %s fish! Received %s coins and %s points~",
                         batch.getSoldCount()));
             } else if (batch.hasItemRewards()) {
-                player.sendMessage(messageManager.getMessage("sell_all_success_items", "§a成功出售了 %s 条鱼！获得了物品奖励～", batch.getSoldCount()));
+                player.sendMessage(messageManager.getMessage("sell_all_success_items", "§aSuccessfully sold %s fish! Received item rewards~", batch.getSoldCount()));
             }
             return;
         }
@@ -335,7 +335,7 @@ public class SellCommandHandler {
         boolean canMoneyReward = canGiveSellReward();
 
         if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_start_checking_inventory", "[Debug] 开始检查背包中的鱼..."));
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_start_checking_inventory", "[Debug] Started checking inventory for fish..."));
         }
 
         for (int i = 0; i < player.getInventory().getSize(); i++) {
@@ -345,11 +345,11 @@ public class SellCommandHandler {
             }
 
             if (plugin.getCustomConfig().isDebugMode()) {
-                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_check_item_slot", "[Debug] 检查物品槽 %s: %s", i, item.getType().name()));
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_check_item_slot", "[Debug] Checking item slot %s: %s", i, item.getType().name()));
                 if (item.hasItemMeta()) {
                     ItemMeta meta = item.getItemMeta();
                     if (meta.hasDisplayName()) {
-                        kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_display_name", "[Debug] 物品显示名称: %s", meta.getDisplayName()));
+                        kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_display_name", "[Debug] Item display name: %s", meta.getDisplayName()));
                     }
                 }
             }
@@ -360,14 +360,14 @@ public class SellCommandHandler {
             }
 
             if (plugin.getCustomConfig().isDebugMode()) {
-                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_uuid_obtained", "[Debug] 获取到的鱼UUID: %s", (fishUUIDStr != null ? fishUUIDStr : "null")));
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_uuid_obtained", "[Debug] Obtained fish UUID: %s", (fishUUIDStr != null ? fishUUIDStr : "null")));
             }
 
             int value = getFishValueFromItem(item);
             boolean itemHasRewards = hasItemRewards(item);
 
             if (plugin.getCustomConfig().isDebugMode()) {
-                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_reward", "[Debug] 鱼的价值: %s, 是否有物品奖励: %s", value, itemHasRewards));
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_reward", "[Debug] Fish value: %s, has item rewards: %s", value, itemHasRewards));
             }
 
             if ((value > 0 && canMoneyReward) || itemHasRewards) {
@@ -384,32 +384,32 @@ public class SellCommandHandler {
                 player.getInventory().setItem(i, null);
 
                 if (plugin.getCustomConfig().isDebugMode()) {
-                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_sold", "[Debug] 已出售物品，数量: %s", item.getAmount()));
+                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_sold", "[Debug] Sold item, amount: %s", item.getAmount()));
                 }
             }
         }
 
         if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_sell_complete", "[Debug] 出售完成，总价值: %s, 总数量: %s", totalValue, soldCount));
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_sell_complete", "[Debug] Sale complete, total value: %s, total count: %s", totalValue, soldCount));
         }
 
         if (soldCount > 0) {
             if (totalValue > 0 && canMoneyReward) {
                 if (addMoneyToPlayer(player, totalValue)) {
                     player.sendMessage(messageManager.getMessage(sellRewardKey("sell_all_success"),
-                            sellRewardDefault("§a成功出售了 %s 条鱼！获得了 %s 金币～", "§a成功出售了 %s 条鱼！获得了 %s 点券～"), soldCount, totalValue));
+                            sellRewardDefault("§aSuccessfully sold %s fish! Received %s coins~", "§aSuccessfully sold %s fish! Received %s points~"), soldCount, totalValue));
                 } else {
-                    player.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                    player.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
                 }
             } else if (hasItemRewards) {
-                player.sendMessage(messageManager.getMessage("sell_all_success", "§a成功出售了 %s 条鱼！获得了物品奖励～", soldCount));
+                player.sendMessage(messageManager.getMessage("sell_all_success", "§aSuccessfully sold %s fish! Received item rewards~", soldCount));
             }
 
             for (String uuidStr : uuidStrsToRemove) {
                 plugin.getDB().removeFishUUIDValue(uuidStr);
             }
         } else {
-            player.sendMessage(messageManager.getMessage("sell_all_empty", "§c你的背包里没有可以出售的鱼～"));
+            player.sendMessage(messageManager.getMessage("sell_all_empty", "§cYou have no fish in your inventory that can be sold~"));
         }
     }
 
@@ -420,12 +420,12 @@ public class SellCommandHandler {
         if (opPlayer != null && targetPlayer != null) {
             SellBatch batch = collectSellItems(targetPlayer);
             if (!batch.hasAny()) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_other_all_empty", "§c玩家%s的背包里没有可以出售的鱼～", targetPlayer.getName()));
+                opPlayer.sendMessage(messageManager.getMessage("sell_other_all_empty", "§cPlayer %s has no fish in their inventory that can be sold~", targetPlayer.getName()));
                 return;
             }
 
             if (batch.getPay().hasAny() && !addSellPayToPlayer(targetPlayer, batch.getPay())) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
                 return;
             }
 
@@ -433,18 +433,18 @@ public class SellCommandHandler {
 
             if (batch.getPay().hasAny()) {
                 opPlayer.sendMessage(sellRewardMessage("sell_other_all_success_op", batch.getPay(),
-                        "§a已帮助玩家%s出售了 %s 条鱼！获得了 %s 金币～",
-                        "§a已帮助玩家%s出售了 %s 条鱼！获得了 %s 点券～",
-                        "§a已帮助玩家%s出售了 %s 条鱼！获得了 %s 金币和 %s 点券～",
+                        "§aHelped player %s sell %s fish! Received %s coins~",
+                        "§aHelped player %s sell %s fish! Received %s points~",
+                        "§aHelped player %s sell %s fish! Received %s coins and %s points~",
                         targetPlayer.getName(), batch.getSoldCount()));
                 targetPlayer.sendMessage(sellRewardMessage("sell_other_all_success_player", batch.getPay(),
-                        "§a管理员已帮助你出售了 %s 条鱼！获得了 %s 金币～",
-                        "§a管理员已帮助你出售了 %s 条鱼！获得了 %s 点券～",
-                        "§a管理员已帮助你出售了 %s 条鱼！获得了 %s 金币和 %s 点券～",
+                        "§aAn admin helped you sell %s fish! Received %s coins~",
+                        "§aAn admin helped you sell %s fish! Received %s points~",
+                        "§aAn admin helped you sell %s fish! Received %s coins and %s points~",
                         batch.getSoldCount()));
             } else if (batch.hasItemRewards()) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_other_all_success_op_items", "§a已帮助玩家%s出售了 %s 条鱼！获得了物品奖励～", targetPlayer.getName(), batch.getSoldCount()));
-                targetPlayer.sendMessage(messageManager.getMessage("sell_other_all_success_player_items", "§a管理员已帮助你出售了 %s 条鱼！获得了物品奖励～", batch.getSoldCount()));
+                opPlayer.sendMessage(messageManager.getMessage("sell_other_all_success_op_items", "§aHelped player %s sell %s fish! Received item rewards~", targetPlayer.getName(), batch.getSoldCount()));
+                targetPlayer.sendMessage(messageManager.getMessage("sell_other_all_success_player_items", "§aAn admin helped you sell %s fish! Received item rewards~", batch.getSoldCount()));
             }
             return;
         }
@@ -487,22 +487,22 @@ public class SellCommandHandler {
             if (totalValue > 0 && canMoneyReward) {
                 if (addMoneyToPlayer(targetPlayer, totalValue)) {
                     opPlayer.sendMessage(messageManager.getMessage(sellRewardKey("sell_other_all_success_op"),
-                            sellRewardDefault("§a已帮助玩家%s出售了 %s 条鱼！获得了 %s 金币～", "§a已帮助玩家%s出售了 %s 条鱼！获得了 %s 点券～"), targetPlayer.getName(), soldCount, totalValue));
+                            sellRewardDefault("§aHelped player %s sell %s fish! Received %s coins~", "§aHelped player %s sell %s fish! Received %s points~"), targetPlayer.getName(), soldCount, totalValue));
                     targetPlayer.sendMessage(messageManager.getMessage(sellRewardKey("sell_other_all_success_player"),
-                            sellRewardDefault("§a管理员已帮助你出售了 %s 条鱼！获得了 %s 金币～", "§a管理员已帮助你出售了 %s 条鱼！获得了 %s 点券～"), soldCount, totalValue));
+                            sellRewardDefault("§aAn admin helped you sell %s fish! Received %s coins~", "§aAn admin helped you sell %s fish! Received %s points~"), soldCount, totalValue));
                 } else {
-                    opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                    opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
                 }
             } else if (hasItemRewards) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_other_all_success_op", "§a已帮助玩家%s出售了 %s 条鱼！获得了物品奖励～", targetPlayer.getName(), soldCount));
-                targetPlayer.sendMessage(messageManager.getMessage("sell_other_all_success_player", "§a管理员已帮助你出售了 %s 条鱼！获得了物品奖励～", soldCount));
+                opPlayer.sendMessage(messageManager.getMessage("sell_other_all_success_op", "§aHelped player %s sell %s fish! Received item rewards~", targetPlayer.getName(), soldCount));
+                targetPlayer.sendMessage(messageManager.getMessage("sell_other_all_success_player", "§aAn admin helped you sell %s fish! Received item rewards~", soldCount));
             }
 
             for (String uuidStr : uuidStrsToRemove) {
                 plugin.getDB().removeFishUUIDValue(uuidStr);
             }
         } else {
-            opPlayer.sendMessage(messageManager.getMessage("sell_other_all_empty", "§c玩家%s的背包里没有可以出售的鱼～", targetPlayer.getName()));
+            opPlayer.sendMessage(messageManager.getMessage("sell_other_all_empty", "§cPlayer %s has no fish in their inventory that can be sold~", targetPlayer.getName()));
         }
     }
 
@@ -513,14 +513,14 @@ public class SellCommandHandler {
         SellBatch batch = collectSellItems(targetPlayer);
         if (!batch.hasAny()) {
             if (sender != null) {
-                sender.sendMessage(messageManager.getMessage("sell_help_all_empty", "§c玩家 %s 的背包中没有可出售的鱼～", targetPlayer.getName()));
+                sender.sendMessage(messageManager.getMessage("sell_help_all_empty", "§cPlayer %s has no fish that can be sold~", targetPlayer.getName()));
             }
             return new EconomyService.SellPay(0, 0);
         }
 
         if (batch.getPay().hasAny() && !addSellPayToPlayer(targetPlayer, batch.getPay())) {
             if (sender != null) {
-                sender.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+                sender.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
             }
             return new EconomyService.SellPay(0, 0);
         }
@@ -530,17 +530,17 @@ public class SellCommandHandler {
         if (sender != null) {
             if (batch.getPay().hasAny()) {
                 sender.sendMessage(sellRewardMessage("sell_help_all_success_op", batch.getPay(),
-                        "§a已帮助玩家 %s 出售所有鱼类！获得了 %s 金币～",
-                        "§a已帮助玩家 %s 出售所有鱼类！获得了 %s 点券～",
-                        "§a已帮助玩家 %s 出售所有鱼类！获得了 %s 金币和 %s 点券～",
+                        "§aHelped player %s sell all fish! Received %s coins~",
+                        "§aHelped player %s sell all fish! Received %s points~",
+                        "§aHelped player %s sell all fish! Received %s coins and %s points~",
                         targetPlayer.getName()));
                 targetPlayer.sendMessage(sellRewardMessage("sell_help_all_success_player", batch.getPay(),
-                        "§a控制台已帮助你出售所有鱼类！获得了 %s 金币～",
-                        "§a控制台已帮助你出售所有鱼类！获得了 %s 点券～",
-                        "§a控制台已帮助你出售所有鱼类！获得了 %s 金币和 %s 点券～"));
+                        "§aConsole helped you sell all fish! Received %s coins~",
+                        "§aConsole helped you sell all fish! Received %s points~",
+                        "§aConsole helped you sell all fish! Received %s coins and %s points~"));
             } else if (batch.hasItemRewards()) {
-                sender.sendMessage(messageManager.getMessage("sell_help_all_success_op_items", "§a已帮助玩家 %s 出售所有鱼类！获得了物品奖励～", targetPlayer.getName()));
-                targetPlayer.sendMessage(messageManager.getMessage("sell_help_all_success_player_items", "§a控制台已帮助你出售所有鱼类！获得了物品奖励～"));
+                sender.sendMessage(messageManager.getMessage("sell_help_all_success_op_items", "§aHelped player %s sell all fish! Received item rewards~", targetPlayer.getName()));
+                targetPlayer.sendMessage(messageManager.getMessage("sell_help_all_success_player_items", "§aConsole helped you sell all fish! Received item rewards~"));
             }
         }
 
@@ -602,7 +602,7 @@ public class SellCommandHandler {
     public EconomyService.SellPay sellHandheldFishConsole(CommandSender sender, Player targetPlayer) {
         ItemStack item = targetPlayer.getInventory().getItemInMainHand();
         if (item == null || item.getType() == Material.AIR) {
-            sender.sendMessage(messageManager.getMessage("sell_help_hand_empty", "§c玩家 %s 手中没有物品哦～", targetPlayer.getName()));
+            sender.sendMessage(messageManager.getMessage("sell_help_hand_empty", "§cPlayer %s has no item in their hand~", targetPlayer.getName()));
             return new EconomyService.SellPay(0, 0);
         }
 
@@ -612,17 +612,17 @@ public class SellCommandHandler {
         boolean hasRewards = hasItemRewards(item);
 
         if (!sellValue.hasAnyValue() && !hasRewards) {
-            sender.sendMessage(messageManager.getMessage("sell_help_not_fish", "§c这不是可以出售的鱼～"));
+            sender.sendMessage(messageManager.getMessage("sell_help_not_fish", "§cThis is not a fish that can be sold~"));
             return new EconomyService.SellPay(0, 0);
         }
 
         if (sellValue.hasAnyValue() && !pay.hasAny() && !hasRewards) {
-            sender.sendMessage(messageManager.getMessage("economy_not_enabled", "§c经济系统未启用，无法获得经济奖励!"));
+            sender.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
             return new EconomyService.SellPay(0, 0);
         }
 
         if (pay.hasAny() && !addSellPayToPlayer(targetPlayer, pay)) {
-            sender.sendMessage(messageManager.getMessage("sell_operation_failed", "§c出售操作失败，请稍后再试。"));
+            sender.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
             return new EconomyService.SellPay(0, 0);
         }
 
@@ -631,17 +631,17 @@ public class SellCommandHandler {
 
         if (pay.hasAny()) {
             sender.sendMessage(sellRewardMessage("sell_help_hand_success_op", pay,
-                    "§a已帮助玩家 %s 出售手中物品！获得了 %s 金币～",
-                    "§a已帮助玩家 %s 出售手中物品！获得了 %s 点券～",
-                    "§a已帮助玩家 %s 出售手中物品！获得了 %s 金币和 %s 点券～",
+                    "§aHelped player %s sell hand item! Received %s coins~",
+                    "§aHelped player %s sell hand item! Received %s points~",
+                    "§aHelped player %s sell hand item! Received %s coins and %s points~",
                     targetPlayer.getName()));
             targetPlayer.sendMessage(sellRewardMessage("sell_help_hand_success_player", pay,
-                    "§a控制台已帮助你出售手中物品！获得了 %s 金币～",
-                    "§a控制台已帮助你出售手中物品！获得了 %s 点券～",
-                    "§a控制台已帮助你出售手中物品！获得了 %s 金币和 %s 点券～"));
+                    "§aConsole helped you sell hand item! Received %s coins~",
+                    "§aConsole helped you sell hand item! Received %s points~",
+                    "§aConsole helped you sell hand item! Received %s coins and %s points~"));
         } else {
-            sender.sendMessage(messageManager.getMessage("sell_help_hand_success_op_items", "§a已帮助玩家 %s 出售手中物品！获得了物品奖励～", targetPlayer.getName()));
-            targetPlayer.sendMessage(messageManager.getMessage("sell_help_hand_success_player_items", "§a控制台已帮助你出售手中物品！获得了物品奖励～"));
+            sender.sendMessage(messageManager.getMessage("sell_help_hand_success_op_items", "§aHelped player %s sell hand item! Received item rewards~", targetPlayer.getName()));
+            targetPlayer.sendMessage(messageManager.getMessage("sell_help_hand_success_player_items", "§aConsole helped you sell hand item! Received item rewards~"));
         }
 
         if (fishUUIDStr != null) {
@@ -671,7 +671,7 @@ public class SellCommandHandler {
                 SellValue value = plugin.getDB().getFishSellValueByUUID(uuidStr);
 
                 if (plugin.getCustomConfig().isDebugMode()) {
-                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_get_fish_value_db", "[Debug] 从数据库获取鱼价值: %s", value));
+                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_get_fish_value_db", "[Debug] Fetched fish value from database: %s", value));
                 }
 
                 if (value.hasAnyValue()) {
@@ -680,13 +680,13 @@ public class SellCommandHandler {
                 }
             } catch (IllegalArgumentException e) {
                 if (plugin.getCustomConfig().isDebugMode()) {
-                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_format_error", "[Debug] UUID格式错误: %s", e.getMessage()));
+                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_format_error", "[Debug] UUID format error: %s", e.getMessage()));
                 }
             }
         }
 
         if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_not_found", "[Debug] 未找到鱼价值，返回0"));
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_not_found", "[Debug] Fish value not found, returning 0"));
         }
 
         return SellValue.oldValue(0);
@@ -709,13 +709,13 @@ public class SellCommandHandler {
         Object uuidObj = me.kkfish.utils.NBTUtil.getNBTData(item, "fish_uuid");
         if (uuidObj != null) {
             if (plugin.getCustomConfig().isDebugMode()) {
-                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_found_nbtutil", "[Debug] 从NBTUtil获取到UUID: %s", uuidObj.toString()));
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_found_nbtutil", "[Debug] Got UUID from NBTUtil: %s", uuidObj.toString()));
             }
             return uuidObj.toString();
         }
 
         if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_not_found", "[Debug] 未找到UUID，返回null"));
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_not_found", "[Debug] UUID not found, returning null"));
         }
 
         return null;
@@ -746,11 +746,11 @@ public class SellCommandHandler {
         boolean hasRewards = fishName != null && plugin.getCustomConfig().getItemValue() != null && plugin.getCustomConfig().getItemValue().hasItemRewards(fishName);
 
         if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_check_item_rewards", "[Debug] 检查物品是否有物品奖励: %s", hasRewards));
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_check_item_rewards", "[Debug] Checking if item has item rewards: %s", hasRewards));
             if (fishName != null) {
-                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_name", "[Debug] 鱼的名称: %s", fishName));
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_name", "[Debug] Fish name: %s", fishName));
             } else {
-                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_cannot_get_fish_name", "[Debug] 无法获取鱼的名称"));
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_cannot_get_fish_name", "[Debug] Unable to get fish name"));
             }
         }
 
@@ -896,7 +896,7 @@ public class SellCommandHandler {
     public boolean addSellPayToPlayer(Player player, EconomyService.SellPay pay) {
         EconomyService economyService = plugin.getEconomyService();
         if (economyService == null || !economyService.depositSellPay(player, pay)) {
-            player.sendMessage(messageManager.getMessage("economy_disabled", "§c经济系统未启用，无法获得经济奖励～"));
+            player.sendMessage(messageManager.getMessage("economy_disabled", "§cEconomy system is not enabled, unable to receive rewards~"));
             return false;
         }
 
@@ -909,7 +909,7 @@ public class SellCommandHandler {
         }
         EconomyService economyService = plugin.getEconomyService();
         if (economyService == null || !economyService.deposit(player, amount)) {
-            player.sendMessage(messageManager.getMessage("economy_disabled", "§c经济系统未启用，无法获得金币～"));
+            player.sendMessage(messageManager.getMessage("economy_disabled", "§cEconomy system is not enabled, unable to receive coins~"));
             return false;
         }
 

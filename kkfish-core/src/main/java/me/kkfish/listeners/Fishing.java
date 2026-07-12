@@ -135,7 +135,7 @@ public class Fishing implements Listener {
 
         if (fish.getActiveSession(player) != null) {
             fish.endSession(player);
-            me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("stop_fishing", "你停止了钓鱼。"), 40, MessageType.FISHING);
+            me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("stop_fishing", "You stopped fishing."), 40, MessageType.FISHING);
         }
     }
 
@@ -343,7 +343,7 @@ public class Fishing implements Listener {
             
             // 只在主手触发时处理收线，避免重复
             if (hand == EquipmentSlot.HAND && fish.getActiveSession(player) != null) {
-                me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("reeling_in", "正在收线..."), 40, MessageType.FISHING);
+                me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player, messageManager.getMessage("reeling_in", "Reeling in..."), 40, MessageType.FISHING);
                 plugin.getSoundManager().playReelSound(player.getLocation());
                 fish.endSession(player);
             }
@@ -368,7 +368,7 @@ public class Fishing implements Listener {
         int currentDurability = getRodCurrentDurability(rod);
         
         if (currentDurability <= 0) {
-            player.sendMessage(messageManager.getMessage("rod_broken", "你的钓鱼竿已经损坏了！"));
+            player.sendMessage(messageManager.getMessage("rod_broken", "Your fishing rod is broken!"));
             return false;
         }
         
@@ -441,10 +441,10 @@ public class Fishing implements Listener {
             variables.put("%name%", meta.getDisplayName());
             variables.put("%difficulty%", String.valueOf(config.getRodDifficulty(rodType)));
             variables.put("%float_area%", String.valueOf(config.getRodFloatAreaSize(rodType)));
-            variables.put("%rod_durability%", messageManager.getMessageWithoutPrefix("rod_durability", "耐久度"));
+            variables.put("%rod_durability%", messageManager.getMessageWithoutPrefix("rod_durability", "Durability"));
             
             if (maxDurability > 0) {
-                String unit = messageManager.getMessageWithoutPrefix("rod_durability_unit", "点");
+                String unit = messageManager.getMessageWithoutPrefix("rod_durability_unit", "points");
                 int progressBarLength = 16;
                 double progressPercentage = (double) currentDurability / maxDurability;
                 int filledLength = (int) (progressBarLength * progressPercentage);
@@ -471,25 +471,25 @@ public class Fishing implements Listener {
                 
                 variables.put("%durability%", currentDurability + unit + barBuilder.toString());
             } else {
-                variables.put("%durability%", messageManager.getMessageWithoutPrefix("rod_durability_infinite", "无限耐久"));
+                variables.put("%durability%", messageManager.getMessageWithoutPrefix("rod_durability_infinite", "Unlimited durability"));
             }
             
             double chargeSpeed = config.getRodChargeSpeed(rodType);
             String speedText;
             if (chargeSpeed != 1.0) {
                 String speedType = chargeSpeed > 1.0 ? 
-                        messageManager.getMessageWithoutPrefix("rod_charge_speed_fast", "加速") : 
-                        messageManager.getMessageWithoutPrefix("rod_charge_speed_slow", "减速");
+                        messageManager.getMessageWithoutPrefix("rod_charge_speed_fast", "faster") : 
+                        messageManager.getMessageWithoutPrefix("rod_charge_speed_slow", "slower");
                 speedText = String.format("%.1f倍 (" + speedType + ")", chargeSpeed);
             } else {
-                speedText = messageManager.getMessageWithoutPrefix("rod_charge_speed_normal", "正常");
+                speedText = messageManager.getMessageWithoutPrefix("rod_charge_speed_normal", "normal");
             }
             variables.put("%charge_speed%", speedText);
             
             double biteRateBonus = config.getRodBiteRateBonus(rodType);
             variables.put("%bite_rate_bonus%", biteRateBonus > 0 ? 
                     String.format("+%.1f%%", biteRateBonus * 100) : 
-                    messageManager.getMessageWithoutPrefix("rod_bite_rate_bonus_none", "无"));
+                    messageManager.getMessageWithoutPrefix("rod_bite_rate_bonus_none", "none"));
             
             java.util.List<String> effects = config.getRodEffects(rodType);
             StringBuilder effectsBuilder = new StringBuilder();
@@ -498,7 +498,7 @@ public class Fishing implements Listener {
                     effectsBuilder.append("&7  └─ &r").append(org.bukkit.ChatColor.translateAlternateColorCodes('&', effect)).append("\n");
                 }
             } else {
-                effectsBuilder.append("&7  └─ " + messageManager.getMessageWithoutPrefix("rod_effects_none", "无特殊效果") + "\n");
+                effectsBuilder.append("&7  └─ " + messageManager.getMessageWithoutPrefix("rod_effects_none", "No special effects") + "\n");
             }
             variables.put("%effects%", effectsBuilder.toString());
             
@@ -524,12 +524,12 @@ public class Fishing implements Listener {
         
         if (currentDurability <= 0) {
             player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-            player.sendMessage(messageManager.getMessage("rod_broken", "你的钓鱼竿已经损坏了！"));
+            player.sendMessage(messageManager.getMessage("rod_broken", "Your fishing rod is broken!"));
             return;
         }
         
         if (currentDurability <= maxDurability * 0.2) {
-            player.sendMessage(messageManager.getMessage("rod_low_durability", "钓鱼竿耐久度警告：当前耐久度只有%d点，请注意及时修复或更换！", currentDurability));
+            player.sendMessage(messageManager.getMessage("rod_low_durability", "Rod durability warning: only %d points remaining, repair or replace soon!", currentDurability));
         }
     }
     
@@ -606,7 +606,7 @@ public class Fishing implements Listener {
                     }
                 }
             } catch (Exception e) {
-                kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("fishing_eat_error", "吃鱼时出错了: %s", e.getMessage()));
+                kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("fishing_eat_error", "Error eating fish: %s", e.getMessage()));
             }
             
             String fishName = null;
@@ -668,7 +668,7 @@ public class Fishing implements Listener {
                                 player.addPotionEffect(effect);
                             }
                         } catch (Exception e) {
-                            kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("fishing_effect_parse_failed", "解析鱼特效失败: %s - %s", effectStr, e.getMessage()));
+                            kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("fishing_effect_parse_failed", "Failed to parse fish effect: %s - %s", effectStr, e.getMessage()));
                         }
                     }
                 }
