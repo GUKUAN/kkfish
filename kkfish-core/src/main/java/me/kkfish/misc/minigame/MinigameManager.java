@@ -60,22 +60,7 @@ public class MinigameManager {
     
     public void startMinigame(Player player, double chargePercentage, String baitName) {
         if (gameSessions.containsKey(player.getUniqueId())) return;
-        
-        Location hookLocation = player.getLocation().clone();
-        Object activeSession = plugin.getFish().getActiveSession(player);
-        if (activeSession instanceof ArmorStand) {
-            hookLocation = ((ArmorStand) activeSession).getLocation();
-        }
-        
-        WaterType waterType = plugin.getFish().getWaterType(player);
-        if (waterType == null) {
-            waterType = WaterType.WATER;
-        }
-        
-        GameSession session = new GameSession(plugin, player, hookLocation, waterType, chargePercentage, getRodNameByPlayer(player), baitName, 0.0);
-        gameSessions.put(player.getUniqueId(), session);
-        session.start();
-        plugin.getSoundManager().playBiteSound(player.getLocation());
+        startMinigame(player, chargePercentage, baitName, 0.0);
     }
     
     public void startMinigame(Player player, double chargePercentage, String baitName, double rareFishChance) {
@@ -87,10 +72,14 @@ public class MinigameManager {
         
         String rodName = getRodNameByPlayer(player);
         
-        Location hookLocation = player.getLocation().clone();
         Object activeSession = plugin.getFish().getActiveSession(player);
+        Location hookLocation;
         if (activeSession instanceof ArmorStand) {
             hookLocation = ((ArmorStand) activeSession).getLocation();
+        } else {
+            // 钩子实体不可用时，取玩家朝向方向估算钩子位置
+            hookLocation = player.getEyeLocation().add(player.getLocation().getDirection().multiply(5));
+            configManager.debugLog(plugin.getMessageManager().getMessageWithoutPrefix("debug.minigame_hook_fallback", "Hook entity unavailable, using estimated position for player: %s", player.getName()));
         }
         
         WaterType waterType = plugin.getFish().getWaterType(player);
@@ -153,7 +142,6 @@ public class MinigameManager {
             
                 if (player != null) {
                     Location fishStartLocation = session.hookLocation.clone();
-                    fishStartLocation.add(0, 0.5, 0);
                     
                     fishingManager.animateFishToPlayer(player, fishStartLocation, session.hookLocation, fishItem, actualFishValue, session.waterType, new me.kkfish.managers.Fish.AnimationCompleteCallback() {
                     @Override
