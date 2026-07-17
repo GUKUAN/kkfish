@@ -27,7 +27,7 @@ import me.kkfish.events.EventBus;
 import me.kkfish.integrations.SeasonsService;
 import me.kkfish.platform.VersionService;
 import me.kkfish.player.PlayerContextStore;
-import me.kkfish.scheduler.SchedulerProvider;
+import com.cjcrafter.foliascheduler.ServerImplementation;
 import java.util.concurrent.ConcurrentHashMap;
 
 // TODO: 重构 —— 本类与 RootService 重复持有所有模块字段（setXxxInternal/getXxx双份状态）
@@ -59,7 +59,7 @@ public class kkfish extends JavaPlugin {
     private int majorVersion = 0;
     private int minorVersion = 0;
     private me.kkfish.utils.EntityBatchProcessor entityBatchProcessor;
-    private SchedulerProvider scheduler;
+    private ServerImplementation foliaScheduler;
     private VersionService versionService;
     private RootService rootService;
 
@@ -99,7 +99,6 @@ public class kkfish extends JavaPlugin {
         rootService.startup();
         
         // 从 RootService 同步字段，保持向后兼容的 getter
-        scheduler = rootService.getScheduler();
         economyService = rootService.getEconomyService();
         economy = economyService != null ? economyService.getEconomy() : null;
         playerPointsAPI = economyService != null ? economyService.getPlayerPointsAPI() : null;
@@ -127,8 +126,8 @@ public class kkfish extends JavaPlugin {
         return instance;
     }
 
-    public SchedulerProvider getScheduler() {
-        return scheduler;
+    public ServerImplementation getFoliaScheduler() {
+        return foliaScheduler;
     }
 
     public static void log(String message) {
@@ -276,8 +275,8 @@ public class kkfish extends JavaPlugin {
      * 供 RootService 在启动期间设置调度器。
      * Manager 构造时通过 SchedulerUtil 访问，需要提前注入。
      */
-    public void setSchedulerInternal(SchedulerProvider scheduler) {
-        this.scheduler = scheduler;
+    public void setFoliaSchedulerInternal(ServerImplementation scheduler) {
+        this.foliaScheduler = scheduler;
     }
 
     /**

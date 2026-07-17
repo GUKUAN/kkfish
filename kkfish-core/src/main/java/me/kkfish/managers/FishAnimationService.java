@@ -84,8 +84,9 @@ public class FishAnimationService {
         }
         int animationTicks = (int) Math.min(40 + distance * 4, 100);
 
-        new OldFishAnimationTask(animationTicks, fishEntity, player, callback,
-                fishStartLocation.getX(), fishStartLocation.getZ(), 0.3, fishStartLocation.getY(), 1.5, world, 0.6).runTaskTimer(plugin, 0, 1);
+        OldFishAnimationTask animationTask = new OldFishAnimationTask(animationTicks, fishEntity, player, callback,
+                fishStartLocation.getX(), fishStartLocation.getZ(), 0.3, fishStartLocation.getY(), 1.5, world, 0.6);
+        animationTask.setSchedulerTask(me.kkfish.utils.SchedulerUtil.runEntityTaskTimer(plugin, player, animationTask, 0, 1));
     }
 
     static void safeTeleport(org.bukkit.entity.Entity entity, org.bukkit.Location loc) {
@@ -116,10 +117,10 @@ public class FishAnimationService {
 
         private int ticks;
         private boolean isComplete;
-        private float fishYaw;
         private final int JUMP_TO_HEAD_STAGE = 1, STAY_AT_HEAD_STAGE = 2, GO_TO_INVENTORY_STAGE = 3;
         private int currentStage;
         private ArmorStand floatingTextEntity;
+        private me.kkfish.scheduler.SchedulerTask schedulerTask;
         private final String fishName;
         private final double fishSize;
 
@@ -144,6 +145,10 @@ public class FishAnimationService {
             this.fishSize = parseFishSize(displayedItem);
 
             createFloatingText();
+        }
+
+        void setSchedulerTask(me.kkfish.scheduler.SchedulerTask task) {
+            this.schedulerTask = task;
         }
 
         private String parseFishName(ItemStack fishItem) {
@@ -196,10 +201,6 @@ public class FishAnimationService {
         @Override
         public void run() {
             if (!this.isComplete && this.fishEntity.isValid()) {
-                fishYaw += 15;
-                if (fishYaw >= 360) fishYaw -= 360;
-                fishEntity.setRotation(fishYaw, 0);
-
                 updateFloatingTextLocation();
                 switch (currentStage) {
                     case JUMP_TO_HEAD_STAGE: runJumpToHeadAnimation(); break;
@@ -238,13 +239,13 @@ public class FishAnimationService {
             double y = omt * omt * startY + 2 * omt * t * peakY + t * t * headLocation.getY() + microFloat + FISH_Y_OFFSET;
             double z = omt * omt * startZ + 2 * omt * t * mz + t * t * headLocation.getZ();
 
-            fishEntity.teleport(new Location(world, x, y, z));
+            me.kkfish.utils.NmsAdapter.teleportEntityAsync(fishEntity,new Location(world, x, y, z));
 
             Particle waterSplash = getSafeParticle("WATER_SPLASH", null);
             if (waterSplash != null) spawnSafeParticle(world, waterSplash, fishEntity.getLocation(), 1, 0.1, 0.1, 0.1, 0.05, null);
 
             if (t >= 0.95) {
-                fishEntity.teleport(headLocation.clone().add(0, FISH_Y_OFFSET, 0));
+                me.kkfish.utils.NmsAdapter.teleportEntityAsync(fishEntity,headLocation.clone().add(0, FISH_Y_OFFSET, 0));
                 currentStage = STAY_AT_HEAD_STAGE;
                 ticks = 0;
                 Particle happy = getSafeParticle("VILLAGER_HAPPY", null);
@@ -262,7 +263,7 @@ public class FishAnimationService {
             double swayAmount = 0.05 * Math.sin((ticks % 30) / 30.0 * Math.PI * 2);
             double radians = Math.toRadians(player.getLocation().getYaw());
 
-            fishEntity.teleport(headLocation.clone().add(
+            me.kkfish.utils.NmsAdapter.teleportEntityAsync(fishEntity,headLocation.clone().add(
                 Math.sin(radians) * swayAmount * 0.2,
                 floatOffset + FISH_Y_OFFSET,
                 Math.cos(radians) * swayAmount * 0.2));
@@ -284,8 +285,8 @@ public class FishAnimationService {
             else if (dist < 0.3) stage = dist * 3;
 
             double moveDist = speed * stage;
-            if (dist <= moveDist) fishEntity.teleport(eyeLoc);
-            else fishEntity.teleport(curLoc.clone().add(dir.clone().multiply(moveDist)));
+            if (dist <= moveDist) me.kkfish.utils.NmsAdapter.teleportEntityAsync(fishEntity,eyeLoc);
+            else me.kkfish.utils.NmsAdapter.teleportEntityAsync(fishEntity,curLoc.clone().add(dir.clone().multiply(moveDist)));
 
             int pCount = dist < 0.5 ? 5 : 3;
             Particle crack = getSafeParticle("ITEM_CRACK", null);
@@ -296,7 +297,7 @@ public class FishAnimationService {
         }
 
         private void finishAnimation() {
-            this.cancel();
+            me.kkfish.utils.SchedulerUtil.cancelTask(schedulerTask);
             removeFloatingText();
             plugin.getSoundManager().playSuccessSound(player.getLocation());
 
@@ -305,13 +306,10 @@ public class FishAnimationService {
             Particle happy = getSafeParticle("VILLAGER_HAPPY", null);
             if (happy != null) spawnSafeParticle(world, happy, player.getLocation().add(0, 1, 0), 8, 0.3, 0.3, 0.3, 0.1, null);
 
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    if (fishEntity.isValid()) fishEntity.remove();
-                    if (callback != null) callback.onAnimationComplete();
-                }
-            }.runTaskLater(plugin, 3L);
+            me.kkfish.utils.SchedulerUtil.runEntityTaskDelayed(plugin, player, () -> {
+                if (fishEntity.isValid()) fishEntity.remove();
+                if (callback != null) callback.onAnimationComplete();
+            }, 3L);
         }
     }
 }

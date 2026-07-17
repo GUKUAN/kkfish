@@ -81,22 +81,19 @@ public class BiteCheckScheduler {
         final double finalChargePercentage = chargePercentage;
         final String finalBaitName = baitName;
 
-        BukkitRunnable biteTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (ctx != null && ctx.getSession().getFishingSession() != null) {
-                    checkFishBite(player, finalChargePercentage, finalBaitName);
-                }
-                if (ctx != null) {
-                    ctx.getRuntime().setBiteCheckTask(null);
-                }
+        Runnable biteTask = () -> {
+            if (ctx != null && ctx.getSession().getFishingSession() != null) {
+                checkFishBite(player, finalChargePercentage, finalBaitName);
+            }
+            if (ctx != null) {
+                ctx.getRuntime().setBiteCheckTask(null);
             }
         };
 
+        SchedulerTask task = SchedulerUtil.runEntityTaskDelayed(plugin, player, biteTask, delay);
         if (ctx != null) {
-            ctx.getRuntime().setBiteCheckTask(biteTask);
+            ctx.getRuntime().setBiteCheckTask(task);
         }
-        biteTask.runTaskLater(plugin, delay);
     }
 
     private void checkFishBite(Player player, double chargePercentage, String baitName) {
@@ -239,7 +236,7 @@ public class BiteCheckScheduler {
             ctx.getRuntime().setBiteHintData(data);
         }
 
-        expireTask.runTaskLater(plugin, hintTimeoutSeconds * 20);
+        SchedulerUtil.runEntityTaskDelayed(plugin, player, expireTask, hintTimeoutSeconds * 20);
     }
 
     private void sendFloatingText(Player player, Location location, String text, int fadeInTime, int stayTime, int fadeOutTime) {
@@ -336,7 +333,7 @@ public class BiteCheckScheduler {
                 fadeOutTaskRefTask[0] = SchedulerUtil.runEntityTaskTimer(plugin, player, fadeOutTaskRef[0], 0, 1);
             }
         };
-        fadeOutTask.runTaskLater(plugin, fadeInTime + stayTime);
+        SchedulerUtil.runEntityTaskDelayed(plugin, player, fadeOutTask, fadeInTime + stayTime);
     }
 
     private void sendFloatingText(Player player, Location location, String text, int duration, float scale) {

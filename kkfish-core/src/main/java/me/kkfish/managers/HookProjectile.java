@@ -190,7 +190,7 @@ public class HookProjectile {
         final SchedulerTask[] taskRef = new SchedulerTask[1];
         final PlayerContext ctx = getContext(player);
 
-        taskRef[0] = SchedulerUtil.scheduleTask(plugin, new Runnable() {
+        taskRef[0] = SchedulerUtil.runEntityTaskTimer(plugin, player, new Runnable() {
             private int ticks = 0;
             private final Vector velocity = direction.clone();
             private final double gravity = 0.06 - (chargePercentage / 100.0 * 0.03);
@@ -333,12 +333,12 @@ public class HookProjectile {
             }
         };
 
-        taskRef[0] = SchedulerUtil.scheduleTask(plugin, runnableRef[0], 0, 1);
+        taskRef[0] = SchedulerUtil.runEntityTaskTimer(plugin, player, runnableRef[0], 0, 1);
     }
 
     private void startHookFloatingEffect(Player player, ArmorStand hookEntity) {
         final PlayerContext ctx = getContext(player);
-        SchedulerTask task = SchedulerUtil.scheduleTask(plugin, new BukkitRunnable() {
+        SchedulerTask task = SchedulerUtil.runEntityTaskTimer(plugin, player, new BukkitRunnable() {
             private int floatTicks = 0;
             private final double floatAmplitude = 0.2;
             private final Location floatStartLoc = hookEntity.getLocation().clone();
@@ -410,7 +410,7 @@ public class HookProjectile {
             }
         };
 
-        taskRef[0] = SchedulerUtil.scheduleTask(plugin, runnableRef[0], 0, 1);
+        taskRef[0] = SchedulerUtil.runEntityTaskTimer(plugin, player, runnableRef[0], 0, 1);
     }
 
     private void handleHookFailure(Player player) {

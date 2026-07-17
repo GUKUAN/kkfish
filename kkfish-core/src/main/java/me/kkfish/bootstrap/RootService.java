@@ -24,8 +24,9 @@ import me.kkfish.events.EventBus;
 import me.kkfish.events.EventSubscriberRegistry;
 import me.kkfish.player.PlayerContextStore;
 import me.kkfish.platform.VersionService;
-import me.kkfish.scheduler.SchedulerProvider;
-import me.kkfish.scheduler.SchedulerProviderFactory;
+import com.cjcrafter.foliascheduler.FoliaCompatibility;
+import com.cjcrafter.foliascheduler.ServerImplementation;
+import com.cjcrafter.foliascheduler.TaskImplementation;
 import me.kkfish.utils.EntityBatchProcessor;
 import me.kkfish.scheduler.SchedulerTask;
 
@@ -53,13 +54,13 @@ public class RootService implements AutoCloseable {
 
     // 基础设施
     private Config config;
-    private SchedulerProvider scheduler;
+    private ServerImplementation scheduler;
     private VersionService versionService;
     private MessageManager messageManager;
     private EconomyService economyService;
     private SeasonsService seasonsService;
     private EntityBatchProcessor entityBatchProcessor;
-    private SchedulerTask batchProcessorTask;
+    private TaskImplementation batchProcessorTask;
     private Metrics metrics;
     private EventBus eventBus;
     private EventSubscriberRegistry eventSubscriberRegistry;
@@ -94,9 +95,9 @@ public class RootService implements AutoCloseable {
 
         MessageManager mm = plugin.getMessageManager();
 
-        // 1. 调度器（立即同步到 plugin，因为后续 Manager 构造时会通过 SchedulerUtil 访问）
-        scheduler = SchedulerProviderFactory.create(plugin);
-        plugin.setSchedulerInternal(scheduler);
+        // 1. 调度器（foliascheduler 自动检测 Spigot/Paper/Folia）
+        scheduler = new FoliaCompatibility(plugin).getServerImplementation();
+        plugin.setFoliaSchedulerInternal(scheduler);
 
         // 1.5 事件总线（基础设施，供后续服务订阅）
         eventBus = new EventBus();
@@ -120,7 +121,7 @@ public class RootService implements AutoCloseable {
         plugin.setDBInternal(db);
 
         // 5.5 玩家上下文存储（依赖 DB + Scheduler + EventBus）
-        playerContextStore = new PlayerContextStore(plugin, scheduler, db, eventBus);
+        playerContextStore = new PlayerContextStore(plugin, db, eventBus);
         plugin.setPlayerContextStoreInternal(playerContextStore);
 
         // 6. GUI
@@ -164,7 +165,7 @@ public class RootService implements AutoCloseable {
 
         // 13. 实体批处理器
         entityBatchProcessor = new EntityBatchProcessor();
-        batchProcessorTask = scheduler.runTaskTimer(entityBatchProcessor::flush, 20L, 20L);
+        batchProcessorTask = (TaskImplementation) scheduler.global().runAtFixedRate(ct -> { entityBatchProcessor.flush(); return null; }, 20L, 20L);
 
         // 14. bStats
         initMetrics();
@@ -175,7 +176,7 @@ public class RootService implements AutoCloseable {
         }
 
         // 16. 启动完成通知
-        scheduler.runTaskLater(() -> {
+        scheduler.global().runDelayed((java.util.function.Consumer) ct -> {
             kkfish.log(mm.getMessageWithoutPrefix("log.plugin_loaded", "KKFISH fishing system has been loaded!"));
         }, 20L);
 
@@ -272,7 +273,7 @@ public class RootService implements AutoCloseable {
 
     // ===== Getters =====
 
-    public SchedulerProvider getScheduler() {
+    public ServerImplementation getFoliaScheduler() {
         return scheduler;
     }
 

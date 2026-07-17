@@ -83,7 +83,7 @@ public class LavaHookMechanic implements HookMechanic {
             try {
                 me.kkfish.utils.NmsAdapter.teleportEntityAsync(hookEntity, currentLoc);
             } catch (Exception e) {
-                hookEntity.teleport(currentLoc);
+                me.kkfish.utils.NmsAdapter.teleportEntityAsync(hookEntity,currentLoc);
             }
 
             if (floatTicks % 10 == 0) {
@@ -156,7 +156,7 @@ public class LavaHookMechanic implements HookMechanic {
                 try {
                 me.kkfish.utils.NmsAdapter.teleportEntityAsync(hookEntity, currentLoc);
             } catch (Exception e) {
-                hookEntity.teleport(currentLoc);
+                me.kkfish.utils.NmsAdapter.teleportEntityAsync(hookEntity,currentLoc);
             }
 
                 distanceMoved += Math.abs(entryVelocity.getY());

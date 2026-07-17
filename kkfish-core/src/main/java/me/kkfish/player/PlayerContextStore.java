@@ -17,7 +17,7 @@ import me.kkfish.events.PlayerContextClosingEvent;
 import me.kkfish.events.PlayerContextLoadedEvent;
 import me.kkfish.managers.DB;
 import me.kkfish.misc.MessageManager;
-import me.kkfish.scheduler.SchedulerProvider;
+import me.kkfish.utils.SchedulerUtil;
 
 /**
  * 玩家上下文存储与生命周期管理。
@@ -48,7 +48,6 @@ import me.kkfish.scheduler.SchedulerProvider;
 public class PlayerContextStore {
 
     private final kkfish plugin;
-    private final SchedulerProvider scheduler;
     private final DB db;
     private final MessageManager messageManager;
     private final EventBus eventBus;
@@ -65,9 +64,8 @@ public class PlayerContextStore {
 
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    public PlayerContextStore(kkfish plugin, SchedulerProvider scheduler, DB db, EventBus eventBus) {
+    public PlayerContextStore(kkfish plugin, DB db, EventBus eventBus) {
         this.plugin = plugin;
-        this.scheduler = scheduler;
         this.db = db;
         this.messageManager = plugin.getMessageManager();
         this.eventBus = eventBus;
@@ -182,7 +180,7 @@ public class PlayerContextStore {
                 log("§cFailed to load player data for " + player.getName() + ": " + e.getMessage());
             } finally {
                 // LOADING → ACTIVE（回到主线程标记）
-                scheduler.runTask(() -> {
+                SchedulerUtil.runSync(plugin, () -> {
                     ctx.transitionTo(LifecycleTag.ACTIVE);
                 });
             }
@@ -240,7 +238,7 @@ public class PlayerContextStore {
                 log("§cFailed to save player data for " + ctx.getIdentity().getName() + ": " + e.getMessage());
             } finally {
                 // SAVING → DESTROYING → CLEANED
-                scheduler.runTask(() -> {
+                SchedulerUtil.runSync(plugin, () -> {
                     ctx.transitionTo(LifecycleTag.DESTROYING);
                     ctx.destroy();
                     contexts.remove(ctx.getIdentity().getUuid());

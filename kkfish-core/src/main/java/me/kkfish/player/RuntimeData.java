@@ -57,7 +57,7 @@ public class RuntimeData {
     private final AtomicReference<BukkitRunnable> activeProgressTask = new AtomicReference<>();
 
     /** 咬钩检查任务。 */
-    private final AtomicReference<BukkitRunnable> biteCheckTask = new AtomicReference<>();
+    private final AtomicReference<SchedulerTask> biteCheckTask = new AtomicReference<>();
 
     /** 蓄力进度调度任务。 */
     private final AtomicReference<SchedulerTask> activeProgressScheduler = new AtomicReference<>();
@@ -164,11 +164,11 @@ public class RuntimeData {
         activeProgressTask.set(task);
     }
 
-    public BukkitRunnable getBiteCheckTask() {
+    public SchedulerTask getBiteCheckTask() {
         return biteCheckTask.get();
     }
 
-    public void setBiteCheckTask(BukkitRunnable task) {
+    public void setBiteCheckTask(SchedulerTask task) {
         biteCheckTask.set(task);
     }
 
@@ -222,7 +222,7 @@ public class RuntimeData {
         cancelScheduler(trajectoryTask);
         cancelRunnable(activeChargeTask);
         cancelRunnable(activeProgressTask);
-        cancelRunnable(biteCheckTask);
+        cancelScheduler(biteCheckTask);
     }
 
     /**

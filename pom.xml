@@ -15,8 +15,6 @@
 
     <modules>
         <module>kkfish-core</module>
-        <module>kkfish-spigot</module>
-        <module>kkfish-folia</module>
     </modules>
 
     <properties>
