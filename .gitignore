@@ -5,6 +5,7 @@ target/
 .trae/
 .idea/
 .openclaude/
+.superpowers/
 *.iml
 *.ipr
 *.iws

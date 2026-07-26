@@ -1,0 +1,311 @@
+# kkfish 钓鱼比赛配置文件
+# 比赛配置示例
+# 你可以通过各种类型和设置创建自定义钓鱼比赛
+# 比赛配置示例（添加到 competitions: 节点下）:
+# custom-competition:
+#   name: "自定义钓鱼比赛"
+#   type: "TOTAL_VALUE"  # 比赛类型: AMOUNT（数量）、TOTAL_VALUE（总价值）、SINGLE_VALUE（单条最高价值）、POINTS_ONLY（积分制）
+#   schedule: "every 1 19:00"  # 每周一 19:00（1=周日, 2=周一, ..., 7=周六）
+#   schedule: "every day 20:00"  # 每天 20:00
+#   schedule: "2024-12-25 12:00"  # 特定日期时间
+#   min-players: 5  # 最少参与人数
+#   duration: 3600  # 持续时间（秒），3600=1小时
+#   
+#   # 鱼类列表配置（仅 POINTS_ONLY 类型使用）
+#   fish-list:
+#     - "cod:1.0"
+#     - "salmon:0.8"
+#   
+#   # 积分倍率（仅 POINTS_ONLY 类型使用）
+#   point-multiplier: 1.5
+#   
+#   # 奖励配置
+#   rewards:
+#     "1":
+#       - "give %player% diamond 10"
+#       - "eco give %player% 1000"
+#   reward-display-info:
+#     "1":
+#       - "第1名奖励"
+#       - "10 钻石 + 1000 金币"
+#   
+#   # 显示配置
+#   display:
+#     title:
+#       enabled: true
+#       countdown-format: "&e&l比赛倒计时: &r&6%time%"
+#     actionbar:
+#       enabled: true
+#     bossbar:
+#       enabled: true
+#     scoreboard:
+#       enabled: true
+#       title: "&e&l自定义钓鱼比赛"
+#   # 其他配置项...
+competitions:
+  weekly_amount_competition:
+    name: "每周钓鱼数量比赛"
+    enabled: true
+    type: "AMOUNT"
+    schedule: "every 3 20:00"
+    min-players: 5
+    duration: 3600
+    
+    rewards:
+      "1":
+        - "give %player% diamond 10"
+        - "eco give %player% 1000"
+        - "say 恭喜 %player% 获得每周钓鱼数量比赛第1名！"
+      "2":
+        - "give %player% diamond 5"
+        - "eco give %player% 500"
+      "3":
+        - "give %player% diamond 2"
+        - "eco give %player% 200"
+      "10":
+        - "eco give %player% 50"
+    
+    reward-display-info:
+      "1":
+        - "第1名奖励"
+        - "10 钻石 + 1000 金币"
+      "2":
+        - "第2名奖励"
+        - "5 钻石 + 500 金币"
+      "3":
+        - "第3名奖励"
+        - "2 钻石 + 200 金币"
+      "10":
+        - "参与奖励"
+        - "50 金币"
+    
+    display:
+      title:
+        enabled: true
+        countdown-format: "&e&l比赛倒计时: &r&6%time%"
+        status-format: "&e&l比赛进行中: &r&6%status%"
+        status-duration: 10
+      
+      actionbar:
+        enabled: true
+        countdown-format: "&e比赛倒计时: &6%time%"
+        status-format: "&e比赛进行中: &6%status%"
+        status-duration: 10
+      
+      bossbar:
+        enabled: true
+        countdown-format: "&e&l每周钓鱼数量比赛 - 倒计时: &6%time%"
+        status-format: "&e&l每周钓鱼数量比赛 - %status%"
+        status-duration: 10
+        color: "BLUE"
+        style: "SEGMENTED_10"
+      
+      scoreboard:
+        enabled: true
+        title: "&e&l每周钓鱼数量比赛"
+        lines:
+          "&e&l当前排名:": 1
+          "&f": -1
+          "&61st: %player_1%": 5
+          "&e2nd: %player_2%": 5
+          "&73rd: %player_3%": 5
+
+  monthly_value_competition:
+    name: "每月钓鱼总价值比赛"
+    enabled: true
+    type: "TOTAL_VALUE"
+    schedule: "6767-12-01 19:00"
+    min-players: 10
+    duration: 7200
+    
+    rewards:
+      "1":
+        - "give %player% diamond_block 5"
+        - "eco give %player% 5000"
+        - "say 恭喜 %player% 获得每月钓鱼总价值比赛第1名！"
+      "2":
+        - "give %player% diamond_block 2"
+        - "eco give %player% 2000"
+      "3":
+        - "give %player% diamond 10"
+        - "eco give %player% 1000"
+      "5":
+        - "give %player% diamond 5"
+        - "eco give %player% 500"
+    
+    reward-display-info:
+      "1":
+        - "第1名奖励"
+        - "5 钻石块 + 5000 金币"
+      "2":
+        - "第2名奖励"
+        - "2 钻石块 + 2000 金币"
+      "3":
+        - "第3名奖励"
+        - "10 钻石 + 1000 金币"
+      "5":
+        - "参与奖励"
+        - "5 钻石 + 500 金币"
+    
+    display:
+      title:
+        enabled: true
+        countdown-format: "&e&l比赛倒计时: &r&6%time%"
+        status-format: "&e&l比赛进行中: &r&6%status%"
+        status-duration: 10
+      
+      actionbar:
+        enabled: true
+        countdown-format: "&e比赛倒计时: &6%time%"
+        status-format: "&e比赛进行中: &6%status%"
+        status-duration: 10
+      
+      bossbar:
+        enabled: true
+        countdown-format: "&e&l每月钓鱼总价值比赛 - 倒计时: &6%time%"
+        status-format: "&e&l每月钓鱼总价值比赛 - %status%"
+        status-duration: 10
+        color: "GREEN"
+        style: "SEGMENTED_12"
+      
+      scoreboard:
+        enabled: true
+        title: "&e&l每月钓鱼总价值比赛"
+        lines:
+          "&e&l当前排名:": 1
+          "&f": -1
+          "&61st: %player_1% - %value_1%": 5
+          "&e2nd: %player_2% - %value_2%": 5
+          "&73rd: %player_3% - %value_3%": 5
+
+  special_single_value_competition:
+    name: "特殊单条鱼价值比赛"
+    enabled: true
+    type: "SINGLE_VALUE"
+    schedule: ""
+    min-players: 0
+    duration: 1800
+    
+    rewards:
+      "1":
+        - "give %player% nether_star 1"
+        - "eco give %player% 3000"
+        - "say 恭喜 %player% 获得特殊单条鱼价值比赛第1名！"
+      "2":
+        - "give %player% diamond 15"
+        - "eco give %player% 1500"
+      "3":
+        - "give %player% diamond 8"
+        - "eco give %player% 800"
+    
+    reward-display-info:
+      "1":
+        - "第1名奖励"
+        - "1 下界之星 + 3000 金币"
+      "2":
+        - "第2名奖励"
+        - "15 钻石 + 1500 金币"
+      "3":
+        - "第3名奖励"
+        - "8 钻石 + 800 金币"
+    
+    display:
+      title:
+        enabled: true
+        countdown-format: "&e&l比赛倒计时: &r&6%time%"
+        status-format: "&e&l比赛进行中: &r&6%status%"
+        status-duration: 10
+      
+      actionbar:
+        enabled: true
+        countdown-format: "&e比赛倒计时: &6%time%"
+        status-format: "&e比赛进行中: &6%status%"
+        status-duration: 10
+      
+      bossbar:
+        enabled: true
+        countdown-format: "&e&l特殊单条鱼价值比赛 - 倒计时: &6%time%"
+        status-format: "&e&l特殊单条鱼价值比赛 - %status%"
+        status-duration: 10
+        color: "PURPLE"
+        style: "SEGMENTED_20"
+      
+      scoreboard:
+        enabled: true
+        title: "&e&l特殊单条鱼价值比赛"
+        lines:
+          "&e&l当前排名:": 1
+          "&f": -1
+          "&61st: %player_1% - %value_1%": 5
+          "&e2nd: %player_2% - %value_2%": 5
+          "&73rd: %player_3% - %value_3%": 5
+
+  points_only_competition:
+    name: "积分制钓鱼比赛"
+    enabled: true
+    type: "POINTS_ONLY"
+    schedule: "every 6 14:00"
+    min-players: 3
+    duration: 1800
+    
+    fish-list:
+      - "cod:1.0"
+      - "salmon:0.8"
+      - "tropical_fish:0.5"
+      - "pufferfish:0.3"
+    
+    point-multiplier: 1.0
+    
+    rewards:
+      "1":
+        - "give %player% diamond 8"
+        - "eco give %player% 2000"
+        - "say 恭喜 %player% 获得积分制钓鱼比赛第1名！"
+      "2":
+        - "give %player% diamond 4"
+        - "eco give %player% 1000"
+      "3":
+        - "give %player% diamond 2"
+        - "eco give %player% 500"
+    
+    reward-display-info:
+      "1":
+        - "第1名奖励"
+        - "8 钻石 + 2000 金币"
+      "2":
+        - "第2名奖励"
+        - "4 钻石 + 1000 金币"
+      "3":
+        - "第3名奖励"
+        - "2 钻石 + 500 金币"
+    
+    display:
+      title:
+        enabled: true
+        countdown-format: "&e&l比赛倒计时: &r&6%time%"
+        status-format: "&e&l比赛进行中: &r&6%status%"
+        status-duration: 10
+      
+      actionbar:
+        enabled: true
+        countdown-format: "&e比赛倒计时: &6%time%"
+        status-format: "&e比赛进行中: &6%status%"
+        status-duration: 10
+      
+      bossbar:
+        enabled: true
+        countdown-format: "&e&l积分制钓鱼比赛 - 倒计时: &6%time%"
+        status-format: "&e&l积分制钓鱼比赛 - %status%"
+        status-duration: 10
+        color: "YELLOW"
+        style: "SEGMENTED_10"
+      
+      scoreboard:
+        enabled: true
+        title: "&e&l积分制钓鱼比赛"
+        lines:
+          "&e&l当前排名:": 1
+          "&f": -1
+          "&61st: %player_1% - %value_1%": 5
+          "&e2nd: %player_2% - %value_2%": 5
+          "&73rd: %player_3% - %value_3%": 5

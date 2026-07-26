@@ -1,0 +1,269 @@
+# kkfish 鱼类配置文件
+# 鱼类配置示例
+# 你可以通过各种属性和行为创建自定义鱼类
+# 鱼类配置示例（添加到 fish: 节点下）:
+# custom-legendary-fish:
+#   level:
+#     - legendary:100
+#   activity: 2.0 # （预留字段，尚未接入）
+#   min-size: 50
+#   max-size: 150
+#   value: 1000
+#   # 可选：按经济系统拆分出售奖励。不填则 value 跟随 config.yml 的 economy.primary/fallback
+#   sell-value:
+#     vault: 1000
+#     playerpoints: 100
+#   biomes: ["OCEAN", "DEEP_OCEAN"]
+#   weather: ["THUNDER"]
+#   time: ["NIGHT"]
+#   seasons: ["SUMMER"]
+#   bite-rate-multiplier: 0.3 # （预留字段，尚未接入）
+#   description: "一条稀有而强大的鱼"
+#   display-name: "&6&l自定义传说级鱼类"
+#   material: "TROPICAL_FISH"
+#   custom-model-data: -1
+#   enchant-glow: true
+#   effects: ["FIRE_RESISTANCE 3:60", "WATER_BREATHING 2:120"]
+#   movement-amplitude: 2.0
+#   command: ["-o say 恭喜 %player%！", "-c give %player% diamond 10"]
+#   saturation: 20
+#   announcement: true
+#   template: "default"
+#   # 其他配置项...
+fish:
+  Carp:
+    level:
+      - common:70
+      - rare:20
+      - epic:10
+    activity: 1.0
+    min-size: 20
+    max-size: 60
+    value: 10
+    item-value:
+      - "diamond:1"
+      - "iron_ingot:3"
+    biomes: ["RIVER", "SWAMP", "BEACH", "FROZEN_RIVER", "PLAINS", "FOREST", "TAIGA", "JUNGLE"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["ANY"]
+    seasons: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
+    bite-rate-multiplier: 1.1
+    description: "一种常见的淡水鱼，肉质鲜美，常出没于河流中"
+    display-name: "§f鲤鱼"
+    material: "COD"
+    custom-model-data: -1
+    enchant-glow: false
+    effects: []
+    movement-amplitude: 1.0
+    command: []
+    saturation: 4
+    announcement: false
+    template: "simple"
+
+  GrassCarp:
+    level:
+      - common:100
+    activity: 0.8
+    min-size: 15
+    max-size: 50
+    value: 8
+    biomes: ["RIVER", "SWAMP", "FROZEN_RIVER", "PLAINS", "FOREST", "TAIGA", "JUNGLE"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["ANY"]
+    seasons: ["SPRING", "SUMMER", "AUTUMN"]
+    bite-rate-multiplier: 1.2
+    description: "一种性情温和的淡水鱼，易于捕获，体态修长可爱"
+    display-name: "§f草鱼"
+    material: "SALMON"
+    custom-model-data: -1
+    enchant-glow: false
+    effects: []
+    movement-amplitude: 0.8
+    command: []
+    saturation: 4
+    announcement: false
+    template: "simple"
+
+  Goldfish:
+    level:
+      - rare:80
+      - epic:20
+    activity: 1.5
+    min-size: 5
+    max-size: 15
+    value: 50
+    biomes: ["RIVER", "PLAINS", "FOREST", "TAIGA", "JUNGLE"]
+    weather: ["CLEAR"]
+    time: ["DAY", "DAWN", "DUSK"]
+    seasons: ["SPRING", "SUMMER"]
+    bite-rate-multiplier: 0.8
+    description: "一种美丽的观赏鱼，极为罕见，金色的鳞片在阳光下闪闪发光"
+    display-name: "§6金鱼"
+    material: "TROPICAL_FISH"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: []
+    movement-amplitude: 1.5
+    command: []
+    saturation: 4
+    announcement: true
+    template: "default"
+
+  Bass:
+    level:
+      - rare:100
+    activity: 1.2
+    min-size: 25
+    max-size: 70
+    value: 25
+    biomes: ["OCEAN", "RIVER", "DEEP_OCEAN", "WARM_OCEAN", "COLD_OCEAN"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["DUSK", "DAWN"]
+    seasons: ["SPRING", "SUMMER", "AUTUMN"]
+    bite-rate-multiplier: 0.9
+    description: "一种强壮的肉食性鱼类，游泳速度极快"
+    display-name: "§3鲈鱼"
+    material: "COD"
+    custom-model-data: -1
+    enchant-glow: false
+    effects: []
+    movement-amplitude: 1.2
+    command: []
+    saturation: 4
+    announcement: false
+    template: "default"
+
+  DragonFish:
+    level:
+      - legendary:10
+    activity: 2.0
+    min-size: 100
+    max-size: 200
+    value: 1000
+    item-value:
+      - "diamond:3"
+      - "iron_block:1"
+      - "gold_block:1"
+    biomes: ["DEEP_OCEAN"]
+    weather: ["THUNDER"]
+    time: ["NIGHT"]
+    seasons: ["SUMMER"]
+    bite-rate-multiplier: 0.3
+    description: "传说中的神秘鱼类，鲜有人见过，据说食用后能获得神秘力量"
+    display-name: "§4§l龙鱼"
+    material: "PUFFERFISH"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: ["FIRE_RESISTANCE 3:60", "WATER_BREATHING 2:120"]
+    movement-amplitude: 2.0
+    command: []
+    saturation: 20
+    announcement: true
+    template: "default"
+
+  LightningFish:
+    level:
+      - epic:90
+      - legendary:10
+    activity: 1.8
+    min-size: 30
+    max-size: 80
+    value: 500
+    biomes: ["OCEAN", "DEEP_OCEAN", "WARM_OCEAN", "COLD_OCEAN"]
+    weather: ["THUNDER"]
+    time: ["NIGHT"]
+    seasons: ["SUMMER"]
+    bite-rate-multiplier: 0.5
+    description: "一种在雷雨天气出现的怪鱼，身上带有微弱电流，触碰时会有刺痛感"
+    display-name: "§b闪电鱼"
+    material: "TROPICAL_FISH"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: ["SPEED 2:30"]
+    movement-amplitude: 1.8
+    command: []
+    saturation: 10
+    announcement: true
+    template: "default"
+
+  StoneFish:
+    level:
+      - rare:50
+      - common:50
+    activity: 0.6
+    min-size: 20
+    max-size: 40
+    value: 30
+    biomes: ["OCEAN", "SWAMP", "BEACH"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["ANY"]
+    seasons: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
+    bite-rate-multiplier: 0.7
+    description: "一种擅长伪装的鱼，常躲在岩石附近，看起来像一块石头"
+    display-name: "§7石头鱼"
+    material: "COD"
+    custom-model-data: -1
+    enchant-glow: false
+    effects: []
+    movement-amplitude: 0.5
+    command: []
+    saturation: 2
+    announcement: false
+    template: "simple"
+
+  FlyingFish:
+    level:
+      - rare:100
+    activity: 1.6
+    min-size: 15
+    max-size: 35
+    value: 75
+    biomes: ["OCEAN", "DEEP_OCEAN", "WARM_OCEAN"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["DAY"]
+    seasons: ["SPRING", "SUMMER"]
+    bite-rate-multiplier: 0.8
+    description: "一种能短暂跃出水面的怪鱼，看起来像在飞翔"
+    display-name: "§a飞鱼"
+    material: "SALMON"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: ["JUMP_BOOST 2:45"]
+    movement-amplitude: 1.6
+    command: []
+    saturation: 15
+    announcement: true
+    template: "default"
+
+  XuFuFish:
+    level:
+      - legendary:100
+    activity: 1.8
+    min-size: 40
+    max-size: 100
+    value: 800
+    biomes: ["OCEAN", "DEEP_OCEAN"]
+    weather: ["CLEAR", "RAIN"]
+    time: ["NIGHT"]
+    seasons: ["AUTUMN"]
+    bite-rate-multiplier: 0.4
+    description: "传说中的神秘鱼类，据说食用后能长生不老，游动时散发着神秘的光芒"
+    display-name: "§d§l徐福鱼"
+    material: "TROPICAL_FISH"
+    custom-model-data: -1
+    enchant-glow: true
+    effects: ["HEALTH_BOOST 3:120", "ABSORPTION 2:60"]
+    movement-amplitude: 1.8
+    command: []
+    saturation: 15
+    announcement: true
+    template: "default"
+
+# 效果名称映射
+effects-map:
+  SPEED: "速度提升"
+  JUMP_BOOST: "跳跃提升"
+  FIRE_RESISTANCE: "抗火"
+  WATER_BREATHING: "水下呼吸"
+  HEALTH_BOOST: "生命提升"
+  ABSORPTION: "伤害吸收"

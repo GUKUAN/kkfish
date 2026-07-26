@@ -1,0 +1,30 @@
+# kkfish 鱼池配置文件
+# 鱼池用于按水域类型分组鱼类，钓鱼时根据水域类型从对应池子中抽取
+#
+# 支持的水域类型：
+#   water - 普通水域（默认）
+#   lava   - 岩浆池（需在 config.yml 中启用 lava-fishing）
+#   void   - 虚空池（需在 config.yml 中启用 void-fishing）
+#
+# 注意：池子中填写的鱼类名称必须在 fish.yml 中存在，否则会被忽略并打印警告
+
+# 水域鱼池
+water:
+  - Carp
+  - GrassCarp
+  - Goldfish
+  - Bass
+  - DragonFish
+  - FlyingFish
+  - XuFuFish
+
+# 岩浆池子 — 取消注释并添加对应 fish.yml 定义后生效
+# lava:
+#   - MagmaFish
+#   - FlameEel
+#   - NetheriteKoi
+
+# 虚空池子 — 取消注释并添加对应 fish.yml 定义后生效
+# void:
+#   - VoidWraith
+#   - EnderDragonFry

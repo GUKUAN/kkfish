@@ -3,7 +3,9 @@ package me.kkfish.managers;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -14,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.StringUtil;
 
+import me.kkfish.competition.CompetitionUtils;
 import me.kkfish.economy.EconomyService;
 import me.kkfish.kkfish;
 import me.kkfish.misc.MessageManager;
@@ -35,7 +38,11 @@ public class Cmd implements CommandExecutor, TabCompleter {
     private final kkfish plugin;
     private final MessageManager messageManager;
     private final List<String> subCommands = Arrays.asList(
-            "help", "reload", "debug", "give", "gui", "version", "sell", "compete", "add", "unlock", "lock", "sellgui", "toggle");
+            "help", "reload", "debug", "give", "gui", "version", "sell", "compete", "add", "unlock", "lock", "sellgui", "toggle", "resellang");
+
+    // resellang二次确认缓存：senderName:langCode → 首次输入时间戳
+    private final Map<String, Long> resellangConfirmMap = new ConcurrentHashMap<>();
+    private static final long RESELLANG_CONFIRM_TIMEOUT_MS = 30000L;
 
     // 子命令处理器
     private final SellCommandHandler sellHandler;
@@ -111,6 +118,9 @@ public class Cmd implements CommandExecutor, TabCompleter {
                 break;
             case "toggle":
                 adminHandler.handleModeCommand(sender, args);
+                break;
+            case "resellang":
+                handleResellang(sender, args);
                 break;
             default:
                 sender.sendMessage(messageManager.getMessage("unknown_command", "§cUnknown command, use /kkfish help to see available commands."));
@@ -552,9 +562,88 @@ if (targetPlayer == null) {
         } else if (args.length == 2 && "toggle".equals(args[0].toLowerCase())) {
             List<String> modeOptions = Arrays.asList("plugin", "vanilla");
             StringUtil.copyPartialMatches(args[1], modeOptions, completions);
+        } else if (args.length == 2 && "resellang".equals(args[0].toLowerCase())) {
+            // 补全支持的语言列表（从Config读取，不硬编码）
+            StringUtil.copyPartialMatches(args[1],
+                plugin.getCustomConfig().getSupportedLangs(), completions);
         }
 
         return completions;
+    }
+
+    // ==================== resellang：重新选择语言组 ====================
+
+    private void handleResellang(CommandSender sender, String[] args) {
+        // 权限检查
+        if (!sender.hasPermission("kkfish.admin")) {
+            sender.sendMessage(messageManager.getMessage("no_permission",
+                "§d你没有执行此命令的权限"));
+            return;
+        }
+
+        // 参数校验：支持的语言列表从Config读取，不在此处硬编码
+        List<String> supportedLangs = plugin.getCustomConfig().getSupportedLangs();
+        if (args.length < 2) {
+            sender.sendMessage(messageManager.getMessage("resellang_usage",
+                "§d用法: /kf resellang <" + String.join("|", supportedLangs) + ">"));
+            return;
+        }
+
+        String langCode = args[1].toLowerCase();
+        if (!supportedLangs.contains(langCode)) {
+            sender.sendMessage(messageManager.getMessage("resellang_invalid",
+                "§c不支持的语言，可选: " + String.join(", ", supportedLangs)));
+            return;
+        }
+
+        // 二次确认机制（30秒超时）
+        String confirmKey = sender.getName() + ":" + langCode;
+        Long lastTime = resellangConfirmMap.get(confirmKey);
+        long now = System.currentTimeMillis();
+
+        if (lastTime == null || (now - lastTime) > RESELLANG_CONFIRM_TIMEOUT_MS) {
+            // 首次输入或已超时，提示确认
+            resellangConfirmMap.put(confirmKey, now);
+
+            // 超时时间用比赛时间工具格式化
+            String timeoutDisplay = CompetitionUtils.formatDuration(
+                (int) (RESELLANG_CONFIRM_TIMEOUT_MS / 1000), messageManager);
+
+            sender.sendMessage(messageManager.getMessage("resellang_confirm_title",
+                "§e⚠️ §f即将以 §6%s§f 配置组覆盖以下文件：", langCode));
+            sender.sendMessage(messageManager.getMessage("resellang_confirm_list",
+                "§7- config.yml, fish.yml, rods.yml, baits.yml"));
+            sender.sendMessage(messageManager.getMessage("resellang_confirm_list",
+                "§7- hooks.yml, pools.yml, compete.yml"));
+            sender.sendMessage(messageManager.getMessage("resellang_confirm_list",
+                "§7- gui/*.yml（9 个）"));
+            sender.sendMessage(messageManager.getMessage("resellang_confirm_warning",
+                "§c共 17 个文件将被覆盖，且不可恢复！"));
+            sender.sendMessage(messageManager.getMessage("resellang_confirm_action",
+                "§e请在 §c%s§e 内再次输入 §a/kf resellang %s§e 确认。",
+                timeoutDisplay, langCode));
+            return;
+        }
+
+        // 二次确认通过，执行覆盖
+        resellangConfirmMap.remove(confirmKey);
+        sender.sendMessage(messageManager.getMessage("resellang_applying",
+            "§a正在应用 §e%s§a 配置组...", langCode));
+
+        boolean success = plugin.getCustomConfig().forceApplyLanguagePack(langCode);
+        if (success) {
+            sender.sendMessage(messageManager.getMessage("resellang_success_resource",
+                "§a✓ 资源释放完成"));
+            sender.sendMessage(messageManager.getMessage("resellang_success_config",
+                "§a✓ 配置覆盖完成"));
+            sender.sendMessage(messageManager.getMessage("resellang_success_mark",
+                "§a✓ 标记写入完成（auto-detected=%s）", langCode));
+            sender.sendMessage(messageManager.getMessage("resellang_success_reload_hint",
+                "§e请使用 §a/kf reload§e 重载配置生效。"));
+        } else {
+            sender.sendMessage(messageManager.getMessage("resellang_failed",
+                "§c✗ 应用配置组失败，请查看控制台日志。"));
+        }
     }
 
     // ==================== Help ====================

@@ -35,6 +35,7 @@ help_message: |
   &d/kkfish sell <all|hand> <player> - [OP] 帮助其他玩家出售物品
   &d/kkfish compete <start|stop|forcestop|list> [competition_id] [duration] - 管理钓鱼比赛
   &d/kkfish toggle - 切换钓鱼模式
+  &d/kkfish resellang <zh_cn|en_us> - [OP] 重新选择语言组并覆盖配置
 
 # ==========================
 # 命令相关消息
@@ -657,3 +658,31 @@ mode_switch_no_permission: "&d你没有权限切换钓鱼模式"
 # Rod Template Messages
 # ==========================
 rod_template_fallback: "&6[===== 鱼竿属性 =====]\n&b│ 难度系数: %difficulty%\n&a│ 浮标区域: %float_area%\n&c│ %rod_durability%: %durability%\n&d│ 充能速度: %charge_speed%\n&d│ 咬钩几率加成: %bite_rate_bonus%\n&6[====================]\n \n&e✨ 特殊效果:\n%effects%\n \n&7钓鱼快乐~"
+
+# ==========================
+# 配置自动检测与语言组切换
+# ==========================
+auto_detect_china: "§a检测到中国服务器环境，正在应用中文配置组～"
+auto_detect_default: "§a检测到非中国服务器环境，使用默认配置。"
+auto_detect_skip: "§7跳过自动检测（已检测过：%s）"
+
+# resellang 指令
+resellang_usage: "§d用法: /kf resellang <lang_code>"
+resellang_invalid: "§c不支持的语言，可选: %s"
+resellang_confirm_title: "§e⚠️ §f即将以 §6%s§f 配置组覆盖以下文件："
+resellang_confirm_list: "§7- %s"
+resellang_confirm_warning: "§c共 17 个文件将被覆盖，且不可恢复！"
+resellang_confirm_action: "§e请在 §c%s§e 内再次输入 §a/kf resellang %s§e 确认。"
+resellang_applying: "§a正在应用 §e%s§a 配置组..."
+resellang_success_resource: "§a✓ 资源释放完成"
+resellang_success_config: "§a✓ 配置覆盖完成"
+resellang_success_mark: "§a✓ 标记写入完成（auto-detected=%s）"
+resellang_success_reload_hint: "§e请使用 §a/kf reload§e 重载配置生效。"
+resellang_failed: "§c✗ 应用配置组失败，请查看控制台日志。"
+
+# 语言组相关日志
+log.resellang_applied: "已强制应用语言组: %s"
+log.resellang_apply_failed: "强制应用语言组失败: %s"
+log.config_pack_copy_failed: "复制配置组失败: %s"
+log.backup_created: "已备份现有配置到: %s"
+log.backup_expired_removed: "已清理过期备份: %s（保留时长: %s）"

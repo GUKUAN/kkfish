@@ -1,0 +1,72 @@
+menu_title: '&8&lHook Material Selection'
+update_interval: 1
+size: 54
+items:
+  'Border_Glass':
+    material: gray_stained_glass_pane
+    slots:
+      - 0-8
+      - 45-53
+    display_name: '&8[&7Border&8]'
+    lore:
+      - '&7Don''t touch me (。・ω・。)'
+    left_click_commands: []
+    right_click_commands: []
+  'hook_material_items':
+    material: '%hook_material_item%'
+    slots:
+      - 10-16
+      - 19-25
+      - 28-34
+      - 37-43
+    display_name: '&8[&a%hook_name%&8]'
+    lore:
+      - '&7Level: %hook_level%'
+      - '&7Price: %hook_price% coins'
+      - '&7Durability: %hook_durability%'
+      - '&7Effect: %hook_effect%'
+      - '&r'
+      - '&7Status: %hook_status%'
+      - '&7Action: %hook_action%'
+    left_click_commands:
+      - '[sound] block.stone_button.click_on 100 1'
+      - '[action] buy hook %hook_id%'
+    right_click_commands:
+      - '[sound] block.stone_button.click_on 100 1'
+      - '[action] buy hook %hook_id%'
+  'Previous_Page':
+    material: arrow
+    slot: 48
+    display_name: '&8[&aPrevious Page&8]'
+    lore:
+      - '&7Click to view previous page'
+    left_click_commands:
+      - '[sound] block.stone_button.click_on 100 1'
+      - '[action] hook_page previous'
+    right_click_commands:
+      - '[sound] block.stone_button.click_on 100 1'
+      - '[action] hook_page previous'
+  'Next_Page':
+    material: arrow
+    slot: 50
+    display_name: '&8[&aNext Page&8]'
+    lore:
+      - '&7Click to view next page'
+    left_click_commands:
+      - '[sound] block.stone_button.click_on 100 1'
+      - '[action] hook_page next'
+    right_click_commands:
+      - '[sound] block.stone_button.click_on 100 1'
+      - '[action] hook_page next'
+  'Back_Button':
+    material: barrier
+    slot: 45
+    display_name: '&8[&cBack&8]'
+    lore:
+      - '&7Click to return to main menu'
+    left_click_commands:
+      - '[sound] block.ender_chest.close 100 0.5'
+      - '[action] open_gui main_menu'
+    right_click_commands:
+      - '[sound] block.ender_chest.close 100 0.5'
+      - '[action] open_gui main_menu'

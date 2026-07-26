@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -13,6 +14,8 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -100,8 +103,15 @@ public class HookProjectile {
                 List<String> lore = meta.getLore();
                 for (String line : lore) {
                     if (line.contains(plugin.getMessageManager().getMessageWithoutPrefix("bait_usage_tip", "放于副手，蓄力抛出时消耗"))) {
-                            String displayName = meta.getDisplayName();
-                            String currentBaitName = org.bukkit.ChatColor.stripColor(displayName);
+                            String currentBaitName = null;
+                            PersistentDataContainer pdc = meta.getPersistentDataContainer();
+                            NamespacedKey baitNameKey = new NamespacedKey(plugin, "bait_name");
+                            if (pdc.has(baitNameKey, PersistentDataType.STRING)) {
+                                currentBaitName = pdc.get(baitNameKey, PersistentDataType.STRING);
+                            } else {
+                                String displayName = meta.getDisplayName();
+                                currentBaitName = org.bukkit.ChatColor.stripColor(displayName);
+                            }
 
                             if (!plugin.getCustomConfig().hasBaitPermission(player, currentBaitName)) {
                                 player.sendMessage(plugin.getMessageManager().getMessage("bait_no_permission", "§d你没有权限使用这个鱼饵！"));

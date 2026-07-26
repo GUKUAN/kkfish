@@ -1,0 +1,95 @@
+# kkfish 鱼饵配置文件
+# 鱼饵配置示例
+# 你可以通过各种效果和属性创建自定义鱼饵
+# 单效果鱼饵配置示例（添加到 baits: 节点下）:
+# custom-worm-bait:
+#   material: "SPIDER_EYE"
+#   custom-model-data: -1
+#   display-name: "&a自定义虫饵"
+#   effect: "bite"
+#   value: 0.4  # +40% 咬钩几率
+#   permissions: []
+#   # 其他配置项...
+# 
+# 多效果鱼饵配置示例:
+# custom-magic-bait:
+#   material: "ENCHANTED_GOLDEN_APPLE"
+#   custom-model-data: -1
+#   display-name: "&5&l魔法鱼饵"
+#   effects: ["rare", "size", "bite"]  # 多种效果类型
+#   effect-values:
+#     rare: 0.2  # +20% 稀有鱼几率
+#     size: 0.3  # +30% 鱼尺寸
+#     bite: 0.15  # +15% 咬钩几率
+#   permissions: ["kkfish.baits.magic"]  # 所需权限
+#   # 其他配置项...
+baits:
+  bread-crumbs:
+    material: "BREAD"
+    display-name: "§f面包屑"
+    custom-model-data: -1
+    effect: "bite"
+    value: 0.3
+    permissions: []
+  
+  worm:
+    material: "SPIDER_EYE"
+    display-name: "§a虫子"
+    custom-model-data: -1
+    effect: "bite"
+    value: 0.2
+    permissions: []
+  
+  earthworm:
+    material: "ROTTEN_FLESH"
+    display-name: "§7蚯蚓"
+    custom-model-data: -1
+    effect: "size"
+    value: 0.4
+    permissions: []
+  
+  small-fish:
+    material: "COD"
+    display-name: "§3小鱼"
+    custom-model-data: -1
+    effect: "rare"
+    value: 0.5
+    permissions: []
+  
+  honey:
+    material: "HONEY_BOTTLE"
+    display-name: "§e蜂蜜"
+    custom-model-data: -1
+    effect: "rare"
+    value: 0.1
+    permissions: []
+  
+  firefly:
+    material: "GLOW_INK_SAC"
+    display-name: "§b萤火虫"
+    custom-model-data: -1
+    effect: "bite"
+    value: 0.3
+    permissions: []
+  
+  diamond-bait:
+    material: "DIAMOND"
+    display-name: "§b§l钻石鱼饵"
+    custom-model-data: -1
+    effect: "rare"
+    value: 0.25
+    permissions: ["kkfish.baits.diamond"]
+  
+  magic-bait:
+    material: "ENCHANTED_GOLDEN_APPLE"
+    display-name: "§5§l魔法鱼饵"
+    custom-model-data: -1
+    effects: ["rare", "size", "bite"]
+    effect-values:
+      rare: 0.15
+      size: 0.2
+      bite: 0.1
+    permissions: ["kkfish.baits.magic"]
+
+bait-crafting:
+  auto-equip-bait: true

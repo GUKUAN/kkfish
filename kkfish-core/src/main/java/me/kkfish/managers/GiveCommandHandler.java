@@ -7,12 +7,15 @@ import java.util.Map;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 
 import me.kkfish.kkfish;
 import me.kkfish.integrations.CustomItemHook;
@@ -294,6 +297,9 @@ public class GiveCommandHandler {
                 configManager.getBaitConfig().getString("baits." + baitName + ".display-name", "&f" + baitName));
         displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
+
+        NamespacedKey baitNameKey = new NamespacedKey(plugin, "bait_name");
+        meta.getPersistentDataContainer().set(baitNameKey, PersistentDataType.STRING, baitName);
 
         int customModelData = configManager.getBaitCustomModelData(baitName);
         if (customModelData > 0 || customModelData == -1) {

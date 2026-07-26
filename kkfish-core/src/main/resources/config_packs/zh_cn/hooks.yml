@@ -1,0 +1,313 @@
+# kkfish 鱼钩配置文件
+# 鱼钩配置示例
+# 你可以通过各种属性和效果创建自定义鱼钩
+# 鱼钩配置示例（添加到 hooks: 节点下）:
+# custom-diamond-hook:
+#   material: "DIAMOND_BLOCK"
+#   custom-model-data: -1
+#   display-name: "&b自定义钻石鱼钩"
+#   description: "&7一个具有独特效果的强力鱼钩"
+#   permissions: ["kkfish.hooks.custom"]
+#   rarity: "legendary"
+#   effects:
+#     bite-rate-bonus: 0.3  # +30% 咬钩几率
+#     rare-fish-chance: 0.2  # +20% 稀有鱼几率
+#   price:
+#     vault: 1000.0  # 金币价格
+#     points: 200    # 点券价格
+#   # 其他配置项...
+hooks:
+  '1':
+    wood:
+      material: "OAK_LOG"
+      display-name: "&a木质鱼钩"
+      custom-model-data: -1
+      description: "&7基础材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 0.0
+        points: 0
+      
+    stone:
+      material: "COBBLESTONE"
+      display-name: "&7石质鱼钩"
+      custom-model-data: -1
+      description: "&7略微提升鱼的咬钩几率"
+      permissions: []
+      rarity: "uncommon"
+      effects:
+        bite-rate-bonus: 0.05
+        rare-fish-chance: 0.02
+      price:
+        vault: 50.0
+        points: 10
+      
+    iron:
+      material: "IRON_BLOCK"
+      display-name: "&f铁质鱼钩"
+      custom-model-data: -1
+      description: "&7提升鱼的咬钩几率和稀有鱼几率"
+      permissions: []
+      rarity: "rare"
+      effects:
+        bite-rate-bonus: 0.1
+        rare-fish-chance: 0.05
+      price:
+        vault: 150.0
+        points: 30
+      
+    gold:
+      material: "GOLD_BLOCK"
+      display-name: "&6金质鱼钩"
+      custom-model-data: -1
+      description: "&7大幅提升稀有鱼几率"
+      permissions: []
+      rarity: "epic"
+      effects:
+        bite-rate-bonus: 0.15
+        rare-fish-chance: 0.1
+      price:
+        vault: 300.0
+        points: 60
+      
+    diamond:
+      material: "DIAMOND_BLOCK"
+      display-name: "&b钻石鱼钩"
+      custom-model-data: -1
+      description: "&7最高品质材质，全面提升所有属性"
+      permissions: []
+      rarity: "legendary"
+      effects:
+        bite-rate-bonus: 0.2
+        rare-fish-chance: 0.15
+      price:
+        vault: 500.0
+        points: 100
+      
+    white_wool:
+      material: "WHITE_WOOL"
+      display-name: "&f白色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    orange_wool:
+      material: "ORANGE_WOOL"
+      display-name: "&6橙色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    magenta_wool:
+      material: "MAGENTA_WOOL"
+      display-name: "&d品红色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    light_blue_wool:
+      material: "LIGHT_BLUE_WOOL"
+      display-name: "&9淡蓝色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    yellow_wool:
+      material: "YELLOW_WOOL"
+      display-name: "&e黄色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    lime_wool:
+      material: "LIME_WOOL"
+      display-name: "&a黄绿色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    pink_wool:
+      material: "PINK_WOOL"
+      display-name: "&d粉色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    gray_wool:
+      material: "GRAY_WOOL"
+      display-name: "&7灰色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    light_gray_wool:
+      material: "LIGHT_GRAY_WOOL"
+      display-name: "&7淡灰色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    cyan_wool:
+      material: "CYAN_WOOL"
+      display-name: "&3青色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    purple_wool:
+      material: "PURPLE_WOOL"
+      display-name: "&5紫色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    blue_wool:
+      material: "BLUE_WOOL"
+      display-name: "&1蓝色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    brown_wool:
+      material: "BROWN_WOOL"
+      display-name: "&6棕色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    green_wool:
+      material: "GREEN_WOOL"
+      display-name: "&2绿色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    red_wool:
+      material: "RED_WOOL"
+      display-name: "&c红色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    black_wool:
+      material: "BLACK_WOOL"
+      display-name: "&0黑色羊毛鱼钩"
+      custom-model-data: -1
+      description: "&7装饰性材质，无特殊效果"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40

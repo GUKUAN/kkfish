@@ -1,0 +1,19 @@
+water:
+  - Carp
+  - GrassCarp
+  - Goldfish
+  - Bass
+  - DragonFish
+  - FlyingFish
+  - XuFuFish
+
+# 岩浆池子 — 取消注释并添加对应 fish.yml 定义后生效
+# lava:
+#   - MagmaFish
+#   - FlameEel
+#   - NetheriteKoi
+
+# 虚空池子 — 取消注释并添加对应 fish.yml 定义后生效
+# void:
+#   - VoidWraith
+#   - EnderDragonFry

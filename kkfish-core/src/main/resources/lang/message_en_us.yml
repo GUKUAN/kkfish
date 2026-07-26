@@ -35,6 +35,7 @@ help_message: |
   &d/kkfish sell <all|hand> <player> - [OP] Help other players sell items
   &d/kkfish compete <start|stop|forcestop|list> [competition_id] [duration] - Manage fishing competitions
   &d/kkfish toggle - Toggle fishing mode
+  &d/kkfish resellang <zh_cn|en_us> - [OP] Re-select language pack and overwrite configs
 
 # ==========================
 # Command Related Messages
@@ -656,3 +657,31 @@ mode_switch_no_permission: "&dYou don't have permission to switch fishing mode"
 # Rod Template Messages
 # ==========================
 rod_template_fallback: "&6[===== Fishing Rod =====]\n&b| Difficulty: %difficulty%\n&a| Float Area: %float_area%\n&c| %rod_durability%: %durability%\n&d| Charge Speed: %charge_speed%\n&d| Bite Rate Bonus: %bite_rate_bonus%\n&6[========================]\n \n&eSpecial Effects:\n%effects%\n \n&7Happy fishing~"
+
+# ==========================
+# Auto-detection & Language Pack Switching
+# ==========================
+auto_detect_china: "§aChina server environment detected, applying Chinese config pack..."
+auto_detect_default: "§aNon-China server environment detected, using default config."
+auto_detect_skip: "§7Skipping auto-detection (already detected: %s)"
+
+# resellang command
+resellang_usage: "§dUsage: /kf resellang <lang_code>"
+resellang_invalid: "§cUnsupported language, available: %s"
+resellang_confirm_title: "§e⚠️ §fAbout to overwrite the following files with §6%s§f config pack:"
+resellang_confirm_list: "§7- %s"
+resellang_confirm_warning: "§c17 files will be overwritten and cannot be recovered!"
+resellang_confirm_action: "§ePlease type §a/kf resellang %s§e again within §c%s§e to confirm."
+resellang_applying: "§aApplying §e%s§a config pack..."
+resellang_success_resource: "§a✓ Resource extraction complete"
+resellang_success_config: "§a✓ Config overwrite complete"
+resellang_success_mark: "§a✓ Mark written (auto-detected=%s)"
+resellang_success_reload_hint: "§ePlease run §a/kf reload§e to take effect."
+resellang_failed: "§c✗ Failed to apply config pack, check console log."
+
+# Language pack related logs
+log.resellang_applied: "Force-applied language pack: %s"
+log.resellang_apply_failed: "Failed to force-apply language pack: %s"
+log.config_pack_copy_failed: "Failed to copy config pack: %s"
+log.backup_created: "Backed up existing configs to: %s"
+log.backup_expired_removed: "Removed expired backup: %s (retention: %s)"

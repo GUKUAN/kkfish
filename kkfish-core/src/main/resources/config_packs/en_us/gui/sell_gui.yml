@@ -1,0 +1,30 @@
+menu_title: '&8&lSell Interface'
+update_interval: 1
+size: 54
+items:
+  'Border_Glass':
+    material: gray_stained_glass_pane
+    slots:
+      - 0-8
+      - 45-48
+      - 50-53
+    display_name: '&8[&7Border&8]'
+    lore:
+      - '&7Don''t touch me (。・ω・。)'
+    left_click_commands: []
+    right_click_commands: []
+  'Close_Button':
+    material: barrier
+    slot: 49
+    display_name: '&8[&cClose&8]'
+    lore:
+      - '&7Close interface'
+      - '&7Auto-sell after closing'
+      - '&7Fish placed in the interface'
+      - '&7Unsellable fish will be returned'
+    left_click_actions:
+      - '[sound] block.ender_chest.close 100 0.5'
+      - '[close]'
+    right_click_actions:
+      - '[sound] block.ender_chest.close 100 0.5'
+      - '[close]'

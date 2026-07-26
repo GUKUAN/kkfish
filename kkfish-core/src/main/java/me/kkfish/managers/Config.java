@@ -2,15 +2,21 @@ package me.kkfish.managers;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.ChatColor;
@@ -22,6 +28,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import me.kkfish.competition.CompetitionUtils;
 import me.kkfish.fishing.WaterType;
 import me.kkfish.kkfish;
 import me.kkfish.handlers.AuraSkills;
@@ -54,6 +61,13 @@ public class Config {
     private final Map<WaterType, List<String>> validPoolFishCache = new EnumMap<>(WaterType.class);
     private final Map<String, String> hookPathCache = new ConcurrentHashMap<>();
     private ItemValue itemValue;
+
+    // 支持的语言组，对应 resources/config_packs/<lang>/ 目录
+    // 扩展新语言步骤：1)此列表追加 2)detectServerLang()加映射 3)建config_packs/<lang>/目录
+    private static final List<String> SUPPORTED_LANGS = Arrays.asList("zh_cn", "en_us");
+
+    // 首次启动检测结果暂存，待mainConfig加载后写入auto-detected字段
+    private String pendingAutoDetected = null;
 
     public Config(kkfish plugin) {
         this.plugin = plugin;
@@ -103,8 +117,17 @@ public class Config {
     }
 
     private void initializeConfigs() {
+        // 首次启动检测：在释放默认配置前判断服务器语言环境
+        detectAndApplyLanguage();
+
         plugin.saveDefaultConfig();
         mainConfig = (YamlConfiguration) plugin.getConfig();
+
+        // 写入首次启动检测结果标记
+        if (pendingAutoDetected != null) {
+            mainConfig.set("auto-detected", pendingAutoDetected);
+            pendingAutoDetected = null;
+        }
 
         File fishFile = new File(plugin.getDataFolder(), "fish.yml");
         if (!fishFile.exists()) {
@@ -182,6 +205,239 @@ public class Config {
         poolConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "pools.yml"));
         reloadPoolCache();
         rebuildHookPathCache();
+    }
+
+    // ==================== 语言组自动检测与应用 ====================
+
+    /**
+     * 根据JVM环境推断服务器语言
+     * 默认en_us，locale或时区命中中国则返回zh_cn
+     * 扩展新语言时在此添加映射规则
+     */
+    private String detectServerLang() {
+        String country = Locale.getDefault().getCountry();
+        String lang = Locale.getDefault().getLanguage();
+
+        // 时区信号：中国大陆/港澳台
+        String tz = TimeZone.getDefault().getID();
+        boolean chinaTz = tz.equals("Asia/Shanghai") || tz.equals("Asia/Chongqing")
+                       || tz.equals("Asia/Harbin") || tz.equals("Asia/Urumqi")
+                       || tz.equals("Asia/Hong_Kong") || tz.equals("Asia/Taipei")
+                       || tz.equals("Asia/Macau") || tz.equals("CTT");
+
+        // locale信号：国家码或语言码
+        boolean chinaLocale = "CN".equals(country) || "HK".equals(country)
+                           || "TW".equals(country) || "MO".equals(country)
+                           || "zh".equals(lang);
+
+        if (chinaTz || chinaLocale) {
+            return "zh_cn";
+        }
+        return "en_us";
+    }
+
+    /**
+     * 首次启动检测：在释放默认配置前调用
+     * 已检测过(config.yml含auto-detected字段)则跳过
+     */
+    private void detectAndApplyLanguage() {
+        File mainFile = new File(plugin.getDataFolder(), "config.yml");
+        if (mainFile.exists()) {
+            YamlConfiguration existing = YamlConfiguration.loadConfiguration(mainFile);
+            if (existing.contains("auto-detected")) {
+                String detected = existing.getString("auto-detected", "none");
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
+                    "auto_detect_skip", "§7跳过自动检测（已检测过：%s）", detected));
+                return;
+            }
+        }
+
+        String langCode = detectServerLang();
+        if ("en_us".equals(langCode)) {
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
+                "auto_detect_default", "§a检测到非中国服务器环境，使用默认配置。"));
+            // en_us就是默认配置，无需复制
+        } else {
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
+                "auto_detect_china", "§a检测到中国服务器环境，正在应用中文配置组..."));
+            try {
+                // 首次启动模式：仅对不存在的文件释放
+                copyConfigPack(langCode, false);
+            } catch (IOException e) {
+                kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix(
+                    "log.config_pack_copy_failed", "复制配置组失败: %s", e.getMessage()));
+            }
+        }
+
+        this.pendingAutoDetected = langCode;
+    }
+
+    /**
+     * 从jar内config_packs/<langCode>/释放配置到插件数据目录
+     * @param langCode 语言代码，必须在SUPPORTED_LANGS中
+     * @param force true=强制覆盖（用于resellang），false=仅对不存在的文件释放（首次启动）
+     */
+    private void copyConfigPack(String langCode, boolean force) throws IOException {
+        if (!SUPPORTED_LANGS.contains(langCode)) {
+            throw new IllegalArgumentException("Unsupported language: " + langCode);
+        }
+
+        String[] mainFiles = {"config.yml", "fish.yml", "rods.yml", "baits.yml",
+                              "hooks.yml", "pools.yml", "compete.yml"};
+        String[] guiFiles = {"main_menu.yml", "fish_dex.yml", "fish_record.yml",
+                             "help_gui.yml", "hook_material.yml", "competition_category.yml",
+                             "reward_preview.yml", "rod_shop.yml", "sell_gui.yml"};
+
+        String packPrefix = "config_packs/" + langCode + "/";
+
+        // 释放主配置和物品配置
+        // saveResource会保持jar内目录结构，先释放到临时位置再复制覆盖
+        for (String f : mainFiles) {
+            File target = new File(plugin.getDataFolder(), f);
+            if (!force && target.exists()) {
+                continue;
+            }
+            plugin.saveResource(packPrefix + f, true);
+            File source = new File(plugin.getDataFolder(), packPrefix + f);
+            Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        // GUI配置
+        File guiDir = new File(plugin.getDataFolder(), "gui");
+        if (!guiDir.exists()) {
+            guiDir.mkdirs();
+        }
+        for (String f : guiFiles) {
+            File target = new File(guiDir, f);
+            if (!force && target.exists()) {
+                continue;
+            }
+            plugin.saveResource(packPrefix + "gui/" + f, true);
+            File source = new File(plugin.getDataFolder(), packPrefix + "gui/" + f);
+            Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        // 清理临时释放的config_packs目录
+        deleteDir(new File(plugin.getDataFolder(), "config_packs"));
+    }
+
+    /**
+     * 强制应用指定语言组（/kf resellang调用）
+     * 会先备份现有配置（如果backup.enabled=true）
+     * @return true表示成功
+     */
+    public boolean forceApplyLanguagePack(String langCode) {
+        if (!SUPPORTED_LANGS.contains(langCode)) {
+            return false;
+        }
+        try {
+            // 备份
+            if (mainConfig.getBoolean("backup.enabled", true)) {
+                backupConfigs();
+            }
+
+            copyConfigPack(langCode, true);
+            reloadConfigs();
+
+            mainConfig.set("auto-detected", langCode);
+            saveConfigs();
+
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
+                "log.resellang_applied", "已强制应用语言组: %s", langCode));
+            return true;
+        } catch (Exception e) {
+            kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix(
+                "log.resellang_apply_failed", "强制应用语言组失败: %s", e.getMessage()));
+            return false;
+        }
+    }
+
+    /**
+     * 备份现有配置到backup_<时间戳>/目录
+     */
+    private void backupConfigs() throws IOException {
+        String ts = new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date());
+        File backupDir = new File(plugin.getDataFolder(), "backup_" + ts);
+        backupDir.mkdirs();
+
+        String[] mainFiles = {"config.yml", "fish.yml", "rods.yml", "baits.yml",
+                              "hooks.yml", "pools.yml", "compete.yml"};
+        for (String f : mainFiles) {
+            File src = new File(plugin.getDataFolder(), f);
+            if (src.exists()) {
+                Files.copy(src.toPath(), new File(backupDir, f).toPath());
+            }
+        }
+
+        File guiDir = new File(plugin.getDataFolder(), "gui");
+        if (guiDir.exists()) {
+            File backupGui = new File(backupDir, "gui");
+            backupGui.mkdirs();
+            File[] guiFiles = guiDir.listFiles();
+            if (guiFiles != null) {
+                for (File gf : guiFiles) {
+                    if (gf.isFile()) {
+                        Files.copy(gf.toPath(), new File(backupGui, gf.getName()).toPath());
+                    }
+                }
+            }
+        }
+
+        cleanExpiredBackups();
+
+        kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
+            "log.backup_created", "已备份现有配置到: %s", backupDir.getName()));
+    }
+
+    /**
+     * 清理过期备份目录
+     * 保留时长由config.yml的backup.retention-seconds控制，-1表示永不清理
+     */
+    private void cleanExpiredBackups() {
+        int retentionSec = mainConfig.getInt("backup.retention-seconds", 604800);
+        if (retentionSec < 0) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long retentionMs = retentionSec * 1000L;
+        // 保留时长用比赛时间工具格式化显示
+        String retentionDisplay = CompetitionUtils.formatDuration(retentionSec, plugin.getMessageManager());
+
+        File[] files = plugin.getDataFolder().listFiles();
+        if (files == null) return;
+
+        for (File f : files) {
+            if (f.isDirectory() && f.getName().startsWith("backup_")) {
+                long age = now - f.lastModified();
+                if (age > retentionMs) {
+                    deleteDir(f);
+                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
+                        "log.backup_expired_removed", "已清理过期备份: %s（保留时长: %s）",
+                        f.getName(), retentionDisplay));
+                }
+            }
+        }
+    }
+
+    /** 递归删除目录 */
+    private void deleteDir(File dir) {
+        File[] children = dir.listFiles();
+        if (children != null) {
+            for (File c : children) {
+                if (c.isDirectory()) {
+                    deleteDir(c);
+                } else {
+                    c.delete();
+                }
+            }
+        }
+        dir.delete();
+    }
+
+    /** 获取支持的语言列表（供Cmd做tab补全） */
+    public List<String> getSupportedLangs() {
+        return new ArrayList<>(SUPPORTED_LANGS);
     }
 
     public FileConfiguration getMainConfig() {
@@ -1673,20 +1929,28 @@ public class Config {
         }
         
         if (!mainConfig.contains("language")) {
-            String serverLocale = "zh_cn";
+            // 修复：真正读取JVM默认Locale，原代码硬编码为zh_cn导致非中国服务器也默认中文
+            String serverLocale = Locale.getDefault().toString().toLowerCase();
+            if (serverLocale.length() >= 5) {
+                serverLocale = serverLocale.substring(0, 5);
+            }
 
-            List<String> supportedLanguages = Arrays.asList("zh_cn", "en_us");
-            String defaultLanguage = "zh_cn";
-            
-            for (String lang : supportedLanguages) {
+            String defaultLanguage = "en_us";
+            for (String lang : SUPPORTED_LANGS) {
                 if (serverLocale.startsWith(lang.substring(0, 2))) {
                     defaultLanguage = lang;
                     break;
                 }
             }
-            
+
             mainConfig.set("language.current", defaultLanguage);
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s，自动检测并设置默认语言为: %s", "language", defaultLanguage));
+        }
+
+        if (!mainConfig.contains("backup")) {
+            mainConfig.set("backup.enabled", true);
+            mainConfig.set("backup.retention-seconds", 604800);
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "backup"));
         }
         
         if (!mainConfig.contains("update-check")) {

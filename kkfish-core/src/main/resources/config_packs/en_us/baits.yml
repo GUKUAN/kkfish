@@ -1,0 +1,95 @@
+# kkfish Bait Configuration
+# Bait Configuration Example
+# You can create custom baits with various effects and properties
+# Example single-effect bait configuration (add under baits: node):
+# custom-worm-bait:
+#   material: "SPIDER_EYE"
+#   custom-model-data: -1
+#   display-name: "&aCustom Worm"
+#   effect: "bite"
+#   value: 0.4  # +40% bite chance
+#   permissions: []
+#   # Other configuration items...
+# 
+# Example multi-effect bait configuration:
+# custom-magic-bait:
+#   material: "ENCHANTED_GOLDEN_APPLE"
+#   custom-model-data: -1
+#   display-name: "&5&lMagic Bait"
+#   effects: ["rare", "size", "bite"]  # Multiple effect types
+#   effect-values:
+#     rare: 0.2  # +20% rare fish chance
+#     size: 0.3  # +30% fish size
+#     bite: 0.15  # +15% bite chance
+#   permissions: ["kkfish.baits.magic"]  # Permission required
+#   # Other configuration items...
+baits:
+  bread-crumbs:
+    material: "BREAD"
+    display-name: "§fBread Crumbs"
+    custom-model-data: -1
+    effect: "bite"
+    value: 0.3
+    permissions: []
+  
+  worm:
+    material: "SPIDER_EYE"
+    display-name: "§aWorm"
+    custom-model-data: -1
+    effect: "bite"
+    value: 0.2
+    permissions: []
+  
+  earthworm:
+    material: "ROTTEN_FLESH"
+    display-name: "§7Earthworm"
+    custom-model-data: -1
+    effect: "size"
+    value: 0.4
+    permissions: []
+  
+  small-fish:
+    material: "COD"
+    display-name: "§3Small Fish"
+    custom-model-data: -1
+    effect: "rare"
+    value: 0.5
+    permissions: []
+  
+  honey:
+    material: "HONEY_BOTTLE"
+    display-name: "§eHoney"
+    custom-model-data: -1
+    effect: "rare"
+    value: 0.1
+    permissions: []
+  
+  firefly:
+    material: "GLOW_INK_SAC"
+    display-name: "§bFirefly"
+    custom-model-data: -1
+    effect: "bite"
+    value: 0.3
+    permissions: []
+  
+  diamond-bait:
+    material: "DIAMOND"
+    display-name: "§b§lDiamond Bait"
+    custom-model-data: -1
+    effect: "rare"
+    value: 0.25
+    permissions: ["kkfish.baits.diamond"]
+  
+  magic-bait:
+    material: "ENCHANTED_GOLDEN_APPLE"
+    display-name: "§5§lMagic Bait"
+    custom-model-data: -1
+    effects: ["rare", "size", "bite"]
+    effect-values:
+      rare: 0.15
+      size: 0.2
+      bite: 0.1
+    permissions: ["kkfish.baits.magic"]
+
+bait-crafting:
+  auto-equip-bait: true

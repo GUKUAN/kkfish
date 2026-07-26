@@ -1,0 +1,313 @@
+# kkfish Hook Configuration
+# Hook Configuration Example
+# You can create custom hooks with various properties and effects
+# Example hook configuration (add under hooks: node):
+# custom-diamond-hook:
+#   material: "DIAMOND_BLOCK"
+#   custom-model-data: -1
+#   display-name: "&bCustom Diamond Hook"
+#   description: "&7A powerful hook with unique effects"
+#   permissions: ["kkfish.hooks.custom"]
+#   rarity: "legendary"
+#   effects:
+#     bite-rate-bonus: 0.3  # +30% bite rate
+#     rare-fish-chance: 0.2  # +20% rare fish chance
+#   price:
+#     vault: 1000.0  # Cost in economy money
+#     points: 200    # Cost in points
+#   # Other configuration items...
+hooks:
+  '1':
+    wood:
+      material: "OAK_LOG"
+      display-name: "&aWooden Hook"
+      custom-model-data: -1
+      description: "&7Basic material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 0.0
+        points: 0
+      
+    stone:
+      material: "COBBLESTONE"
+      display-name: "&7Stone Hook"
+      custom-model-data: -1
+      description: "&7Slightly increases fish bite rate"
+      permissions: []
+      rarity: "uncommon"
+      effects:
+        bite-rate-bonus: 0.05
+        rare-fish-chance: 0.02
+      price:
+        vault: 50.0
+        points: 10
+      
+    iron:
+      material: "IRON_BLOCK"
+      display-name: "&fIron Hook"
+      custom-model-data: -1
+      description: "&7Increases fish bite rate and rare fish chance"
+      permissions: []
+      rarity: "rare"
+      effects:
+        bite-rate-bonus: 0.1
+        rare-fish-chance: 0.05
+      price:
+        vault: 150.0
+        points: 30
+      
+    gold:
+      material: "GOLD_BLOCK"
+      display-name: "&6Golden Hook"
+      custom-model-data: -1
+      description: "&7Greatly increases rare fish chance"
+      permissions: []
+      rarity: "epic"
+      effects:
+        bite-rate-bonus: 0.15
+        rare-fish-chance: 0.1
+      price:
+        vault: 300.0
+        points: 60
+      
+    diamond:
+      material: "DIAMOND_BLOCK"
+      display-name: "&bDiamond Hook"
+      custom-model-data: -1
+      description: "&7Highest quality material, significantly boosts all attributes"
+      permissions: []
+      rarity: "legendary"
+      effects:
+        bite-rate-bonus: 0.2
+        rare-fish-chance: 0.15
+      price:
+        vault: 500.0
+        points: 100
+      
+    white_wool:
+      material: "WHITE_WOOL"
+      display-name: "&fWhite Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    orange_wool:
+      material: "ORANGE_WOOL"
+      display-name: "&6Orange Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    magenta_wool:
+      material: "MAGENTA_WOOL"
+      display-name: "&dMagenta Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    light_blue_wool:
+      material: "LIGHT_BLUE_WOOL"
+      display-name: "&9Light Blue Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    yellow_wool:
+      material: "YELLOW_WOOL"
+      display-name: "&eYellow Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    lime_wool:
+      material: "LIME_WOOL"
+      display-name: "&aLime Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    pink_wool:
+      material: "PINK_WOOL"
+      display-name: "&dPink Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    gray_wool:
+      material: "GRAY_WOOL"
+      display-name: "&7Gray Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    light_gray_wool:
+      material: "LIGHT_GRAY_WOOL"
+      display-name: "&7Light Gray Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    cyan_wool:
+      material: "CYAN_WOOL"
+      display-name: "&3Cyan Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    purple_wool:
+      material: "PURPLE_WOOL"
+      display-name: "&5Purple Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    blue_wool:
+      material: "BLUE_WOOL"
+      display-name: "&1Blue Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    brown_wool:
+      material: "BROWN_WOOL"
+      display-name: "&6Brown Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    green_wool:
+      material: "GREEN_WOOL"
+      display-name: "&2Green Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    red_wool:
+      material: "RED_WOOL"
+      display-name: "&cRed Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40
+      
+    black_wool:
+      material: "BLACK_WOOL"
+      display-name: "&0Black Wool Hook"
+      custom-model-data: -1
+      description: "&7Decorative material, no special effects"
+      permissions: []
+      rarity: "common"
+      effects:
+        bite-rate-bonus: 0.0
+        rare-fish-chance: 0.0
+      price:
+        vault: 200.0
+        points: 40

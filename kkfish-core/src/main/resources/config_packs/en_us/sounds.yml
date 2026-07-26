@@ -1,0 +1,72 @@
+# kkfish Sound Configuration
+# This file contains all sound settings for the fishing plugin
+# All sounds are configurable and can be disabled/enabled individually
+
+# ==========================
+# Basic Sound Configuration
+# ==========================
+
+# General settings
+settings:
+  # Whether to enable all sounds
+  enabled: true
+
+# ==========================
+# Fishing Process Sounds
+# ==========================
+
+# Casting Sound (when player casts the fishing rod)
+cast:
+  enabled: true
+  name: "ENTITY_FISHING_BOBBER_THROW"  # Sound name from Bukkit sound enum
+  volume: 1.0  # Volume (0.0 - 1.0)
+  pitch: 1.0   # Pitch (0.5 - 2.0)
+
+# Bite Hint Sound (when "!" appears)
+bite_hint:
+  enabled: true
+  name: "ENTITY_FISHING_BOBBER_SPLASH"  # Sound name
+  volume: 0.8  # Volume
+  pitch: 1.2   # Pitch
+
+# Reel Sound (when player reels in the fish)
+reel:
+  enabled: true
+  name: "ENTITY_FISHING_BOBBER_RETRIEVE"  # Sound name
+  volume: 0.6  # Volume
+  pitch: 1.0   # Pitch
+
+# ==========================
+# Game Result Sounds
+# ==========================
+
+# Success Sound (when player catches a fish successfully)
+success:
+  enabled: true
+  name: "ENTITY_PLAYER_LEVELUP"  # Sound name
+  volume: 1.0  # Volume
+  pitch: 1.3   # Pitch
+
+# Fail Sound (when fish escapes)
+fail:
+  enabled: true
+  name: "ENTITY_VILLAGER_NO"  # Sound name
+  volume: 0.8  # Volume
+  pitch: 0.9   # Pitch
+
+# ==========================
+# Minigame Sounds
+# ==========================
+
+# Minigame Sound (when minigame UI updates)
+minigame:
+  enabled: true
+  name: "UI_BUTTON_CLICK"  # Sound name
+  volume: 0.5  # Volume
+  pitch: 1.0   # Pitch
+
+
+
+# Note: All sound names must be valid Bukkit sound enum values
+# You can find the full list here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Sound.html
+# For custom sounds, you need to use the namespace format: modid:sound_name

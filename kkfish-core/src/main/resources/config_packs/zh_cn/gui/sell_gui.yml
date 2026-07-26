@@ -1,0 +1,30 @@
+menu_title: '&8&l出售界面'
+update_interval: 1
+size: 54
+items:
+  'Border_Glass':
+    material: gray_stained_glass_pane
+    slots:
+      - 0-8
+      - 45-48
+      - 50-53
+    display_name: '&8[&7边框&8]'
+    lore:
+      - '&7别碰我 (。・ω・。)'
+    left_click_commands: []
+    right_click_commands: []
+  'Close_Button':
+    material: barrier
+    slot: 49
+    display_name: '&8[&c关闭&8]'
+    lore:
+      - '&7关闭界面'
+      - '&7关闭后自动出售'
+      - '&7放入界面的鱼类'
+      - '&7不可出售的鱼将返还'
+    left_click_actions:
+      - '[sound] block.ender_chest.close 100 0.5'
+      - '[close]'
+    right_click_actions:
+      - '[sound] block.ender_chest.close 100 0.5'
+      - '[close]'
