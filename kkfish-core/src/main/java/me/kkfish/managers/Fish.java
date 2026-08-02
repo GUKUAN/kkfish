@@ -97,14 +97,6 @@ public class Fish {
         return ctx != null && ctx.getRuntime().getActiveChargeTask() != null;
     }
 
-    /**
-     * @deprecated 由 {@link #hasActiveChargeTask(UUID)} 替代，保留返回空 Map 以兼容旧调用方。
-     */
-    @Deprecated
-    public Map<UUID, ChargeProgressTracker.ChargeProgressTask> getActiveChargeTasks() {
-        return Collections.emptyMap();
-    }
-
     // ==================== 随机鱼类生成 ====================
 
     public String[] generateRandomFish(Player player, String rodName, String baitName, double rareFishChance) {
@@ -336,10 +328,6 @@ public class Fish {
         if (exp > 0) {
             player.giveExp(exp);
             player.sendMessage(messageManager.getMessage("fishing_exp_reward", "你获得了 %s 点钓鱼经验！", exp));
-        }
-
-        double value = calculateFishValue(selectedFish, size, config.getFishRarity(selectedFish));
-        if (value > 0) {
         }
     }
 

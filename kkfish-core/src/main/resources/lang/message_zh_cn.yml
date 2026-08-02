@@ -1,4 +1,4 @@
-# ==========================
+﻿# ==========================
 # 基础消息
 # ==========================
 prefix: "&bkkfish > "
@@ -639,6 +639,11 @@ log.message_default_not_found: "默认语言文件 (en_us) 未找到"
 log.message_complete_keys_added: "已为 %s 语言文件添加 %s 个缺失的语言键"
 log.message_complete_failed: "补全语言文件失败: %s"
 log.folia_detected: "检测到 Folia：将使用 region/entity/global 调度器。"
+log.nbt_pdc_read_failed: "通过 PDC 读取 NBT 失败: "
+log.nbt_traditional_read_failed: "读取 NBT 数据失败: "
+log.competition_fish_weight_invalid: "比赛配置中的鱼权重无效: "
+log.competition_reward_rank_invalid: "比赛配置中的奖励名次无效: "
+log.competition_display_rank_invalid: "比赛配置中的奖励展示名次无效: "
 
 # ==========================
 # 模式切换相关消息

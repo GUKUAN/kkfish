@@ -581,6 +581,14 @@ public class Fishing implements Listener {
     }
     
 
+    /**
+     * 读取物品上的鱼UUID（PDC 优先，旧版本回退 NBT）。
+     * 只有带 fish_uuid 标识的物品才认定为 kkfish 的鱼，其它插件食物一律不拦截。
+     */
+    private String readFishUUID(ItemMeta meta, ItemStack item) {
+        return me.kkfish.utils.NBTUtil.getFishUUIDString(item);
+    }
+
     @EventHandler
     public void onPlayerItemConsume(PlayerItemConsumeEvent event) {
         Player player = event.getPlayer();
@@ -588,6 +596,12 @@ public class Fishing implements Listener {
         
         ItemMeta meta = item.getItemMeta();
         if (meta != null && meta.hasLore()) {
+            // 只有 kkfish 的鱼（带 fish_uuid 标识）才接管进食流程，其它插件的食物不拦截
+            String fishUUID = readFishUUID(meta, item);
+            if (fishUUID == null) {
+                return;
+            }
+            
             event.setCancelled(true);
             
             try {
@@ -614,23 +628,6 @@ public class Fishing implements Listener {
             String displayName = meta.getDisplayName();
             if (displayName != null && !displayName.isEmpty()) {
                 fishName = ChatColor.stripColor(displayName);
-            }
-            
-            String fishUUID = null;
-            try {
-                PersistentDataContainer pdc = meta.getPersistentDataContainer();
-                NamespacedKey fishUUIDKey = new NamespacedKey(plugin, "fish_uuid");
-                if (pdc.has(fishUUIDKey, PersistentDataType.STRING)) {
-                    fishUUID = pdc.get(fishUUIDKey, PersistentDataType.STRING);
-                }
-            } catch (NoSuchMethodError e) {
-                try {
-                    Object nbtData = me.kkfish.utils.NBTUtil.getNBTData(item, "fish_uuid");
-                    if (nbtData != null) {
-                        fishUUID = nbtData.toString();
-                    }
-                } catch (Exception ex) {
-                }
             }
             
             int foodLevelIncrease = 4;

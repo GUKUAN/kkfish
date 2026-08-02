@@ -49,7 +49,11 @@ public class CompetitionConfig {
                     String fishName = parts[0].trim();
                     double weight = Double.parseDouble(parts[1].trim());
                     fishList.put(fishName, weight);
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException e) {
+                    if (kkfish.getInstance() != null) {
+                        kkfish.log("§e" + kkfish.getInstance().getMessageManager().getMessageWithoutPrefix("log.competition_fish_weight_invalid", "Invalid fish weight in competition config: ") + fishEntry);
+                    }
+                }
             }
         }
         
@@ -63,7 +67,11 @@ public class CompetitionConfig {
                     if (!rewardCommands.isEmpty()) {
                         rewards.put(rank, rewardCommands);
                     }
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException e) {
+                    if (kkfish.getInstance() != null) {
+                        kkfish.log("§e" + kkfish.getInstance().getMessageManager().getMessageWithoutPrefix("log.competition_reward_rank_invalid", "Invalid reward rank in competition config: ") + rankStr);
+                    }
+                }
             }
         }
         
@@ -75,7 +83,11 @@ public class CompetitionConfig {
                     if (!displayInfo.isEmpty()) {
                         rewardDisplayInfo.put(rank, displayInfo);
                     }
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException e) {
+                    if (kkfish.getInstance() != null) {
+                        kkfish.log("§e" + kkfish.getInstance().getMessageManager().getMessageWithoutPrefix("log.competition_display_rank_invalid", "Invalid reward display rank in competition config: ") + rankStr);
+                    }
+                }
             }
         }
         

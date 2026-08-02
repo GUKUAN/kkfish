@@ -1,5 +1,6 @@
 package me.kkfish.utils;
 
+import me.kkfish.kkfish;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -396,10 +397,29 @@ public class NBTUtil {
                 }
             }
         } catch (Exception e) {
+            if (kkfish.getInstance() != null) {
+                kkfish.log("§e" + kkfish.getInstance().getMessageManager().getMessageWithoutPrefix("log.nbt_pdc_read_failed", "Failed to read NBT via PDC: ") + e.getMessage());
+            }
         }
         return null;
     }
     
+
+    /**
+     * 获取物品上的鱼UUID（PDC 优先，旧版本回退 NBT）。
+     * 三处读取逻辑统一走这里。
+     */
+    public static String getFishUUIDString(ItemStack item) {
+        if (item == null) {
+            return null;
+        }
+
+        Object nbtData = getNBTData(item, "fish_uuid");
+        if (nbtData != null) {
+            return nbtData.toString();
+        }
+        return null;
+    }
 
     private static Object getNBTDataUsingTraditionalNBT(ItemStack item, String key) {
         try {
@@ -422,6 +442,9 @@ public class NBTUtil {
                 }
             }
         } catch (Exception e) {
+            if (kkfish.getInstance() != null) {
+                kkfish.log("§e" + kkfish.getInstance().getMessageManager().getMessageWithoutPrefix("log.nbt_traditional_read_failed", "Failed to read NBT data: ") + e.getMessage());
+            }
         }
         return null;
     }

@@ -1,4 +1,4 @@
-# ==========================
+﻿# ==========================
 # Basic Messages
 # ==========================
 prefix: "&bkkfish > "
@@ -638,6 +638,11 @@ log.message_default_not_found: "Default language file (en_us) not found"
 log.message_complete_keys_added: "Added %s missing language keys to %s language file"
 log.message_complete_failed: "Failed to complete language file: %s"
 log.folia_detected: "Folia detected: region/entity/global schedulers will be used."
+log.nbt_pdc_read_failed: "Failed to read NBT via PDC: "
+log.nbt_traditional_read_failed: "Failed to read NBT data: "
+log.competition_fish_weight_invalid: "Invalid fish weight in competition config: "
+log.competition_reward_rank_invalid: "Invalid reward rank in competition config: "
+log.competition_display_rank_invalid: "Invalid reward display rank in competition config: "
 
 # ==========================
 # Mode Switch Messages

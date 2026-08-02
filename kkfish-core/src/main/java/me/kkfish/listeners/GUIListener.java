@@ -450,31 +450,9 @@ public class GUIListener implements Listener {
             String fishUUIDStr = null;
             int value = 0;
             
-            Object uuidObj = me.kkfish.utils.NBTUtil.getNBTData(item, "fish_uuid");
-            if (uuidObj != null) {
-                fishUUIDStr = uuidObj.toString();
-                
-                if (fishUUIDStr != null) {
-                    value = kkfish.getInstance().getDB().getFishValueByUUID(fishUUIDStr);
-                }
-            }
-            
-            if (value <= 0 && item.hasItemMeta()) {
-                try {
-                    ItemMeta meta = item.getItemMeta();
-                    PersistentDataContainer pdc = meta.getPersistentDataContainer();
-                    NamespacedKey uuidKey = new NamespacedKey(kkfish.getInstance(), "fish_uuid");
-                    
-                    if (pdc.has(uuidKey, PersistentDataType.STRING)) {
-                        fishUUIDStr = pdc.get(uuidKey, PersistentDataType.STRING);
-                        
-                        if (fishUUIDStr != null) {
-                            value = kkfish.getInstance().getDB().getFishValueByUUID(fishUUIDStr);
-                        }
-                    }
-                } catch (Exception e) {
-                    kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("log.sell_fish_pdc_error", "Failed to read fish PDC data: ") + e.getMessage());
-                }
+            fishUUIDStr = me.kkfish.utils.NBTUtil.getFishUUIDString(item);
+            if (fishUUIDStr != null) {
+                value = kkfish.getInstance().getDB().getFishValueByUUID(fishUUIDStr);
             }
             
             String fishName = getItemNameFromItem(item);

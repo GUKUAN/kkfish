@@ -94,106 +94,46 @@ public class SellCommandHandler {
      * 出售玩家自己手中的鱼。
      */
     public void sellHandheldFish(Player player) {
-        if (player != null) {
-            ItemStack item = player.getInventory().getItemInMainHand();
-            if (item == null || item.getType() == Material.AIR) {
-                player.sendMessage(messageManager.getMessage("sell_hand_empty", "§cYou have no item in your hand~"));
-                return;
-            }
-
-            String fishUUIDStr = getFishUUIDString(item);
-            SellValue sellValue = getFishSellValueFromItem(item);
-            EconomyService.SellPay pay = getPayForSellValue(sellValue);
-            boolean hasRewards = hasItemRewards(item);
-
-            if (!sellValue.hasAnyValue() && !hasRewards) {
-                player.sendMessage(messageManager.getMessage("sell_not_fish", "§cThis is not a fish that can be sold~"));
-                return;
-            }
-
-            if (sellValue.hasAnyValue() && !pay.hasAny() && !hasRewards) {
-                player.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
-                return;
-            }
-
-            if (pay.hasAny() && !addSellPayToPlayer(player, pay)) {
-                player.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
-                return;
-            }
-
-            handleItemRewards(player, item);
-            item.setAmount(item.getAmount() - 1);
-
-            if (pay.hasAny()) {
-                player.sendMessage(sellRewardMessage("sell_hand_success", pay,
-                        "§aSuccessfully sold! Received %s coins~",
-                        "§aSuccessfully sold! Received %s points~",
-                        "§aSuccessfully sold! Received %s coins and %s points~"));
-            } else {
-                player.sendMessage(messageManager.getMessage("sell_hand_success_items", "§aSuccessfully sold! Received item rewards~"));
-            }
-
-            if (fishUUIDStr != null) {
-                plugin.getDB().removeFishUUIDValue(fishUUIDStr);
-            }
+        if (player == null) {
             return;
         }
+
         ItemStack item = player.getInventory().getItemInMainHand();
         if (item == null || item.getType() == Material.AIR) {
             player.sendMessage(messageManager.getMessage("sell_hand_empty", "§cYou have no item in your hand~"));
             return;
         }
 
-        if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_sell_hand_item", "[Debug] Attempting to sell hand item: %s", item.getType().name()));
-            if (item.hasItemMeta()) {
-                ItemMeta meta = item.getItemMeta();
-                if (meta.hasDisplayName()) {
-                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_display_name", "[Debug] Item display name: %s", meta.getDisplayName()));
-                }
-                if (meta.hasLore()) {
-                    kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_item_has_lore", "[Debug] Item has lore: %s lines", meta.getLore().size()));
-                }
-            }
-        }
-
         String fishUUIDStr = getFishUUIDString(item);
-
-        if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_uuid_obtained", "[Debug] Obtained fish UUID: %s", (fishUUIDStr != null ? fishUUIDStr : "null")));
-        }
-
-        int value = getFishValueFromItem(item);
+        SellValue sellValue = getFishSellValueFromItem(item);
+        EconomyService.SellPay pay = getPayForSellValue(sellValue);
         boolean hasRewards = hasItemRewards(item);
-        boolean canMoneyReward = canGiveSellReward();
 
-        if (plugin.getCustomConfig().isDebugMode()) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_fish_value_reward", "[Debug] Fish value: %s, has item rewards: %s", value, hasRewards));
-        }
-
-        if (value <= 0 && !hasRewards) {
+        if (!sellValue.hasAnyValue() && !hasRewards) {
             player.sendMessage(messageManager.getMessage("sell_not_fish", "§cThis is not a fish that can be sold~"));
             return;
         }
 
-        if (value > 0 && !canMoneyReward && !hasRewards) {
+        if (sellValue.hasAnyValue() && !pay.hasAny() && !hasRewards) {
             player.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
             return;
         }
 
-        handleItemRewards(player, item);
+        if (pay.hasAny() && !addSellPayToPlayer(player, pay)) {
+            player.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
+            return;
+        }
 
+        handleItemRewards(player, item);
         item.setAmount(item.getAmount() - 1);
 
-        if (value > 0 && canMoneyReward) {
-            if (addMoneyToPlayer(player, value)) {
-                player.sendMessage(messageManager.getMessage(sellRewardKey("sell_hand_success"),
-                        sellRewardDefault("§aSuccessfully sold! Received %s coins~", "§aSuccessfully sold! Received %s points~"), value));
-            } else {
-                player.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
-            }
+        if (pay.hasAny()) {
+            player.sendMessage(sellRewardMessage("sell_hand_success", pay,
+                    "§aSuccessfully sold! Received %s coins~",
+                    "§aSuccessfully sold! Received %s points~",
+                    "§aSuccessfully sold! Received %s coins and %s points~"));
         } else {
-            player.sendMessage(messageManager.getMessage("sell_hand_success", "§aSuccessfully sold! Received item rewards~"));
+            player.sendMessage(messageManager.getMessage("sell_hand_success_items", "§aSuccessfully sold! Received item rewards~"));
         }
 
         if (fishUUIDStr != null) {
@@ -205,56 +145,10 @@ public class SellCommandHandler {
      * 管理员代为出售目标玩家手中的鱼。
      */
     public void sellHandheldFishForOther(Player opPlayer, Player targetPlayer) {
-        if (opPlayer != null && targetPlayer != null) {
-            ItemStack item = targetPlayer.getInventory().getItemInMainHand();
-            if (item == null || item.getType() == Material.AIR) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_empty", "§cPlayer %s has no item in their hand~", targetPlayer.getName()));
-                return;
-            }
-
-            String fishUUIDStr = getFishUUIDString(item);
-            SellValue sellValue = getFishSellValueFromItem(item);
-            EconomyService.SellPay pay = getPayForSellValue(sellValue);
-            boolean hasRewards = hasItemRewards(item);
-
-            if (!sellValue.hasAnyValue() && !hasRewards) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_not_fish", "§cThis is not a fish that can be sold~"));
-                return;
-            }
-
-            if (sellValue.hasAnyValue() && !pay.hasAny() && !hasRewards) {
-                opPlayer.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
-                return;
-            }
-
-            if (pay.hasAny() && !addSellPayToPlayer(targetPlayer, pay)) {
-                opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
-                return;
-            }
-
-            handleItemRewards(targetPlayer, item);
-            item.setAmount(item.getAmount() - 1);
-
-            if (pay.hasAny()) {
-                opPlayer.sendMessage(sellRewardMessage("sell_other_hand_success_op", pay,
-                        "§aHelped player %s sell item! Received %s coins~",
-                        "§aHelped player %s sell item! Received %s points~",
-                        "§aHelped player %s sell item! Received %s coins and %s points~",
-                        targetPlayer.getName()));
-                targetPlayer.sendMessage(sellRewardMessage("sell_other_hand_success_player", pay,
-                        "§aAn admin helped you sell your item! Received %s coins~",
-                        "§aAn admin helped you sell your item! Received %s points~",
-                        "§aAn admin helped you sell your item! Received %s coins and %s points~"));
-            } else {
-                opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_op_items", "§aHelped player %s sell item! Received item rewards~", targetPlayer.getName()));
-                targetPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_player_items", "§aAn admin helped you sell your item! Received item rewards~"));
-            }
-
-            if (fishUUIDStr != null) {
-                plugin.getDB().removeFishUUIDValue(fishUUIDStr);
-            }
+        if (opPlayer == null || targetPlayer == null) {
             return;
         }
+
         ItemStack item = targetPlayer.getInventory().getItemInMainHand();
         if (item == null || item.getType() == Material.AIR) {
             opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_empty", "§cPlayer %s has no item in their hand~", targetPlayer.getName()));
@@ -262,41 +156,47 @@ public class SellCommandHandler {
         }
 
         String fishUUIDStr = getFishUUIDString(item);
-
-        int value = getFishValueFromItem(item);
+        SellValue sellValue = getFishSellValueFromItem(item);
+        EconomyService.SellPay pay = getPayForSellValue(sellValue);
         boolean hasRewards = hasItemRewards(item);
-        boolean canMoneyReward = canGiveSellReward();
-        if (value <= 0 && !hasRewards) {
+
+        if (!sellValue.hasAnyValue() && !hasRewards) {
             opPlayer.sendMessage(messageManager.getMessage("sell_not_fish", "§cThis is not a fish that can be sold~"));
             return;
         }
 
-        if (value > 0 && !canMoneyReward && !hasRewards) {
+        if (sellValue.hasAnyValue() && !pay.hasAny() && !hasRewards) {
             opPlayer.sendMessage(messageManager.getMessage("economy_not_enabled", "§cEconomy system is not enabled, unable to receive rewards!"));
             return;
         }
 
-        handleItemRewards(targetPlayer, item);
+        if (pay.hasAny() && !addSellPayToPlayer(targetPlayer, pay)) {
+            opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
+            return;
+        }
 
+        handleItemRewards(targetPlayer, item);
         item.setAmount(item.getAmount() - 1);
 
-        if (value > 0 && canMoneyReward) {
-            if (addMoneyToPlayer(targetPlayer, value)) {
-                opPlayer.sendMessage(messageManager.getMessage(sellRewardKey("sell_other_hand_success_op"),
-                        sellRewardDefault("§aHelped player %s sell item! Received %s coins~", "§aHelped player %s sell item! Received %s points~"), targetPlayer.getName(), value));
-                targetPlayer.sendMessage(messageManager.getMessage(sellRewardKey("sell_other_hand_success_player"),
-                        sellRewardDefault("§aAn admin helped you sell your item! Received %s coins~", "§aAn admin helped you sell your item! Received %s points~"), value));
-            } else {
-                opPlayer.sendMessage(messageManager.getMessage("sell_operation_failed", "§cSale failed, please try again later."));
-            }
+        if (pay.hasAny()) {
+            opPlayer.sendMessage(sellRewardMessage("sell_other_hand_success_op", pay,
+                    "§aHelped player %s sell item! Received %s coins~",
+                    "§aHelped player %s sell item! Received %s points~",
+                    "§aHelped player %s sell item! Received %s coins and %s points~",
+                    targetPlayer.getName()));
+            targetPlayer.sendMessage(sellRewardMessage("sell_other_hand_success_player", pay,
+                    "§aAn admin helped you sell your item! Received %s coins~",
+                    "§aAn admin helped you sell your item! Received %s points~",
+                    "§aAn admin helped you sell your item! Received %s coins and %s points~"));
         } else {
-            opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_op", "§aHelped player %s sell item! Received item rewards~", targetPlayer.getName()));
-            targetPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_player", "§aAn admin helped you sell your item! Received item rewards~"));
+            opPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_op_items", "§aHelped player %s sell item! Received item rewards~", targetPlayer.getName()));
+            targetPlayer.sendMessage(messageManager.getMessage("sell_other_hand_success_player_items", "§aAn admin helped you sell your item! Received item rewards~"));
         }
 
         if (fishUUIDStr != null) {
             plugin.getDB().removeFishUUIDValue(fishUUIDStr);
         }
+
     }
 
     /**
@@ -706,12 +606,12 @@ public class SellCommandHandler {
     }
 
     public String getFishUUIDString(ItemStack item) {
-        Object uuidObj = me.kkfish.utils.NBTUtil.getNBTData(item, "fish_uuid");
-        if (uuidObj != null) {
+        String uuidStr = me.kkfish.utils.NBTUtil.getFishUUIDString(item);
+        if (uuidStr != null) {
             if (plugin.getCustomConfig().isDebugMode()) {
-                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_found_nbtutil", "[Debug] Got UUID from NBTUtil: %s", uuidObj.toString()));
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_found_nbtutil", "[Debug] Got UUID from NBTUtil: %s", uuidStr));
             }
-            return uuidObj.toString();
+            return uuidStr;
         }
 
         if (plugin.getCustomConfig().isDebugMode()) {
