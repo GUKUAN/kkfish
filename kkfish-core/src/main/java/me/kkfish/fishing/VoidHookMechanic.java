@@ -74,7 +74,7 @@ public class VoidHookMechanic implements HookMechanic {
             }
         };
 
-        taskRef[0] = SchedulerUtil.runEntityTaskTimer(plugin, player, runnable, 0, 1);
+        taskRef[0] = SchedulerUtil.runEntityTaskTimer(plugin, hookEntity, runnable, 0, 1);
         floatTasks.put(hookEntity.getUniqueId(), taskRef[0]);
     }
 

@@ -65,7 +65,7 @@ public class WaterHookMechanic implements HookMechanic {
         }
 
         void start(Player player) {
-            this.bukkitTask = SchedulerUtil.runEntityTaskTimer(plugin, player, this, 0, 1);
+            this.bukkitTask = SchedulerUtil.runEntityTaskTimer(plugin, hookEntity, this, 0, 1);
         }
 
         @Override
@@ -165,6 +165,6 @@ public class WaterHookMechanic implements HookMechanic {
             }
         };
 
-        taskRef[0] = SchedulerUtil.runEntityTaskTimer(plugin, player, runnable, 0, 1);
+        taskRef[0] = SchedulerUtil.runEntityTaskTimer(plugin, hookEntity, runnable, 0, 1);
     }
 }

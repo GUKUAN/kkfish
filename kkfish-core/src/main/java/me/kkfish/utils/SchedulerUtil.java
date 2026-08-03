@@ -4,6 +4,7 @@ import com.cjcrafter.foliascheduler.ServerImplementation;
 import com.cjcrafter.foliascheduler.TaskImplementation;
 import me.kkfish.kkfish;
 import me.kkfish.scheduler.SchedulerTask;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -74,8 +75,8 @@ public class SchedulerUtil {
         return new SchedulerTask(() -> t.cancel());
     }
 
-    public static SchedulerTask runEntityTaskTimer(JavaPlugin plugin, Player player, Runnable task, long delayTicks, long periodTicks) {
-        TaskImplementation t = scheduler().entity(player).runAtFixedRate(ct -> { task.run(); return null; }, Math.max(1, delayTicks), periodTicks);
+    public static SchedulerTask runEntityTaskTimer(JavaPlugin plugin, Entity entity, Runnable task, long delayTicks, long periodTicks) {
+        TaskImplementation t = scheduler().entity(entity).runAtFixedRate(ct -> { task.run(); return null; }, Math.max(1, delayTicks), periodTicks);
         return new SchedulerTask(() -> t.cancel());
     }
 
