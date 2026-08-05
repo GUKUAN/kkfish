@@ -591,6 +591,9 @@ log.menu_loaded: "已加载 %s 个菜单配置"
 log.language_load_failed: "无法加载语言文件，消息功能可能无法正常工作"
 log.player_language_load_failed: "加载玩家语言文件失败: %s"
 log.save_message_failed: "保存消息配置失败: %s"
+log.papi_registered: "PlaceholderAPI 扩展已注册，%kkfish_xxx% 占位符可用"
+log.papi_register_failed: "注册 PlaceholderAPI 扩展失败"
+log.papi_register_error: "注册 PlaceholderAPI 扩展时出错: %s"
 
 # ==========================
 # 配置/数据库警告日志

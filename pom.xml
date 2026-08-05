@@ -6,7 +6,7 @@
 
     <groupId>me.kkfish</groupId>
     <artifactId>kkfish-parent</artifactId>
-    <version>1.7.6</version>
+    <version>1.7.7</version>
     <packaging>pom</packaging>
 
     <name>kkfish Parent</name>
@@ -22,10 +22,11 @@
         <spigot.version>1.16.1-R0.1-SNAPSHOT</spigot.version>
         <folia.version>1.20.1-R0.1-SNAPSHOT</folia.version>
         <bstats.version>3.1.0</bstats.version>
-        <xseries.version>13.7.0</xseries.version>
+        <xseries.version>13.8.0</xseries.version>
         <sqlite.version>3.46.0.0</sqlite.version>
         <mysql.version>8.0.33</mysql.version>
         <vault.version>1.7</vault.version>
+        <placeholderapi.version>2.12.3</placeholderapi.version>
         <auraskills.version>2.2.4</auraskills.version>
         <playerpoints.version>3.3.3</playerpoints.version>
     </properties>
@@ -50,6 +51,10 @@
         <repository>
             <id>rosewood-repo</id>
             <url>https://repo.rosewooddev.io/repository/public/</url>
+        </repository>
+        <repository>
+            <id>extendedclip-repo</id>
+            <url>https://repo.extendedclip.com/releases/</url>
         </repository>
     </repositories>
 
@@ -98,6 +103,12 @@
                 <groupId>org.black_ixx</groupId>
                 <artifactId>playerpoints</artifactId>
                 <version>${playerpoints.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>me.clip</groupId>
+                <artifactId>placeholderapi</artifactId>
+                <version>${placeholderapi.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>

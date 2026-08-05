@@ -7,7 +7,7 @@
     <parent>
         <groupId>me.kkfish</groupId>
         <artifactId>kkfish-parent</artifactId>
-        <version>1.7.6</version>
+        <version>1.7.7</version>
     </parent>
 
     <artifactId>kkfish-core</artifactId>
@@ -37,6 +37,11 @@
         <dependency>
             <groupId>org.black_ixx</groupId>
             <artifactId>playerpoints</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
         </dependency>
 
         <dependency>

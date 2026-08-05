@@ -134,7 +134,6 @@ public class MinigameManager {
 
             final double actualFishValue = session.getActualFishValue();
             final ItemStack fishItem = session.createFishItem();
-
             final String fishDisplayName = fishItem.hasItemMeta() && fishItem.getItemMeta().hasDisplayName()
                 ? fishItem.getItemMeta().getDisplayName() : fishName;
             
@@ -219,6 +218,7 @@ public class MinigameManager {
                             player.getWorld().dropItemNaturally(player.getLocation(), fishItem);
                         }
                         
+                        recordFishingStats(player, false);
                         plugin.getFish().endSession(player);
                     }
                 });
@@ -232,12 +232,34 @@ public class MinigameManager {
                 }
             }, 5);
             // 小游戏失败也要清理钓鱼会话，否则玩家无法再次钓鱼
+            recordFishingStats(player, true);
             plugin.getFish().endSession(player);
         }
         
         if (session.isSuccess) {
         } else {
             plugin.getSoundManager().playFailSound(player.getLocation());
+        }
+    }
+    
+    /**
+     * 记录钓鱼统计（总次数 + 可选失败次数）。
+     *
+     * @param player 玩家
+     * @param failed 是否为失败结算
+     */
+    private void recordFishingStats(Player player, boolean failed) {
+        me.kkfish.player.PlayerContextStore store = plugin.getPlayerContextStore();
+        if (store == null) {
+            return;
+        }
+        me.kkfish.player.PlayerContext ctx = store.getUsableContext(player.getUniqueId());
+        if (ctx == null) {
+            return;
+        }
+        ctx.getPersistent().recordAttempt();
+        if (failed) {
+            ctx.getPersistent().recordFail();
         }
     }
     

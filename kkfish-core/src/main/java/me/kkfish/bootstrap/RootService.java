@@ -5,6 +5,7 @@ import org.bukkit.Bukkit;
 import me.kkfish.kkfish;
 import me.kkfish.economy.EconomyService;
 import me.kkfish.handlers.AuraSkills;
+import me.kkfish.integrations.PapiHook;
 import me.kkfish.integrations.SeasonsService;
 import me.kkfish.listeners.Fishing;
 import me.kkfish.listeners.ItemCraft;
@@ -80,6 +81,9 @@ public class RootService implements AutoCloseable {
     // 监听器
     private Fishing fishingListener;
     private ItemCraft itemCraft;
+
+    // 集成
+    private PapiHook papiHook;
 
     private boolean started = false;
 
@@ -175,6 +179,9 @@ public class RootService implements AutoCloseable {
             new UpdateChecker(plugin).checkForUpdates();
         }
 
+        // 15.5 PlaceholderAPI 扩展
+        registerPapiHook();
+
         // 16. 启动完成通知
         scheduler.global().runDelayed((java.util.function.Consumer) ct -> {
             kkfish.log(mm.getMessageWithoutPrefix("log.plugin_loaded", "KKFISH fishing system has been loaded!"));
@@ -233,9 +240,34 @@ public class RootService implements AutoCloseable {
             eventBus.clear();
         }
 
+        // 6. 注销 PlaceholderAPI 扩展
+        if (papiHook != null) {
+            papiHook.unregister();
+            papiHook = null;
+        }
+
         kkfish.log(mm.getMessageWithoutPrefix("log.plugin_disabled", "KKFISH fishing system has been disabled."));
 
         started = false;
+    }
+
+    private void registerPapiHook() {
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) {
+            return;
+        }
+        MessageManager mm = plugin.getMessageManager();
+        try {
+            papiHook = new PapiHook(plugin);
+            if (papiHook.register()) {
+                kkfish.log(mm.getMessageWithoutPrefix("log.papi_registered", "PlaceholderAPI expansion registered: %kkfish_xxx% placeholders available"));
+            } else {
+                papiHook = null;
+                kkfish.log("§e" + mm.getMessageWithoutPrefix("log.papi_register_failed", "Failed to register PlaceholderAPI expansion"));
+            }
+        } catch (Exception e) {
+            papiHook = null;
+            kkfish.log("§c" + mm.getMessageWithoutPrefix("log.papi_register_error", "Error registering PlaceholderAPI expansion: %s", e.getMessage()));
+        }
     }
 
     private void initMetrics() {

@@ -590,6 +590,9 @@ log.menu_loaded: "Loaded %s menu configurations"
 log.language_load_failed: "Failed to load language file, message functionality may not work properly"
 log.player_language_load_failed: "Failed to load player language file: %s"
 log.save_message_failed: "Failed to save message configuration: %s"
+log.papi_registered: "PlaceholderAPI expansion registered, %kkfish_xxx% placeholders available"
+log.papi_register_failed: "Failed to register PlaceholderAPI expansion"
+log.papi_register_error: "Error registering PlaceholderAPI expansion: %s"
 
 # ==========================
 # Config/Database warning logs

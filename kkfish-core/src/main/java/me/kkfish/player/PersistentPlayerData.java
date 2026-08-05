@@ -33,6 +33,16 @@ public class PersistentPlayerData {
      */
     private volatile String language;
 
+    /**
+     * 钓鱼总次数（小游戏完成次数 = 成功 + 失败）。
+     */
+    private volatile int totalAttempts;
+
+    /**
+     * 钓鱼失败次数（小游戏失败结算次数）。
+     */
+    private volatile int failCount;
+
     public PersistentPlayerData() {
     }
 
@@ -75,6 +85,47 @@ public class PersistentPlayerData {
         this.language = language;
     }
 
+    // ===== 钓鱼统计 =====
+
+    public int getTotalAttempts() {
+        return totalAttempts;
+    }
+
+    public void setTotalAttempts(int totalAttempts) {
+        this.totalAttempts = totalAttempts;
+    }
+
+    public int getFailCount() {
+        return failCount;
+    }
+
+    public void setFailCount(int failCount) {
+        this.failCount = failCount;
+    }
+
+    /**
+     * 获取成功次数（总次数 - 失败次数）。
+     *
+     * @return 成功次数
+     */
+    public int getSuccessCount() {
+        return Math.max(0, totalAttempts - failCount);
+    }
+
+    /**
+     * 记录一次钓鱼完成（成功或失败）。
+     */
+    public void recordAttempt() {
+        totalAttempts++;
+    }
+
+    /**
+     * 记录一次钓鱼失败。
+     */
+    public void recordFail() {
+        failCount++;
+    }
+
     /**
      * 将当前持久化数据快照为不可变副本，用于异步保存。
      *
@@ -86,6 +137,8 @@ public class PersistentPlayerData {
             snap.fishRecords.put(entry.getKey(), entry.getValue().copy());
         }
         snap.language = this.language;
+        snap.totalAttempts = this.totalAttempts;
+        snap.failCount = this.failCount;
         return snap;
     }
 
@@ -95,6 +148,8 @@ public class PersistentPlayerData {
     public void clear() {
         fishRecords.clear();
         language = null;
+        totalAttempts = 0;
+        failCount = 0;
     }
 
     /**

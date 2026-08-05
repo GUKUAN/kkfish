@@ -154,6 +154,8 @@ public class DB {
                 "largest_fish_size DOUBLE DEFAULT 0.0, " +
                 "most_valuable_fish INT DEFAULT 0, " +
                 "success_rate DOUBLE DEFAULT 0.0, " +
+                "total_attempts INT DEFAULT 0, " +
+                "fail_count INT DEFAULT 0, " +
                 "last_fishing_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "legendary_fish_caught INT DEFAULT 0, " +
                 "hook_material VARCHAR(32) DEFAULT 'wood', " +
@@ -169,12 +171,18 @@ public class DB {
             ResultSet rs = stmt.executeQuery("PRAGMA table_info(" + tablePrefix + "player_fishing_stats)");
             boolean hasHookMaterial = false;
             boolean hasPlayerLanguage = false;
+            boolean hasTotalAttempts = false;
+            boolean hasFailCount = false;
             while (rs.next()) {
                 String columnName = rs.getString("name");
                 if ("hook_material".equals(columnName)) {
                     hasHookMaterial = true;
                 } else if ("player_language".equals(columnName)) {
                     hasPlayerLanguage = true;
+                } else if ("total_attempts".equals(columnName)) {
+                    hasTotalAttempts = true;
+                } else if ("fail_count".equals(columnName)) {
+                    hasFailCount = true;
                 }
             }
             
@@ -186,6 +194,16 @@ public class DB {
             if (!hasPlayerLanguage) {
                 stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN player_language VARCHAR(16) DEFAULT NULL");
                 kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "player_language"));
+            }
+            
+            if (!hasTotalAttempts) {
+                stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN total_attempts INT DEFAULT 0");
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "total_attempts"));
+            }
+            
+            if (!hasFailCount) {
+                stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN fail_count INT DEFAULT 0");
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "fail_count"));
             }
         } catch (SQLException e) {
             // 如果是MySQL数据库，PRAGMA不适用，这里会抛出异常
@@ -203,6 +221,20 @@ public class DB {
                     if (!rs.next()) {
                         stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN player_language VARCHAR(16) DEFAULT NULL");
                         kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "player_language"));
+                    }
+                    
+                    // 检查total_attempts列
+                    rs = stmt.executeQuery("SHOW COLUMNS FROM " + tablePrefix + "player_fishing_stats LIKE 'total_attempts'");
+                    if (!rs.next()) {
+                        stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN total_attempts INT DEFAULT 0");
+                        kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "total_attempts"));
+                    }
+                    
+                    // 检查fail_count列
+                    rs = stmt.executeQuery("SHOW COLUMNS FROM " + tablePrefix + "player_fishing_stats LIKE 'fail_count'");
+                    if (!rs.next()) {
+                        stmt.execute("ALTER TABLE " + tablePrefix + "player_fishing_stats ADD COLUMN fail_count INT DEFAULT 0");
+                        kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_column_added", "Added %s column to existing table~", "fail_count"));
                     }
                 }
             } else {
@@ -341,6 +373,9 @@ public class DB {
             // 更新玩家统计数据
             updatePlayerStats(player, fishSize, fishValue, fishLevel.contains(plugin.getMessageManager().getMessageWithoutPrefix("rarity_name.legendary", "legendary")));
             
+            // 清除钓鱼日志聚合缓存，保证占位符读取最新数据
+            clearFishingLogCache(player.getUniqueId().toString());
+            
         } catch (SQLException e) {
             kkfish.log("§c" + plugin.getMessageManager().getMessageWithoutPrefix("log.database_fishing_log_failed", "Failed to log fishing data!")); e.printStackTrace();
         }
@@ -377,7 +412,7 @@ public class DB {
             }
         } else {
             String query = "INSERT OR REPLACE INTO " + tablePrefix + "player_fishing_stats " +
-                    "(player_uuid, player_name, total_fish_caught, largest_fish_size, most_valuable_fish, success_rate, last_fishing_time, legendary_fish_caught, hook_material, player_language) " +
+                    "(player_uuid, player_name, total_fish_caught, largest_fish_size, most_valuable_fish, success_rate, last_fishing_time, legendary_fish_caught, hook_material, player_language, total_attempts, fail_count) " +
                     "SELECT ?, ?, " +
                     "COALESCE(MAX(total_fish_caught), 0) + 1, " +
                     "MAX(?, COALESCE(MAX(largest_fish_size), 0)), " +
@@ -386,7 +421,9 @@ public class DB {
                     "CURRENT_TIMESTAMP, " +
                     "COALESCE(MAX(legendary_fish_caught), 0) + ?, " +
                     "COALESCE(MAX(hook_material), 'wood'), " +
-                    "MAX(player_language) " +
+                    "MAX(player_language), " +
+                    "COALESCE(MAX(total_attempts), 0), " +
+                    "COALESCE(MAX(fail_count), 0) " +
                     "FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
                 pstmt.setString(1, uuid);
@@ -589,6 +626,16 @@ public class DB {
 
     public void clearPlayerCache(String playerId) {
         cache.keySet().removeIf(key -> key.endsWith(":" + playerId) || key.contains(":" + playerId + ":"));
+    }
+    
+    /**
+     * 清除玩家的钓鱼日志聚合缓存（鱼记录/等级计数）。
+     *
+     * <p>fishing_log 有增删时调用，保证占位符读取最新数据。</p>
+     */
+    private void clearFishingLogCache(String playerId) {
+        cache.keySet().removeIf(key -> (key.startsWith("fish_records:") && key.endsWith(":" + playerId))
+                || (key.startsWith("fish_level:") && key.contains(":" + playerId + ":")));
     }
     
     /**
@@ -797,6 +844,110 @@ public class DB {
         } catch (Exception e) {
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_set_hook_material_failed", "§c设置玩家鱼钩材质失败！")); e.printStackTrace();
         }
+    }
+    
+    /**
+     * 通用方法：从玩家统计数据表获取整数类型的值
+     */
+    private int getPlayerIntValue(String playerId, String columnName, int defaultValue, String cacheKeyPrefix) {
+        if (!isDatabaseAvailable()) return defaultValue;
+        if (!isValidColumnName(columnName)) {
+            return defaultValue;
+        }
+        // 生成缓存键
+        String cacheKey = cacheKeyPrefix + ":" + playerId;
+        
+        // 先从缓存获取
+        Object cachedValue = getFromCache(cacheKey);
+        if (cachedValue != null) {
+            return (Integer) cachedValue;
+        }
+        
+        int value = defaultValue;
+        try {
+            String query = "SELECT " + columnName + " FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
+            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                pstmt.setString(1, playerId);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next() && rs.getObject(columnName) != null) {
+                    value = rs.getInt(columnName);
+                }
+                
+                // 将结果添加到缓存
+                addToCache(cacheKey, value, DEFAULT_CACHE_EXPIRY);
+            }
+        } catch (SQLException e) {
+            kkfish.log("§c" + "获取玩家" + columnName + "失败！"); e.printStackTrace();
+        }
+        return value;
+    }
+    
+    /**
+     * 通用方法：设置玩家统计数据表的整数类型值
+     */
+    private void setPlayerIntValue(String playerId, String columnName, int value, String cacheKeyPrefix) {
+        if (!isDatabaseAvailable()) return;
+        if (!isValidColumnName(columnName)) {
+            return;
+        }
+        try {
+            // 先检查玩家是否存在
+            String checkQuery = "SELECT * FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
+            try (PreparedStatement checkStmt = getConnection().prepareStatement(checkQuery)) {
+                checkStmt.setString(1, playerId);
+                ResultSet rs = checkStmt.executeQuery();
+                if (rs.next()) {
+                    // 存在则更新
+                    String updateQuery = "UPDATE " + tablePrefix + "player_fishing_stats SET " + columnName + " = ? WHERE player_uuid = ?";
+                    try (PreparedStatement updateStmt = getConnection().prepareStatement(updateQuery)) {
+                        updateStmt.setInt(1, value);
+                        updateStmt.setString(2, playerId);
+                        updateStmt.executeUpdate();
+                    }
+                } else {
+                    // 不存在则插入
+                    String insertQuery = "INSERT INTO " + tablePrefix + "player_fishing_stats (player_uuid, " + columnName + ") VALUES (?, ?)";
+                    try (PreparedStatement insertStmt = getConnection().prepareStatement(insertQuery)) {
+                        insertStmt.setString(1, playerId);
+                        insertStmt.setInt(2, value);
+                        insertStmt.executeUpdate();
+                    }
+                }
+                
+                // 清除缓存
+                clearCache(cacheKeyPrefix + ":" + playerId);
+            }
+        } catch (SQLException e) {
+            kkfish.log("§c" + "设置玩家" + columnName + "失败！"); e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 获取玩家钓鱼总次数
+     */
+    public int getPlayerTotalAttempts(String playerId) {
+        return getPlayerIntValue(playerId, "total_attempts", 0, "attempts");
+    }
+    
+    /**
+     * 设置玩家钓鱼总次数
+     */
+    public void setPlayerTotalAttempts(String playerId, int attempts) {
+        setPlayerIntValue(playerId, "total_attempts", attempts, "attempts");
+    }
+    
+    /**
+     * 获取玩家钓鱼失败次数
+     */
+    public int getPlayerFailCount(String playerId) {
+        return getPlayerIntValue(playerId, "fail_count", 0, "fails");
+    }
+    
+    /**
+     * 设置玩家钓鱼失败次数
+     */
+    public void setPlayerFailCount(String playerId, int fails) {
+        setPlayerIntValue(playerId, "fail_count", fails, "fails");
     }
     
     /**
@@ -1029,6 +1180,8 @@ public class DB {
                 pstmt.setString(9, "world"); // 默认世界名称
                 pstmt.executeUpdate();
             }
+            // 清除钓鱼日志聚合缓存
+            clearFishingLogCache(playerId);
         } catch (SQLException e) {
             kkfish.log("§c" + "解锁玩家鱼类图鉴失败！"); e.printStackTrace();
         }
@@ -1059,6 +1212,8 @@ public class DB {
                     pstmt.executeUpdate();
                 }
             }
+            // 清除钓鱼日志聚合缓存
+            clearFishingLogCache(playerId);
         } catch (SQLException e) {
             kkfish.log("§c" + "锁定玩家鱼类图鉴失败！"); e.printStackTrace();
         }
@@ -1084,6 +1239,98 @@ public class DB {
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_get_all_fish_names_failed", "§c获取所有鱼类名称失败！")); e.printStackTrace();
         }
         return fishNames;
+    }
+    
+    /**
+     * 获取玩家指定等级鱼的捕获数量（按 fishing_log 统计）。
+     *
+     * @param playerId 玩家UUID
+     * @param levelKey 等级配置key（如 legendary / epic）
+     * @return 捕获数量
+     */
+    public int getPlayerFishLevelCount(String playerId, String levelKey) {
+        if (levelKey == null || levelKey.isEmpty()) return 0;
+        String cacheKey = "fish_level:" + playerId + ":" + levelKey.toLowerCase();
+        
+        // 先从缓存获取
+        Object cachedValue = getFromCache(cacheKey);
+        if (cachedValue != null) {
+            return (Integer) cachedValue;
+        }
+        
+        if (!isDatabaseAvailable()) return 0;
+        try {
+            String query = "SELECT COUNT(*) AS level_count FROM " + tablePrefix + "fishing_log WHERE player_uuid = ? AND LOWER(fish_level) = LOWER(?) AND fish_value > 0";
+            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                pstmt.setString(1, playerId);
+                pstmt.setString(2, levelKey);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    int count = rs.getInt("level_count");
+                    // 将结果添加到缓存
+                    addToCache(cacheKey, count, DEFAULT_CACHE_EXPIRY);
+                    return count;
+                }
+            }
+        } catch (SQLException e) {
+            kkfish.log("§c" + "获取玩家等级鱼数量失败！"); e.printStackTrace();
+        }
+        return 0;
+    }
+    
+    /**
+     * 获取玩家最值钱鱼的价值
+     */
+    public int getPlayerMostValuable(String playerId) {
+        return getPlayerIntValue(playerId, "most_valuable_fish", 0, "valuable");
+    }
+    
+    /**
+     * 获取玩家总钓鱼时长（秒）
+     */
+    public int getPlayerTotalFishingTime(String playerId) {
+        return getPlayerIntValue(playerId, "total_fishing_time", 0, "ftime");
+    }
+    
+    /**
+     * 聚合恢复玩家全部鱼记录（钓到次数 + 最大尺寸）。
+     *
+     * <p>过滤掉图鉴解锁产生的 0 值记录，保证统计准确。</p>
+     *
+     * @param playerId 玩家UUID
+     * @return 鱼名 → 记录 的映射
+     */
+    public Map<String, me.kkfish.player.PersistentPlayerData.FishRecordData> getPlayerFishRecords(String playerId) {
+        String cacheKey = "fish_records:" + playerId;
+        
+        // 先从缓存获取
+        Object cachedValue = getFromCache(cacheKey);
+        if (cachedValue != null) {
+            return new HashMap<>((Map<String, me.kkfish.player.PersistentPlayerData.FishRecordData>) cachedValue);
+        }
+        
+        Map<String, me.kkfish.player.PersistentPlayerData.FishRecordData> records = new HashMap<>();
+        if (!isDatabaseAvailable()) return records;
+        try {
+            String query = "SELECT fish_name, COUNT(*) AS caught_count, MAX(fish_size) AS max_size FROM " + tablePrefix +
+                    "fishing_log WHERE player_uuid = ? AND fish_value > 0 GROUP BY fish_name";
+            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                pstmt.setString(1, playerId);
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    records.put(rs.getString("fish_name"),
+                            new me.kkfish.player.PersistentPlayerData.FishRecordData(
+                                    rs.getInt("caught_count"),
+                                    rs.getDouble("max_size")));
+                }
+            }
+        } catch (SQLException e) {
+            kkfish.log("§c" + "聚合恢复玩家鱼记录失败！"); e.printStackTrace();
+        }
+        
+        // 将结果添加到缓存
+        addToCache(cacheKey, records, DEFAULT_CACHE_EXPIRY);
+        return records;
     }
     
 }

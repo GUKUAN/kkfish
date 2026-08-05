@@ -1,6 +1,7 @@
 package me.kkfish.player;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -273,8 +274,23 @@ public class PlayerContextStore {
             log("§cFailed to load language for " + ctx.getIdentity().getName() + ": " + e.getMessage());
         }
 
-        // 按需加载鱼记录（延迟加载：仅在玩家打开图鉴时按鱼名加载）
-        // 当前阶段仅加载语言，鱼记录在迁移阶段逐步接入
+        // 加载钓鱼统计（总次数/失败次数）
+        try {
+            ctx.getPersistent().setTotalAttempts(db.getPlayerTotalAttempts(playerId));
+            ctx.getPersistent().setFailCount(db.getPlayerFailCount(playerId));
+        } catch (Exception e) {
+            log("§cFailed to load fishing stats for " + ctx.getIdentity().getName() + ": " + e.getMessage());
+        }
+
+        // 从 fishing_log 聚合恢复鱼记录（钓到次数 + 最大尺寸）
+        try {
+            Map<String, PersistentPlayerData.FishRecordData> records = db.getPlayerFishRecords(playerId);
+            if (records != null && !records.isEmpty()) {
+                ctx.getPersistent().getFishRecords().putAll(records);
+            }
+        } catch (Exception e) {
+            log("§cFailed to load fish records for " + ctx.getIdentity().getName() + ": " + e.getMessage());
+        }
     }
 
     /**
@@ -302,7 +318,15 @@ public class PlayerContextStore {
             log("§cFailed to save language for " + playerId + ": " + e.getMessage());
         }
 
-        // 鱼记录保存在迁移阶段逐步接入
+        // 保存钓鱼统计（总次数/失败次数）
+        try {
+            db.setPlayerTotalAttempts(id, snapshot.getTotalAttempts());
+            db.setPlayerFailCount(id, snapshot.getFailCount());
+        } catch (Exception e) {
+            log("§cFailed to save fishing stats for " + playerId + ": " + e.getMessage());
+        }
+
+        // 鱼记录保存在 fishing_log 表中（logFishing 实时落库），退出时无需重复保存
     }
 
     // ===== 关闭 =====
