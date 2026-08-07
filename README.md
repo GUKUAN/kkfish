@@ -1,73 +1,124 @@
-# kkfish - Stardew Valley Fishing Plugin
+<div align="center">
 
-## Project Introduction
+# KKFish
 
-kkfish is a powerful new generation Minecraft fishing plugin inspired by Stardew Valley, adding rich fishing experiences to your server.
+**Stardew Valley Style Fishing Plugin for Minecraft**
 
-## Technology Stack
+![Version](https://img.shields.io/badge/version-1.7.8-blue)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.12--26.2-green)
+![Platform](https://img.shields.io/badge/Platform-Spigot%20%7C%20Paper%20%7C%20Folia-orange)
+![License](https://img.shields.io/github/license/GUKUAN/kkfish)
+![Stars](https://img.shields.io/github/stars/GUKUAN/kkfish)
 
-- Java
-- Bukkit/Spigot API
-- Maven
+A new generation fishing plugin inspired by **Stardew Valley** — charge, cast, bite, and reel in a complete fishing minigame experience.
 
-## Build Instructions
+**中文文档**: [README_CN.md](README_CN.md) · **Discord**: [Join our Discord](https://discord.gg/T8MmUpNZk3)
 
-1. Ensure Java JDK 8 or higher is installed
-2. Ensure Maven is installed
-3. Clone the project to your local machine
-4. Execute the following command in the project root directory:
-   ```bash
-   mvn clean install
-   ```
-5. After build completion, the plugin jar file will be generated in the `target/` directory
+</div>
 
-## Development Notes
+---
 
-- The plugin supports Minecraft versions 1.12-26.1
-- Uses XSeries library for version compatibility
-- Dependency management is handled through Maven
-- Code style follows the project's existing coding standards
+## Features
 
-## Core Feature Modules
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/gamepad.svg" width="18"> Stardew-style fishing minigame — charge your cast, wait for the bite, time the green bar, land the fish
 
-- **Fishing System**: Handles fishing process, fish generation, and catch determination
-- **Customization System**: Supports custom fishing rods, fish, baits, and hooks
-- **Competition System**: Supports various types of fishing competitions
-- **GUI System**: Provides intuitive user interfaces
-- **Statistics System**: Tracks detailed fishing statistics and player records
-- **Economy System**: Fish pricing and selling functionality
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/fish.svg" width="18"> Fully custom fish — rarity tiers (common → legendary), sizes, values, seasonal availability, water pools
 
-## Compatible Plugins
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/anchor.svg" width="18"> Custom fishing rods — durability, charge speed, float area, bite rate bonus, special effects
 
-- AuraSkills
-- RealisticSeasons
-- Vault API
-- PlayerPoints
-- ItemsAdder
-- Oraxen
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/worm.svg" width="18"> Baits & hook materials — consumable baits, unlockable hook materials with permissions
 
-## Development Environment Setup
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/book.svg" width="18"> Fish dex & records — collect every fish, track your stats and personal bests
 
-1. Clone the project
-2. Import as a Maven project in your IDE
-3. Ensure Bukkit/Spigot API dependencies are correctly loaded
-4. Start developing
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/store.svg" width="18"> Rod shop & hook material GUI — buy rods and hooks with coins or points
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/trophy.svg" width="18"> Fishing competitions — multiple competition types with scoreboards and boss bars
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/volcano.svg" width="18"> Lava & void fishing — fish anywhere, even in the void
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/leaf.svg" width="18"> Season system — seasonal fish pools, RealisticSeasons integration
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/coins.svg" width="18"> Dual economy — Vault coins + PlayerPoints, per-fish split `sell-value` rewards
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/palette.svg" width="18"> Custom item support — ItemsAdder, Oraxen, Nexo, CraftEngine across all items
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/chart-line.svg" width="18"> PlaceholderAPI & AuraSkills — rich placeholders, fishing level & XP integration
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/globe.svg" width="18"> Bilingual language packs — zh_cn / en_us with auto server-language detection
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/bolt.svg" width="18"> One jar, every server — Spigot 1.12+, Paper, and Folia, all in a single build
+
+---
+
+## Screenshots
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/camera.svg" width="16">
+
+> *Coming soon*
+
+---
+
+## Quick Start
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/rocket.svg" width="18">
+
+1. **Download** the latest `kkfish.jar` from [Releases](https://github.com/GUKUAN/kkfish/releases)
+2. **Drop it** into your server's `plugins/` folder and restart
+3. **Start fishing** — right-click to charge, release to cast, click when the fish bites!
+
+Full documentation: [Wiki](https://wiki.bestcraft.cc)
+
+---
+
+## Compatibility
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/gears.svg" width="18">
+
+| | |
+|---|---|
+| **Minecraft** | 1.12 – 1.26.2 |
+| **Platforms** | Spigot, Paper, Folia (single jar) |
+| **Economy** | Vault, PlayerPoints |
+| **Custom items** | ItemsAdder, Oraxen, Nexo, CraftEngine |
+| **Addons** | PlaceholderAPI, AuraSkills, RealisticSeasons |
+
+---
+
+## Build
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/hammer.svg" width="18">
+
+```bash
+mvn clean package
+```
+
+The built jar will be at `kkfish-core/target/kkfish.jar`.
+
+---
+
+## Star History
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/star.svg" width="18">
+
+<!-- star-history:start -->
+<!-- star-history:end -->
+
+---
+
+## Support
+
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/comments.svg" width="18">
+
+- **Wiki**: [wiki.bestcraft.cc](https://wiki.bestcraft.cc)
+- **SpigotMC**: [kkfish](https://www.spigotmc.org/resources/kkfish-1-12-1-21-stardew-valley-fishing-and-resource-pack.129074/)
+- **MINEBBS**: [kkfish](https://www.minebbs.com/resources/kkfish.15002/)
+- **QQ Group**: 819181552
+- **Discord**: [Join our Discord](https://discord.com/invite/T8MmUpNZk3)
+
+---
 
 ## License
 
-This project is licensed under the MIT License
+<img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/file-circle-check.svg" width="18">
 
-## Official Releases
-
-- SpigotMC: <https://www.spigotmc.org/resources/kkfish-1-12-1-21-stardew-valley-fishing-and-resource-pack.129074/>
-- MINEBBS: <https://www.minebbs.com/resources/kkfish.15002/>
-
-## Support Channels
-
-- QQ Group: 819181552
-- Discord: [Join Discord for Support](https://discord.com/invite/T8MmUpNZk3)
-- Wiki: [wiki.bestcraft.cc](https://wiki.bestcraft.cc)
-
-***
-
-Thank you for using and contributing to the kkfish project!
+This project is licensed under the [MIT License](LICENSE).
