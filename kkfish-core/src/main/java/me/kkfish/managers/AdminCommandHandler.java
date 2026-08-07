@@ -154,8 +154,14 @@ public class AdminCommandHandler {
 
     /**
      * 处理 toggle 命令：切换钓鱼模式（原版/插件）。
+     * 管理员可使用 /kf toggle <玩家|-all> plugin 强制指定玩家改回插件模式。
      */
     public void handleModeCommand(CommandSender sender, String[] args) {
+        if (args.length == 3 && sender.hasPermission("kkfish.admin")) {
+            handleAdminForceMode(sender, args);
+            return;
+        }
+
         if (!plugin.getCustomConfig().isCommandSwitchEnabled()) {
             sender.sendMessage(messageManager.getMessage("mode_switch_command_disabled", "&cCommand mode switching is disabled"));
             return;
@@ -174,6 +180,12 @@ public class AdminCommandHandler {
             return;
         }
 
+        // 原版钓鱼被禁用时切换无意义，直接拒绝
+        if (plugin.getCustomConfig().isVanillaFishingDisabled()) {
+            sender.sendMessage(messageManager.getMessage("mode_switch_vanilla_disabled", "&cVanilla fishing has been disabled by the server, cannot switch to vanilla mode"));
+            return;
+        }
+
         boolean currentIsVanilla = plugin.isPlayerInVanillaMode(player.getUniqueId());
         boolean newIsVanilla = !currentIsVanilla;
 
@@ -182,6 +194,44 @@ public class AdminCommandHandler {
         String modeKey = newIsVanilla ? "mode_switch_mode_vanilla" : "mode_switch_mode_plugin";
         String modeName = messageManager.getMessageWithoutPrefix(modeKey, newIsVanilla ? "Vanilla fishing mode" : "Plugin fishing mode");
         sender.sendMessage(messageManager.getMessage("mode_switch_success", "&aFishing mode switched! Current mode: %s", modeName));
+    }
+
+    /**
+     * 管理员强制指定玩家改回插件模式，不受 allow-command-switch 与世界白名单限制。
+     * target 为 -all 时覆盖在线玩家并统计数据库记录。
+     */
+    private void handleAdminForceMode(CommandSender sender, String[] args) {
+        String target = args[1];
+        String mode = args[2].toLowerCase();
+
+        if (!"plugin".equals(mode)) {
+            sender.sendMessage(messageManager.getMessage("mode_switch_admin_usage", "&dUsage: /kf toggle <player|-all> plugin"));
+            return;
+        }
+
+        if ("-all".equalsIgnoreCase(target)) {
+            int onlineCount = 0;
+            for (Player p : plugin.getServer().getOnlinePlayers()) {
+                plugin.setPlayerFishingMode(p.getUniqueId(), false);
+                onlineCount++;
+            }
+
+            int dbCount = 0;
+            DB db = plugin.getDB();
+            if (db != null) {
+                dbCount = db.getAllPlayerUuids().size();
+            }
+            sender.sendMessage(messageManager.getMessage("mode_switch_admin_all", "&aForce switched %s online players to plugin fishing mode, covering %s players in database records", onlineCount, dbCount));
+            return;
+        }
+
+        Player targetPlayer = plugin.getServer().getPlayer(target);
+        if (targetPlayer == null) {
+            sender.sendMessage(messageManager.getMessage("player_not_found", "&dPlayer not found: %s", target));
+            return;
+        }
+        plugin.setPlayerFishingMode(targetPlayer.getUniqueId(), false);
+        sender.sendMessage(messageManager.getMessage("mode_switch_admin_set", "&aForce switched player %s to plugin fishing mode", targetPlayer.getName()));
     }
 
     /**

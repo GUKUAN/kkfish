@@ -560,8 +560,18 @@ if (targetPlayer == null) {
                 StringUtil.copyPartialMatches(args[2], configIds, completions);
             }
         } else if (args.length == 2 && "toggle".equals(args[0].toLowerCase())) {
-            List<String> modeOptions = Arrays.asList("plugin", "vanilla");
+            List<String> modeOptions = new ArrayList<>(Arrays.asList("-all", "plugin"));
+            if (!plugin.getCustomConfig().isVanillaFishingDisabled()) {
+                modeOptions.add("vanilla");
+            }
+            if (sender.hasPermission("kkfish.admin")) {
+                for (Player player : plugin.getServer().getOnlinePlayers()) {
+                    modeOptions.add(player.getName());
+                }
+            }
             StringUtil.copyPartialMatches(args[1], modeOptions, completions);
+        } else if (args.length == 3 && "toggle".equals(args[0].toLowerCase()) && sender.hasPermission("kkfish.admin")) {
+            StringUtil.copyPartialMatches(args[2], Arrays.asList("plugin"), completions);
         } else if (args.length == 2 && "resellang".equals(args[0].toLowerCase())) {
             // 补全支持的语言列表（从Config读取，不硬编码）
             StringUtil.copyPartialMatches(args[1],
@@ -649,7 +659,7 @@ if (targetPlayer == null) {
     // ==================== Help ====================
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage(messageManager.getMessage("help_message", "§6===== KKFish Help =====\n§a/kf give <player> <fish_name> [amount] - Give a fish to a player\n§a/kf reload - Reload plugin config\n§a/kf debug - Toggle debug mode\n§a/kf version - Check plugin version\n§a/kf gui [main|hook|dex|record|help] - Open fishing GUI\n§a/kf sell <all|hand> - Sell fish from inventory or hand\n§a/kf sell <all|hand> <player> - [OP] Help another player sell items\n§a/kf compete <start|stop|list> [compete_id] [duration] - [OP] Manage fishing competitions\n§a/kf unlock <player> <fish_name|all> - [OP] Unlock fish dex entries for a player\n§a/kf lock <player> <fish_name|all> - [OP] Lock fish dex entries for a player\n§6===== KKFish Help ====="));
+        sender.sendMessage(messageManager.getMessage("help_message", "§6===== KKFish Help =====\n§a/kf give <player> <fish_name> [amount] - Give a fish to a player\n§a/kf reload - Reload plugin config\n§a/kf debug - Toggle debug mode\n§a/kf version - Check plugin version\n§a/kf gui [main|hook|dex|record|help] - Open fishing GUI\n§a/kf sell <all|hand> - Sell fish from inventory or hand\n§a/kf sell <all|hand> <player> - [OP] Help another player sell items\n§a/kf compete <start|stop|list> [compete_id] [duration] - [OP] Manage fishing competitions\n§a/kf unlock <player> <fish_name|all> - [OP] Unlock fish dex entries for a player\n§a/kf lock <player> <fish_name|all> - [OP] Lock fish dex entries for a player\n§a/kf toggle - Switch fishing mode (plugin/vanilla)\n§a/kf toggle <player|-all> plugin - [OP] Force switch to plugin fishing mode\n§6===== KKFish Help ====="));
     }
 
     // ==================== 外部访问 ====================

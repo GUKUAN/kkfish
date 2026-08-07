@@ -660,6 +660,10 @@ mode_switch_mode_vanilla: "Vanilla Fishing Mode"
 mode_switch_usage: "&dUsage: /kf toggle"
 mode_switch_success: "&aFishing mode switched successfully! Current mode: %s"
 mode_switch_no_permission: "&dYou don't have permission to switch fishing mode"
+mode_switch_vanilla_disabled: "&cVanilla fishing has been disabled by the server, cannot switch to vanilla mode"
+mode_switch_admin_set: "&aForce switched player %s to plugin fishing mode"
+mode_switch_admin_all: "&aForce switched %s online players to plugin fishing mode, covering %s players in database records"
+mode_switch_admin_usage: "&dUsage: /kf toggle <player|-all> plugin"
 
 # ==========================
 # Rod Template Messages

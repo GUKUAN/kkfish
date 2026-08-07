@@ -6,7 +6,7 @@
 
     <groupId>me.kkfish</groupId>
     <artifactId>kkfish-parent</artifactId>
-    <version>1.7.7</version>
+    <version>1.7.8</version>
     <packaging>pom</packaging>
 
     <name>kkfish Parent</name>
@@ -20,7 +20,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spigot.version>1.16.1-R0.1-SNAPSHOT</spigot.version>
-        <folia.version>1.20.1-R0.1-SNAPSHOT</folia.version>
         <bstats.version>3.1.0</bstats.version>
         <xseries.version>13.8.0</xseries.version>
         <sqlite.version>3.46.0.0</sqlite.version>
@@ -69,12 +68,6 @@
                 <groupId>org.spigotmc</groupId>
                 <artifactId>spigot-api</artifactId>
                 <version>${spigot.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>dev.folia</groupId>
-                <artifactId>folia-api</artifactId>
-                <version>${folia.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>

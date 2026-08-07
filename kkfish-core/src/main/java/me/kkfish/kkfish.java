@@ -248,6 +248,10 @@ public class kkfish extends JavaPlugin {
     }
 
     public boolean isPlayerInVanillaMode(UUID playerId) {
+        // 原版钓鱼被禁用时 vanilla 标记整体失效，一律按插件模式处理
+        if (getCustomConfig().isVanillaFishingDisabled()) {
+            return false;
+        }
         return playerFishingMode.getOrDefault(playerId, false);
     }
 

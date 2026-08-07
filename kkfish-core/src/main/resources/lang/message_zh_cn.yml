@@ -661,6 +661,10 @@ mode_switch_mode_vanilla: "原版钓鱼模式"
 mode_switch_usage: "&d用法: /kf toggle"
 mode_switch_success: "&a钓鱼模式切换成功！当前模式: %s"
 mode_switch_no_permission: "&d你没有权限切换钓鱼模式"
+mode_switch_vanilla_disabled: "&c服务器已禁用原版钓鱼，无法切换到原版模式"
+mode_switch_admin_set: "&a已将玩家 %s 强制切换为插件钓鱼模式"
+mode_switch_admin_all: "&a已强制 %s 名在线玩家切换为插件钓鱼模式，数据库记录覆盖 %s 名玩家"
+mode_switch_admin_usage: "&d用法: /kf toggle <玩家|-all> plugin"
 
 # ==========================
 # Rod Template Messages

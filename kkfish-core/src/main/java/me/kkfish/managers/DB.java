@@ -1242,6 +1242,27 @@ public class DB {
     }
     
     /**
+     * 获取所有在玩家统计表有记录的玩家UUID（含离线玩家）。
+     * @return 玩家UUID列表
+     */
+    public List<String> getAllPlayerUuids() {
+        if (!isDatabaseAvailable()) return new ArrayList<>();
+        List<String> uuids = new ArrayList<>();
+        try {
+            String query = "SELECT player_uuid FROM " + tablePrefix + "player_fishing_stats";
+            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                ResultSet rs = pstmt.executeQuery();
+                while (rs.next()) {
+                    uuids.add(rs.getString("player_uuid"));
+                }
+            }
+        } catch (SQLException e) {
+            kkfish.log("§c" + plugin.getMessageManager().getMessageWithoutPrefix("log.db_get_all_players_failed", "获取所有玩家记录失败！")); e.printStackTrace();
+        }
+        return uuids;
+    }
+    
+    /**
      * 获取玩家指定等级鱼的捕获数量（按 fishing_log 统计）。
      *
      * @param playerId 玩家UUID
