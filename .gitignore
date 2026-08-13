@@ -33,3 +33,6 @@ dependency-reduced-pom.xml
 # Docs & local plugin.yml
 docs/
 plugin.yml
+
+# Resource pack (not part of plugin)
+kkfish_rp/

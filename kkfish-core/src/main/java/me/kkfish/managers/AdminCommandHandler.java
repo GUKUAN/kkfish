@@ -4,7 +4,6 @@ import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import me.kkfish.kkfish;
 import me.kkfish.misc.MessageManager;
@@ -254,36 +253,7 @@ public class AdminCommandHandler {
             return true;
         }
 
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            boolean hasCustomModelData = false;
-            boolean isCustomFishingRod = false;
-
-            try {
-                java.lang.reflect.Method hasCustomModelDataMethod = meta.getClass().getMethod("hasCustomModelData");
-                hasCustomModelData = (boolean) hasCustomModelDataMethod.invoke(meta);
-                if (hasCustomModelData) {
-                    isCustomFishingRod = true;
-                }
-            } catch (Exception e) {
-                try {
-                    java.lang.reflect.Method getItemTagMethod = item.getClass().getMethod("getItemTag");
-                    Object nbtTag = getItemTagMethod.invoke(item);
-
-                    if (nbtTag != null) {
-                        java.lang.reflect.Method hasKeyMethod = nbtTag.getClass().getMethod("hasKey", String.class);
-                        boolean hasFishingRodTag = (boolean) hasKeyMethod.invoke(nbtTag, "FishingRod");
-                        if (hasFishingRodTag) {
-                            isCustomFishingRod = true;
-                        }
-                    }
-                } catch (Exception ex) {
-                }
-            }
-
-            return isCustomFishingRod;
-        }
-
-        return false;
+        // 非原版材质时，仅凭 kkfish 写入的鱼竿标签判定，避免把带 CustomModelData 的鱼误判成鱼竿
+        return me.kkfish.utils.NBTUtil.hasTag(item, "自定义鱼竿");
     }
 }

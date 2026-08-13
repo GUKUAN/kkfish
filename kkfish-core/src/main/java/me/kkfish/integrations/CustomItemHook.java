@@ -67,7 +67,9 @@ public class CustomItemHook {
     private static Method ceById;
     private static Method ceIsCustomItem;
     private static Method ceGetCustomItemId;
+    private static Method ceItemDefBuildItem;
     private static Method ceItemDefGetItem;
+    private static Method ceItemToBukkit;
 
     // 字体图片占位符正则：:namespace:name: 或 :name:
     private static final Pattern FONT_IMAGE_PATTERN = Pattern.compile(":([a-zA-Z0-9_]+):([a-zA-Z0-9_]+):|:([a-zA-Z0-9_]+):");
@@ -147,11 +149,21 @@ public class CustomItemHook {
             ceById = ceItemsClass.getMethod("byId", String.class);
             ceIsCustomItem = ceItemsClass.getMethod("isCustomItem", ItemStack.class);
             ceGetCustomItemId = ceItemsClass.getMethod("getCustomItemId", ItemStack.class);
-            // BukkitItemDefinition 继承自 ItemDefinition，getItem() 返回 ItemStack
-            ceItemDefGetItem = findMethod(itemDefClass, "getItem", ItemStack.class);
+            // 新版 API：BuildableItem.buildItem(Player) 构建物品（core Player 可传 null，官方 Item.byId 即如此）
+            ceItemDefBuildItem = findBuildMethod(itemDefClass, "buildItem");
+            // 旧版 API 兜底：ItemDefinition.getItem()
+            ceItemDefGetItem = findBuildMethod(itemDefClass, "getItem");
+            // Item -> ItemStack：BukkitItem.getBukkitItem()，兜底 Item.platformItem()
+            try {
+                Class<?> bukkitItemClass = Class.forName("net.momirealms.craftengine.bukkit.item.BukkitItem");
+                ceItemToBukkit = findMethod(bukkitItemClass, "getBukkitItem", ItemStack.class);
+            } catch (Exception ignored) {}
+            if (ceItemToBukkit == null) {
+                Class<?> itemInterface = Class.forName("net.momirealms.craftengine.core.item.Item");
+                ceItemToBukkit = itemInterface.getMethod("platformItem");
+            }
 
             ceAvailable = true;
-            kkfish.log("§a[CustomItemHook] CraftEngine detected~");
         } catch (Exception ignored) {}
     }
 
@@ -164,6 +176,23 @@ public class CustomItemHook {
                     return m;
                 }
             }
+        }
+        return null;
+    }
+
+    /** 查找构建方法（buildItem/getItem），参数数不超过 2 个，兼容接口继承链 */
+    private static Method findBuildMethod(Class<?> clazz, String name) {
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            for (Method m : c.getDeclaredMethods()) {
+                if (m.getName().equals(name) && m.getParameterCount() <= 2) {
+                    m.setAccessible(true);
+                    return m;
+                }
+            }
+        }
+        for (Class<?> iface : clazz.getInterfaces()) {
+            Method m = findBuildMethod(iface, name);
+            if (m != null) return m;
         }
         return null;
     }
@@ -264,7 +293,6 @@ public class CustomItemHook {
                     if (ceAvailable) {
                         ItemStack item = getCEItem(itemId);
                         if (item != null) { item.setAmount(amount); return item; }
-                        kkfish.log("§e[CustomItemHook] CraftEngine item not found: " + itemId);
                     }
                     materialStr = itemId;
                 }
@@ -407,9 +435,27 @@ public class CustomItemHook {
         try {
             Object def = ceById.invoke(null, id);
             if (def == null) return null;
-            if (ceItemDefGetItem != null) {
-                ItemStack item = (ItemStack) ceItemDefGetItem.invoke(def);
-                return item != null ? item.clone() : null;
+            // 旧版本 byId 返回 Optional<ItemDefinition>
+            if (def instanceof java.util.Optional) {
+                java.util.Optional<?> opt = (java.util.Optional<?>) def;
+                if (!opt.isPresent()) return null;
+                def = opt.get();
+            }
+            Object item;
+            if (ceItemDefBuildItem != null) {
+                Method m = ceItemDefBuildItem;
+                item = m.getParameterCount() == 2 ? m.invoke(def, null, 1) : m.invoke(def, (Object) null);
+            } else if (ceItemDefGetItem != null) {
+                item = ceItemDefGetItem.invoke(def);
+            } else {
+                return null;
+            }
+            if (item == null) return null;
+            if (item instanceof ItemStack) return ((ItemStack) item).clone();
+            // CraftEngine Item 接口实例（BukkitItem），转回 Bukkit ItemStack
+            if (ceItemToBukkit != null) {
+                Object bukkit = ceItemToBukkit.invoke(item);
+                if (bukkit instanceof ItemStack) return ((ItemStack) bukkit).clone();
             }
         } catch (Exception e) { return null; }
         return null;

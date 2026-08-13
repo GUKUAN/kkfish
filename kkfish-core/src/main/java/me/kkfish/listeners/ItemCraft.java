@@ -8,7 +8,6 @@ import java.util.Map;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -16,8 +15,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
 
 import me.kkfish.kkfish;
 import me.kkfish.integrations.CustomItemHook;
@@ -43,16 +40,8 @@ public class ItemCraft implements Listener {
             return;
         }
 
-        ItemMeta meta = result.getItemMeta();
-        if (meta != null) {
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            NamespacedKey tagsKey = new NamespacedKey(plugin, "Tags");
-            if (container.has(tagsKey, PersistentDataType.STRING)) {
-                String tagsString = container.get(tagsKey, PersistentDataType.STRING);
-                if (tagsString != null && tagsString.contains("自定义鱼竿")) {
-                    return;
-                }
-            }
+        if (me.kkfish.utils.NBTUtil.hasTag(result, "自定义鱼竿")) {
+            return;
         }
 
         String defaultRodName = "default";
@@ -92,39 +81,6 @@ public class ItemCraft implements Listener {
             return rod;
         }
         
-        ConfigurationSection nbtSection = config.getRodConfig().getConfigurationSection("rods.default.nbt");
-        try {
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            
-            NamespacedKey tagsKey = new NamespacedKey(plugin, "Tags");
-            List<String> tagsList = new ArrayList<>();
-            tagsList.add("自定义鱼竿");
-            
-            container.set(tagsKey, PersistentDataType.STRING, String.join(",", tagsList));
-            
-            if (nbtSection != null && !nbtSection.getKeys(false).isEmpty() && config.isCustomNBTSupportEnabled()) {
-                for (String nbtKey : nbtSection.getKeys(false)) {
-                    if (nbtKey.equalsIgnoreCase("CustomModelData")) {
-                        continue;
-                    }
-                    
-                    Object value = nbtSection.get(nbtKey);
-                    
-                    if (value instanceof String) {
-                        container.set(new NamespacedKey(plugin, nbtKey), PersistentDataType.STRING, (String) value);
-                    } else if (value instanceof Integer) {
-                        container.set(new NamespacedKey(plugin, nbtKey), PersistentDataType.INTEGER, (Integer) value);
-                    } else if (value instanceof Double) {
-                        container.set(new NamespacedKey(plugin, nbtKey), PersistentDataType.DOUBLE, (Double) value);
-                    } else if (value instanceof Boolean) {
-                        container.set(new NamespacedKey(plugin, nbtKey), PersistentDataType.INTEGER, ((Boolean) value) ? 1 : 0);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("item_craft_apply_nbt_error", "应用默认鱼竿NBT数据时出错: %s", e.getMessage()));
-        }
-        
         String displayName = ChatColor.translateAlternateColorCodes('&', 
                 config.getRodConfig().getString("rods.default.display-name", "&f普通钓鱼竿"));
         displayName = CustomItemHook.replaceFontImages(displayName);
@@ -132,7 +88,13 @@ public class ItemCraft implements Listener {
         
         int customModelData = config.getRodCustomModelData(rodName);
         if (customModelData != -1) {
-            meta.setCustomModelData(customModelData);
+            try {
+                java.lang.reflect.Method setCustomModelDataMethod = meta.getClass().getMethod("setCustomModelData", Integer.class);
+                if (setCustomModelDataMethod != null) {
+                    setCustomModelDataMethod.invoke(meta, customModelData);
+                }
+            } catch (Exception e) {
+            }
         }
         
         List<String> lore = new ArrayList<>();
@@ -228,6 +190,25 @@ public class ItemCraft implements Listener {
         meta.setLore(lore);
         
         rod.setItemMeta(meta);
+        
+        // NBT 写入放在 setItemMeta 之后，避免标签被后续 meta 覆盖
+        List<String> tagsList = new ArrayList<>();
+        tagsList.add("自定义鱼竿");
+        me.kkfish.utils.NBTUtil.addTags(rod, tagsList);
+        
+        ConfigurationSection nbtSection = config.getRodConfig().getConfigurationSection("rods.default.nbt");
+        if (nbtSection != null && !nbtSection.getKeys(false).isEmpty() && config.isCustomNBTSupportEnabled()) {
+            for (String nbtKey : nbtSection.getKeys(false)) {
+                if (nbtKey.equalsIgnoreCase("CustomModelData")) {
+                    continue;
+                }
+                
+                Object value = nbtSection.get(nbtKey);
+                if (value != null) {
+                    me.kkfish.utils.NBTUtil.setNBTData(rod, nbtKey, value);
+                }
+            }
+        }
         
         return rod;
     }

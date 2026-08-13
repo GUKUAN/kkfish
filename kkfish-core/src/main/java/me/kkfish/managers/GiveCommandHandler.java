@@ -14,7 +14,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import me.kkfish.kkfish;
@@ -137,34 +136,6 @@ public class GiveCommandHandler {
             return rod;
         }
 
-        ConfigurationSection nbtSection = configManager.getRodConfig().getConfigurationSection("rods." + rodName + ".nbt");
-
-        List<String> tagsList = new ArrayList<>();
-        tagsList.add("自定义鱼竿");
-        boolean tagsAdded = me.kkfish.utils.NBTUtil.addTags(rod, tagsList);
-
-        if (tagsAdded) {
-            configManager.debugLog("已为鱼竿物品添加Tags:['自定义鱼竿']标记: " + rodName);
-        } else {
-            configManager.debugLog("无法为鱼竿物品添加Tags标记，但将继续创建物品: " + rodName);
-        }
-
-        if (nbtSection != null && !nbtSection.getKeys(false).isEmpty() && configManager.isCustomNBTSupportEnabled()) {
-            for (String nbtKey : nbtSection.getKeys(false)) {
-                if (nbtKey.equalsIgnoreCase("CustomModelData")) {
-                    continue;
-                }
-
-                Object value = nbtSection.get(nbtKey);
-                if (value != null) {
-                    boolean nbtSet = me.kkfish.utils.NBTUtil.setNBTData(rod, nbtKey, value);
-                    if (!nbtSet) {
-                        configManager.debugLog("无法为鱼竿物品设置NBT数据: " + nbtKey + " = " + value);
-                    }
-                }
-            }
-        }
-
         String displayName = ChatColor.translateAlternateColorCodes('&',
                 configManager.getRodConfig().getString("rods." + rodName + ".display-name", "&f" + rodName));
         displayName = CustomItemHook.replaceFontImages(displayName);
@@ -259,6 +230,35 @@ public class GiveCommandHandler {
         meta.setLore(lore);
 
         rod.setItemMeta(meta);
+
+        // NBT 写入放在 setItemMeta 之后，避免标签被后续 meta 覆盖
+        List<String> tagsList = new ArrayList<>();
+        tagsList.add("自定义鱼竿");
+        boolean tagsAdded = me.kkfish.utils.NBTUtil.addTags(rod, tagsList);
+
+        if (tagsAdded) {
+            configManager.debugLog("已为鱼竿物品添加Tags:['自定义鱼竿']标记: " + rodName);
+        } else {
+            configManager.debugLog("无法为鱼竿物品添加Tags标记，但将继续创建物品: " + rodName);
+        }
+
+        ConfigurationSection nbtSection = configManager.getRodConfig().getConfigurationSection("rods." + rodName + ".nbt");
+        if (nbtSection != null && !nbtSection.getKeys(false).isEmpty() && configManager.isCustomNBTSupportEnabled()) {
+            for (String nbtKey : nbtSection.getKeys(false)) {
+                if (nbtKey.equalsIgnoreCase("CustomModelData")) {
+                    continue;
+                }
+
+                Object value = nbtSection.get(nbtKey);
+                if (value != null) {
+                    boolean nbtSet = me.kkfish.utils.NBTUtil.setNBTData(rod, nbtKey, value);
+                    if (!nbtSet) {
+                        configManager.debugLog("无法为鱼竿物品设置NBT数据: " + nbtKey + " = " + value);
+                    }
+                }
+            }
+        }
+
         return rod;
     }
 
@@ -298,8 +298,16 @@ public class GiveCommandHandler {
         displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
 
-        NamespacedKey baitNameKey = new NamespacedKey(plugin, "bait_name");
-        meta.getPersistentDataContainer().set(baitNameKey, PersistentDataType.STRING, baitName);
+        try {
+            java.lang.reflect.Method getPdcMethod = meta.getClass().getMethod("getPersistentDataContainer");
+            Object pdc = getPdcMethod.invoke(meta);
+            if (pdc != null) {
+                NamespacedKey baitNameKey = new NamespacedKey(plugin, "bait_name");
+                java.lang.reflect.Method setMethod = pdc.getClass().getMethod("set", NamespacedKey.class, PersistentDataType.class, Object.class);
+                setMethod.invoke(pdc, baitNameKey, PersistentDataType.STRING, baitName);
+            }
+        } catch (Exception e) {
+        }
 
         int customModelData = configManager.getBaitCustomModelData(baitName);
         if (customModelData > 0 || customModelData == -1) {
