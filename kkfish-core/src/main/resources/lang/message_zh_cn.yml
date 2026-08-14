@@ -599,6 +599,7 @@ log.papi_register_error: "注册 PlaceholderAPI 扩展时出错: %s"
 # 配置/数据库警告日志
 # ==========================
 log.config_save_failed: "无法保存配置文件"
+log.config_upgraded: "配置升级完成：补充 %s 个缺失键（%s）"
 log.config_pool_fish_not_found: "鱼池 %s 中的鱼 '%s' 在 fish.yml 中不存在，请检查 pools.yml 和 fish.yml 配置是否一致"
 log.db_get_player_column_failed: "获取玩家%s失败！"
 log.db_set_player_column_failed: "设置玩家%s失败！"

@@ -9,11 +9,11 @@ import org.bukkit.ChatColor;
 
 import me.kkfish.kkfish;
 import me.kkfish.managers.Config;
+import me.kkfish.utils.ConfigUpgrade;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -362,32 +362,19 @@ public class MessageManager {
             FileConfiguration defaultConfig = YamlConfiguration.loadConfiguration(defaultLangFile);
             FileConfiguration targetConfig = YamlConfiguration.loadConfiguration(targetLangFile);
 
-            Set<String> missingKeys = new HashSet<>();
-            for (String key : defaultConfig.getKeys(true)) {
-                if (defaultConfig.isString(key) && !targetConfig.contains(key)) {
-                    missingKeys.add(key);
-                }
-            }
-
             // 修正旧版中文语言文件中参数顺序错误的 AuraSkills 提示，避免更新后继续刷屏。
             if ("已为 %s 添加 %.1f 点钓鱼经验".equals(targetConfig.getString("aura_skills_added_xp"))) {
-                missingKeys.add("aura_skills_added_xp");
+                targetConfig.set("aura_skills_added_xp", "已为 %2$s 添加 %1$.1f 点钓鱼经验");
             }
 
-            if (missingKeys.isEmpty()) {
+            // 以英文基准语言为模板，统一走 diff 补齐缺失键
+            int added = ConfigUpgrade.fillMissingKeys(targetConfig, defaultConfig);
+            if (added == 0) {
                 return true;
             }
 
-            for (String key : missingKeys) {
-                if (key.equals("aura_skills_added_xp")) {
-                    targetConfig.set(key, "已为 %2$s 添加 %1$.1f 点钓鱼经验");
-                } else {
-                    targetConfig.set(key, defaultConfig.get(key));
-                }
-            }
-
             targetConfig.save(targetLangFile);
-            kkfish.log(this.getMessageWithoutPrefix("log.message_complete_keys_added", "Added " + missingKeys.size() + " missing language keys to " + targetLang + " language file", missingKeys.size(), targetLang));
+            kkfish.log(this.getMessageWithoutPrefix("log.message_complete_keys_added", "Added " + added + " missing language keys to " + targetLang + " language file", added, targetLang));
             return true;
         } catch (Exception e) {
             kkfish.log(this.getMessageWithoutPrefix("log.message_complete_failed", "§eFailed to complete language file: " + e.getMessage(), e.getMessage()));

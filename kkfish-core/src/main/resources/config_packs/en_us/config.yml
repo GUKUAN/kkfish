@@ -1,242 +1,244 @@
-# config-version: 1.6.1
-# - 升级到 LATEST 版本时，请务必阅读文档中的 CHANGELOG 了解重大更新内容！
+# config-version: 1.7.10
+# - When upgrading to a LATEST version, be sure to read the CHANGELOG in the docs for breaking changes!
 #
-# 重要提示：本插件完全禁用了原版钓鱼机制（除非明确启用），请勿在钓鱼方面使用其他插件以免冲突！
+# IMPORTANT: This plugin fully disables vanilla fishing (unless explicitly enabled).
+# Do not use other fishing plugins to avoid conflicts!
+config-version: "1.7.10"
 
 # ======================================================================
-# 插件基础设置
+# Plugin Basic Settings
 # ======================================================================
 
-# bStats 数据统计
+# bStats statistics
 bstats:
-  # 是否启用 bStats 数据收集
+  # Whether to enable bStats data collection
   enabled: true
-# 语言配置
+# Language configuration
 language:
-  # 当前使用的语言（zh_cn=中文简体，en_us=英语）
-  current: "zh_cn"
-# 时区配置（用于定时比赛等功能）
+  # Current language (zh_cn=Chinese Simplified, en_us=English)
+  current: "en_us"
+# Timezone configuration (used by scheduled competitions, etc.)
 timezone:
-  # 时区 ID（如 Asia/Shanghai、America/New_York、UTC），留空则使用服务器系统时区
+  # Timezone ID (e.g. Asia/Shanghai, America/New_York, UTC). Leave empty to use the server system timezone
   value: "Asia/Shanghai"
-# 更新检查
+# Update check
 update-check:
-  # 是否自动检查插件更新
+  # Whether to automatically check for plugin updates
   enabled: true
-# 调试模式
+# Debug mode
 debug:
-  # 是否开启调试模式（开启后会在控制台和游戏中显示详细的调试信息）
+  # Whether to enable debug mode (shows detailed debug info in console and in-game when enabled)
   enabled: false
-# 视觉效果
+# Visual effects
 visual-effects:
-  # 是否启用粒子特效等视觉效果
+  # Whether to enable visual effects such as particles
   enabled: true
-  # 鱼上钩动画效果配置
+  # Fish hook animation settings
   fish-animation:
-    # 是否启用鱼动画
+    # Whether to enable the fish animation
     enabled: true
-    # 最大动画持续刻数
+    # Maximum animation duration in ticks
     max-ticks: 40
-    # 鱼跳出水面峰值高度
+    # Peak height of the fish jumping out of the water
     peak-height: 2.5
-    # 鱼移动最大速度
+    # Maximum fish movement speed
     max-speed: 0.5
-    # 上升力度系数
+    # Upward force factor
     upward-force-factor: 0.25
-    # 到达峰值的进度比例
+    # Progress ratio at which the peak is reached
     peak-progress: 0.25
-    # 最低 Y 偏移
+    # Minimum Y offset
     min-y-offset: 0.8
-    # 鱼跳向玩家配置
+    # Fish jumps toward the player
     jump-to-head:
-      # 基础持续时间（刻）
+      # Base duration (ticks)
       base-duration: 20
-      # 距离倍率
+      # Distance multiplier
       distance-multiplier: 5.0
-      # 最大持续时间（刻）
+      # Maximum duration (ticks)
       max-duration: 60
-      # 初始跳跃高度
+      # Initial jump height
       initial-jump-height: 2.0
-      # 抛物线曲线高度
+      # Parabolic curve height
       curve-height: 3.0
-      # 缓动系数
+      # Easing factor
       easing-factor: 2.0
 
 # ======================================================================
-# 世界与模式配置
+# World & Mode Configuration
 # ======================================================================
 
-# 世界白名单
+# World whitelist
 world-whitelist:
-  # 是否启用世界白名单（true=仅在白名单中的世界启用，false=在所有世界启用）
+  # Whether to enable the world whitelist (true=only enabled in whitelisted worlds, false=enabled in all worlds)
   enabled: true
-  # 白名单中的世界列表
+  # List of whitelisted worlds
   worlds:
     - "spawn"
     - "world"
     - "world_nether"
     - "world_the_end"
-# 钓鱼模式切换
+# Fishing mode switching
 mode-switch:
-  # 是否允许玩家使用指令切换插件钓鱼/原版钓鱼模式
+  # Whether players are allowed to switch between plugin fishing and vanilla fishing via command
   allow-command-switch: true
-  # 原版钓鱼模式设置
+  # Vanilla fishing mode settings
   vanilla-mode:
-    # 在原版钓鱼模式下是否给自定义鱼类（true=使用插件鱼类，false=使用原版鱼类）
+    # Whether to give custom fish in vanilla fishing mode (true=plugin fish, false=vanilla fish)
     give-custom-fish: true
 
 # ======================================================================
-# 核心钓鱼设置
+# Core Fishing Settings
 # ======================================================================
 
 fishing-settings:
-  # 蓄力与抛竿
-  # 最大蓄力时间（毫秒）
+  # Charging & casting
+  # Maximum charge time (ms)
   max-charge-time: 3000
-  # 抛竿冷却时间（毫秒）
+  # Cast cooldown (ms)
   cast-cooldown: 5000
-  # 咬钩设置
-  # 基础咬钩概率（0.0-1.0）
+  # Bite settings
+  # Base bite chance (0.0-1.0)
   base-bite-chance: 0.2
-  # 最大咬钩概率（0.0-1.0）
+  # Maximum bite chance (0.0-1.0)
   max-bite-chance: 1.0
-  # 咬钩检查最小延迟（毫秒）
+  # Minimum bite check delay (ms)
   bite-check-delay-min: 5000
-  # 咬钩检查最大延迟（毫秒）
+  # Maximum bite check delay (ms)
   bite-check-delay-max: 15000
-  # 咬钩提示超时时间（秒）
+  # Bite hint timeout (seconds)
   bite-hint-timeout: 2
-  # 鱼逃跑机制，影响两处逻辑：
-  # 1. 鱼钩飞行超过吃钩超时(tick)后是否强制跑鱼
-  # 2. 咬钩时是否按概率判定（false=必定咬钩，true=按bite-chance概率）
-  # true=启用逃跑机制，false=禁用（必定上钩）
+  # Fish escape mechanics, affecting two logic points:
+  # 1. Whether fish are forced to escape when the hook flies past the bite timeout (ticks)
+  # 2. Whether to roll the chance on bite (false=always bite, true=roll by bite-chance)
+  # true=enable escape mechanics, false=disable (always bites)
   escape: false
-  # 初始进度百分比（0-100）
+  # Initial progress percentage (0-100)
   initial-progress: 10
-  # 进度条配置
+  # Progress bar settings
   progress-bar:
-    # 绿色区域增加速度（值越大，按住空格时绿色区域上升越快）
+    # Green zone increase speed (higher = faster rise while holding space)
     increase-speed: 0.015
-    # 绿色区域减少速度（值越大，松开空格时绿色区域下降越快）
+    # Green zone decrease speed (higher = faster fall when space is released)
     decrease-speed: 0.01
-    # 稀有度影响配置
+    # Rarity impact settings
     rarity-impact:
-      # 是否启用稀有度对进度条的影响
+      # Whether rarity affects the progress bar
       enabled: true
-      # 每个稀有度等级的减速值（稀有度越高，绿色区域增加越慢）
+      # Slowdown per rarity level (higher rarity = slower green zone increase)
       slowdown-per-rarity-level: 0.15
-      # 最小增加速度比例（无论稀有度多高，增加速度不会低于此比例）
+      # Minimum increase speed ratio (never lower than this regardless of rarity)
       min-increase-speed-ratio: 0.45
-  # 稀有度系统配置（权重值越大，该稀有度的鱼出现概率越高）
+  # Rarity system settings (higher weight = more common fish of that rarity)
   rarity:
     common:
-      # 稀有度显示名称（支持颜色代码 &）
-      display-name: "&a普通"
-      # 稀有度权重
+      # Rarity display name (color codes & supported)
+      display-name: "&aCommon"
+      # Rarity weight
       weight: 50
-      # 价值倍率（影响鱼的售价）
+      # Value multiplier (affects fish sell price)
       value-multiplier: 1.0
-      # AuraSkills 经验倍率（如果安装了 AuraSkills 插件）
+      # AuraSkills XP multiplier (if AuraSkills is installed)
       aura-skills-xp-multiplier: 1.0
     uncommon:
-      display-name: "&e优秀"
+      display-name: "&eUncommon"
       weight: 25
       value-multiplier: 1.2
       aura-skills-xp-multiplier: 1.2
     rare:
-      display-name: "&9稀有"
+      display-name: "&9Rare"
       weight: 15
       value-multiplier: 1.5
       aura-skills-xp-multiplier: 1.5
     epic:
-      display-name: "&5史诗"
+      display-name: "&5Epic"
       weight: 8
       value-multiplier: 2.0
       aura-skills-xp-multiplier: 3.0
     legendary:
-      display-name: "&6传说"
+      display-name: "&6Legendary"
       weight: 2
       value-multiplier: 3.0
       aura-skills-xp-multiplier: 5.0
-  # 原版经验
-  # 是否启用原版钓鱼经验
+  # Vanilla experience
+  # Whether to enable vanilla fishing experience
   enable-vanilla-exp: true
-  # 原版钓鱼经验倍率
+  # Vanilla fishing experience multiplier
   vanilla-exp-multiplier: 1.0
-  # 是否完全禁用原版钓鱼
+  # Whether to fully disable vanilla fishing
   disable-vanilla-fishing: false
-  # 鱼竿耐久度
+  # Rod durability
   durability:
-    # 单次钓鱼最大耐久度损失
+    # Maximum durability loss per catch
     max-single-loss: 5
-    # 单次钓鱼基础耐久度损失
+    # Base durability loss per catch
     base-loss: 1
 
 # ======================================================================
-# 鱼获广播配置
+# Catch Broadcast Configuration
 # ======================================================================
 
-# 钓鱼广播
+# Fishing broadcast
 broadcast:
-  # 是否启用鱼获广播
+  # Whether to enable catch broadcast
   enabled: true
-  # 广播范围（global=全服，world=当前世界，none=仅自己）
+  # Broadcast range (global=whole server, world=current world, none=self only)
   range: "global"
 
 # ======================================================================
-# 特殊钓鱼配置（岩浆/虚空）
+# Special Fishing Configuration (Lava/Void)
 # ======================================================================
 
-# 岩浆钓鱼
+# Lava fishing
 lava-fishing:
-  # 是否启用岩浆钓鱼
+  # Whether to enable lava fishing
   enabled: true
-  # 触发模式（AUTO=自动，PERMISSION=需要权限，EQUIPMENT=需要装备效果，BOTH=权限或装备均可）
+  # Trigger mode (AUTO=automatic, PERMISSION=requires permission, EQUIPMENT=requires equipment effect, BOTH=permission or equipment)
   trigger-mode: AUTO
-  # 咬钩检查延迟（毫秒）
+  # Bite check delay (ms)
   bite-time-min: 100
   bite-time-max: 400
-  # 咬钩概率倍率
+  # Bite chance multiplier
   bite-chance-multiplier: 0.8
-  # 迷你游戏配置
+  # Minigame settings
   minigame:
-    # 难度倍率
+    # Difficulty multiplier
     difficulty-multiplier: 1.2
-  # 视觉与音效配置
+  # Visual & sound settings
   effects:
-    # 环境粒子效果
+    # Ambient particle effect
     ambient-particle: FLAME
     ambient-particle-count: 2
-    # 咬钩粒子效果
+    # Bite particle effect
     bite-particle: FLAME
     bite-particle-count: 20
-    # 咬钩音效
+    # Bite sound
     bite-sound: ENTITY_GENERIC_EXTINGUISH_FIRE
     bite-sound-volume: 0.25
     bite-sound-pitch: 1.0
 
-# 虚空钓鱼
+# Void fishing
 void-fishing:
-  # 是否启用虚空钓鱼
+  # Whether to enable void fishing
   enabled: true
-  # 触发模式
+  # Trigger mode
   trigger-mode: AUTO
-  # 末地虚空检测配置
+  # End void detection settings
   end-detection:
-    # 是否在末地启用虚空检测
+    # Whether to enable void detection in the End
     enabled: true
-    # 倒计时刻数（20刻=1秒）
+    # Countdown ticks (20 ticks = 1 second)
     countdown-ticks: 2
-    # 是否需要鱼钩位置低于玩家
+    # Whether the hook must be below the player
     require-below-player: true
-  # 咬钩配置
+  # Bite settings
   bite-time-min: 120
   bite-time-max: 500
   bite-chance-multiplier: 0.7
-  # 迷你游戏配置
+  # Minigame settings
   minigame:
     difficulty-multiplier: 1.5
-  # 视觉与音效配置
+  # Visual & sound settings
   effects:
     ambient-particle: END_ROD
     ambient-particle-count: 1
@@ -247,7 +249,7 @@ void-fishing:
     bite-sound-pitch: 1.0
 
 # ======================================================================
-# 进度条样式配置
+# Progress Bar Style Configuration
 # ======================================================================
 
 styles:
@@ -274,80 +276,93 @@ styles:
     fish-indicator-char: "&b|||"
 
 # ======================================================================
-# 经济系统配置
+# Economy Configuration
 # ======================================================================
 
 economy:
-  # 经济系统主开关（控制出售、商店、鱼钩等所有经济相关功能）
+  # Master switch for economy (controls selling, shop, hooks and all economy-related features)
   enabled: true
-  # Vault 经济集成开关
+  # Vault economy integration
   economy: true
-  # PlayerPoints 经济集成开关
+  # PlayerPoints economy integration
   playerpoints: true
-  # 旧版 fish.yml 的 value 使用哪个经济系统: vault / playerpoints
+  # Which economy system the legacy fish.yml value uses: vault / playerpoints
   primary: vault
-  # primary 不可用时，是否自动尝试另一个可用经济系统
+  # Whether to automatically try the other available economy system when primary is unavailable
   fallback: true
-  # 出售功能开关
+  # Selling feature
   sell: true
-  # 出售 GUI 功能开关
+  # Sell GUI feature
   sellgui: true
 
 # ======================================================================
-# 季节性配置
+# Seasonal Configuration
 # ======================================================================
 
 seasonal:
-  # 是否启用季节性功能
+  # Whether to enable seasonal features
   enabled: true
-  # 鱼价波动配置
+  # Fish price fluctuation settings
   price-fluctuation:
-    # 是否启用鱼价波动
+    # Whether to enable fish price fluctuation
     enabled: true
-    # 四季价格倍率（相对基准）
+    # Price multiplier per season (relative to base)
     spring: 0.1
     summer: 0.2
     autumn: -0.1
     winter: -0.2
-    # 基准价格波动
+    # Base price fluctuation
     base: 0.05
 
 # ======================================================================
-# 数据库配置
+# Database Configuration
 # ======================================================================
 
 database:
-  # 数据库类型（sqlite 或 mysql）
+  # Database type (sqlite or mysql)
   type: "sqlite"
-  # SQLite 配置
+  # SQLite settings
   sqlite:
-    # 数据库文件名
+    # Database file name
     file: "data.db"
-  # MySQL 配置（仅在 type=mysql 时生效）
+    # Write lock wait timeout (ms). When multiple threads write at the same time,
+    # SQLite waits for the lock instead of throwing "database is locked"
+    busy-timeout: 5000
+  # MySQL settings (only used when type=mysql)
   mysql:
-    # MySQL 服务器地址
+    # MySQL server address
     host: "localhost"
-    # MySQL 端口
+    # MySQL port
     port: 3306
-    # 数据库名称
+    # Database name
     database: "kkfish"
-    # 用户名
+    # Username
     username: "root"
-    # 密码
+    # Password
     password: "password"
-    # 表前缀
+    # Table prefix
     table-prefix: "kkfish_"
-    # 是否使用 SSL
+    # Whether to use SSL
     use-ssl: false
-    # 连接超时（毫秒）
+    # Connection timeout (ms)
     timeout: 30000
 
 # ======================================================================
-# 物品模板配置
+# Backup Configuration
+# ======================================================================
+
+backup:
+  # Whether to auto-backup existing configs before upgrades / language switches
+  enabled: true
+  # Backup retention time (seconds)
+  retention-seconds: 604800
+
+# ======================================================================
+# Item Template Configuration
 # ======================================================================
 
 item-templates:
-  # 鱼类物品模板
+  # Fish item templates
   fish-templates:
     default:
       content: |-
@@ -368,7 +383,7 @@ item-templates:
         &d💎 Rarity: %rarity%
         &d✨ Special Effects:
         &7➤ %effects%
-  # 鱼竿物品模板
+  # Rod item templates
   rod-templates:
     default:
       content: |-
@@ -389,7 +404,7 @@ item-templates:
         &c├─ Durability: %durability%
         &d└─ Charge Speed: %charge_speed% | Bite Bonus: %bite_rate_bonus%
         &e✨ Special Effects: %effects%
-  # 鱼钩物品模板
+  # Hook item templates
   hook-templates:
     default:
       content: |-
@@ -411,7 +426,7 @@ item-templates:
         &7📊 Performance: %performance_metrics%
         &7📋 Status: %status_info%
         &7⚙️ Equipment: %equipment_info%
-  # 鱼饵物品模板
+  # Bait item templates
   bait-templates:
     default:
       content: |-

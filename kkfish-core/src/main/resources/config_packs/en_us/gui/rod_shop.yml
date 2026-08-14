@@ -1,4 +1,4 @@
-menu_title: '&8&l鱼竿商店'
+menu_title: '&8&lRod Shop'
 update_interval: 1
 size: 54
 items:
@@ -7,9 +7,9 @@ items:
     slots:
       - 0-8
       - 45-53
-    display_name: '&8[&7边框&8]'
+    display_name: '&8[&7Border&8]'
     lore:
-      - '&7别碰我 (。・ω・。)'
+      - '&7Don''t touch me (。・ω・。)'
     left_click_commands: []
     right_click_commands: []
   'rod_shop_items':
@@ -21,14 +21,14 @@ items:
       - 37-43
     display_name: '&8[&a%rod_name%&8]'
     lore:
-      - '&7难度: %rod_difficulty%'
-      - '&7耐久: %rod_durability%'
+      - '&7Difficulty: %rod_difficulty%'
+      - '&7Durability: %rod_durability%'
       - '&r'
-      - '&7金币价格: &6%rod_vault_price%'
-      - '&7点券价格: &b%rod_points_price%'
+      - '&7Gold Price: &6%rod_vault_price%'
+      - '&7Points Price: &b%rod_points_price%'
       - '&r'
-      - '&7状态: %rod_status%'
-      - '&7操作: %rod_action%'
+      - '&7Status: %rod_status%'
+      - '&7Action: %rod_action%'
     left_click_commands:
       - '[sound] block.stone_button.click_on 100 1'
       - '[action] buy rod %rod_id%'
@@ -38,9 +38,9 @@ items:
   'Previous_Page':
     material: arrow
     slot: 48
-    display_name: '&8[&a上一页&8]'
+    display_name: '&8[&aPrevious Page&8]'
     lore:
-      - '&7点击查看上一页'
+      - '&7Click to view the previous page'
     left_click_commands:
       - '[sound] block.stone_button.click_on 100 1'
       - '[action] rod_page previous'
@@ -50,9 +50,9 @@ items:
   'Next_Page':
     material: arrow
     slot: 50
-    display_name: '&8[&a下一页&8]'
+    display_name: '&8[&aNext Page&8]'
     lore:
-      - '&7点击查看下一页'
+      - '&7Click to view the next page'
     left_click_commands:
       - '[sound] block.stone_button.click_on 100 1'
       - '[action] rod_page next'
@@ -62,9 +62,9 @@ items:
   'Back_Button':
     material: barrier
     slot: 45
-    display_name: '&8[&c返回&8]'
+    display_name: '&8[&cBack&8]'
     lore:
-      - '&7点击返回主菜单'
+      - '&7Click to return to the main menu'
     left_click_commands:
       - '[sound] block.ender_chest.close 100 0.5'
       - '[action] open_gui main_menu'

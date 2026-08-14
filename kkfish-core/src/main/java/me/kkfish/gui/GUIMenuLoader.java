@@ -49,7 +49,8 @@ public class GUIMenuLoader {
         for (String menuName : menuNames) {
             File menuFile = new File(guiFolder, menuName + ".yml");
             if (!menuFile.exists()) {
-                plugin.saveResource("gui/" + menuName + ".yml", false);
+                kkfish.log("§e[GUI] Missing menu file: " + menuName + ".yml (use /kf resellang to restore it)");
+                continue;
             }
             loadMenu(menuName);
         }

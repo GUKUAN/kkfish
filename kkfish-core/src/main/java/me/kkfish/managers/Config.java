@@ -2,6 +2,8 @@ package me.kkfish.managers;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
@@ -38,9 +40,12 @@ import me.kkfish.managers.ItemValue;
  *       计划拆为：Config(编排加载) + FishCfg + RodCfg + HookCfg + BaitCfg + CompeteCfg + PoolCfg
  *       分步进行：1)抽取HookCfg(最多getter) 2)抽取FishCfg 3)剩余逐步迁移
  */
+import me.kkfish.utils.ConfigUpgrade;
 import me.kkfish.utils.XSeriesUtil;
 
 public class Config {
+
+    private static final String CONFIG_VERSION = "1.7.10";
 
     private final kkfish plugin;
     private FileConfiguration mainConfig;
@@ -117,60 +122,45 @@ public class Config {
     }
 
     private void initializeConfigs() {
-        // 首次启动检测：在释放默认配置前判断服务器语言环境
+        // 首次启动检测：在释放配置前判断服务器语言环境，按语言释放对应 pack
         detectAndApplyLanguage();
 
-        plugin.saveDefaultConfig();
-        mainConfig = (YamlConfiguration) plugin.getConfig();
+        mainConfigFile = new File(plugin.getDataFolder(), "config.yml");
+        mainConfig = YamlConfiguration.loadConfiguration(mainConfigFile);
 
         // 写入首次启动检测结果标记
         if (pendingAutoDetected != null) {
             mainConfig.set("auto-detected", pendingAutoDetected);
+            try {
+                mainConfig.save(mainConfigFile);
+            } catch (IOException e) {
+                kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix(
+                    "log.config_save_failed", "§c无法保存配置文件") + e.getMessage());
+            }
             pendingAutoDetected = null;
         }
 
         File fishFile = new File(plugin.getDataFolder(), "fish.yml");
-        if (!fishFile.exists()) {
-            plugin.saveResource("fish.yml", false);
-        }
         fishConfig = YamlConfiguration.loadConfiguration(fishFile);
 
 
 
         File rodFile = new File(plugin.getDataFolder(), "rods.yml");
-        if (!rodFile.exists()) {
-            plugin.saveResource("rods.yml", false);
-        }
         rodConfig = YamlConfiguration.loadConfiguration(rodFile);
 
         baitFile = new File(plugin.getDataFolder(), "baits.yml");
-        if (!baitFile.exists()) {
-            plugin.saveResource("baits.yml", false);
-        }
         baitConfig = YamlConfiguration.loadConfiguration(baitFile);
         
         competeConfigFile = new File(plugin.getDataFolder(), "compete.yml");
-        if (!competeConfigFile.exists()) {
-            plugin.saveResource("compete.yml", false);
-        }
         competeConfig = YamlConfiguration.loadConfiguration(competeConfigFile);
         
         hookConfigFile = new File(plugin.getDataFolder(), "hooks.yml");
-        if (!hookConfigFile.exists()) {
-            plugin.saveResource("hooks.yml", false);
-        }
         hookConfig = YamlConfiguration.loadConfiguration(hookConfigFile);
         
         soundConfigFile = new File(plugin.getDataFolder(), "sounds.yml");
-        if (!soundConfigFile.exists()) {
-            plugin.saveResource("sounds.yml", false);
-        }
         soundConfig = YamlConfiguration.loadConfiguration(soundConfigFile);
 
         poolConfigFile = new File(plugin.getDataFolder(), "pools.yml");
-        if (!poolConfigFile.exists()) {
-            plugin.saveResource("pools.yml", false);
-        }
         poolConfig = YamlConfiguration.loadConfiguration(poolConfigFile);
         reloadPoolCache();
         rebuildHookPathCache();
@@ -193,8 +183,7 @@ public class Config {
     }
 
     public void reloadConfigs() {
-        plugin.reloadConfig();
-        mainConfig = (YamlConfiguration) plugin.getConfig();
+        mainConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "config.yml"));
         fishConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "fish.yml"));
 
         rodConfig = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "rods.yml"));
@@ -255,18 +244,17 @@ public class Config {
         String langCode = detectServerLang();
         if ("en_us".equals(langCode)) {
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
-                "auto_detect_default", "§a检测到非中国服务器环境，使用默认配置。"));
-            // en_us就是默认配置，无需复制
+                "auto_detect_default", "§a检测到非中国服务器环境，正在应用英文配置组。"));
         } else {
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
                 "auto_detect_china", "§a检测到中国服务器环境，正在应用中文配置组..."));
-            try {
-                // 首次启动模式：仅对不存在的文件释放
-                copyConfigPack(langCode, false);
-            } catch (IOException e) {
-                kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix(
-                    "log.config_pack_copy_failed", "复制配置组失败: %s", e.getMessage()));
-            }
+        }
+        try {
+            // 首次启动模式：仅对不存在的文件释放
+            copyConfigPack(langCode, false);
+        } catch (IOException e) {
+            kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix(
+                "log.config_pack_copy_failed", "复制配置组失败: %s", e.getMessage()));
         }
 
         this.pendingAutoDetected = langCode;
@@ -283,7 +271,7 @@ public class Config {
         }
 
         String[] mainFiles = {"config.yml", "fish.yml", "rods.yml", "baits.yml",
-                              "hooks.yml", "pools.yml", "compete.yml"};
+                              "hooks.yml", "pools.yml", "compete.yml", "sounds.yml"};
         String[] guiFiles = {"main_menu.yml", "fish_dex.yml", "fish_record.yml",
                              "help_gui.yml", "hook_material.yml", "competition_category.yml",
                              "reward_preview.yml", "rod_shop.yml", "sell_gui.yml"};
@@ -361,7 +349,7 @@ public class Config {
         backupDir.mkdirs();
 
         String[] mainFiles = {"config.yml", "fish.yml", "rods.yml", "baits.yml",
-                              "hooks.yml", "pools.yml", "compete.yml"};
+                              "hooks.yml", "pools.yml", "compete.yml", "sounds.yml"};
         for (String f : mainFiles) {
             File src = new File(plugin.getDataFolder(), f);
             if (src.exists()) {
@@ -1734,346 +1722,44 @@ public class Config {
     }
     
     public void checkAndAddMissingConfigs() {
-        checkAndAddMainConfigDefaults();
-        
+        // 主配置：版本迁移 + 当前语言包模板 diff 补齐
+        String langCode = mainConfig.getString("language.current", "en_us");
+        FileConfiguration mainTemplate = loadPackTemplate(langCode, "config.yml");
+        int added = ConfigUpgrade.upgrade(mainConfig, mainTemplate, CONFIG_VERSION);
+        if (added > 0) {
+            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
+                "log.config_upgraded", "配置升级完成: 补充 %s 个缺失键 (config-version -> %s)", added, CONFIG_VERSION));
+        }
+
+        // 音效配置：固定结构，同样走模板补齐
+        FileConfiguration soundTemplate = loadPackTemplate(langCode, "sounds.yml");
+        if (soundTemplate != null) {
+            int soundAdded = ConfigUpgrade.fillMissingKeys(soundConfig, soundTemplate);
+            if (soundAdded > 0) {
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix(
+                    "log.config_upgraded", "配置升级完成: 补充 %s 个缺失键 (sounds.yml)", soundAdded));
+            }
+        }
+
+        // 内容列表配置：仅空表时给示例引导，不清洗玩家内容
         checkAndAddFishConfigDefaults();
         
         checkAndAddRodConfigDefaults();
         
         checkAndAddBaitConfigDefaults();
         
-        checkAndAddSoundConfigDefaults();
-        
         saveConfigs();
     }
-    
-    private void checkAndAddMainConfigDefaults() {
-        if (!mainConfig.contains("fishing-settings")) {
-                mainConfig.set("fishing-settings.max-charge-time", 1000);
-                mainConfig.set("fishing-settings.cast-cooldown", 5000);
-                mainConfig.set("fishing-settings.base-bite-chance", 0.2);
-                mainConfig.set("fishing-settings.max-bite-chance", 1.0);
-                mainConfig.set("fishing-settings.bite-check-delay-min", 5000);
-                mainConfig.set("fishing-settings.bite-check-delay-max", 15000);
-                mainConfig.set("fishing-settings.initial-progress", 10);
-                mainConfig.set("fishing-settings.disable-vanilla-fishing", true);
-            
-            mainConfig.set("fishing-settings.progress-bar.increase-speed", 0.0075);
-            mainConfig.set("fishing-settings.progress-bar.decrease-speed", 0.01);
-            mainConfig.set("fishing-settings.progress-bar.rarity-impact.enabled", true);
-            mainConfig.set("fishing-settings.progress-bar.rarity-impact.slowdown-per-rarity-level", 0.15);
-            mainConfig.set("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.45);
-            
-            mainConfig.set("fishing-settings.rarity.multipliers.legendary", 2.0);
-            mainConfig.set("fishing-settings.rarity.multipliers.epic", 1.5);
-            mainConfig.set("fishing-settings.rarity.multipliers.rare", 1.2);
-            mainConfig.set("fishing-settings.rarity.multipliers.common", 1);
-            
-            mainConfig.set("fishing-settings.enable-vanilla-exp", true);
-            mainConfig.set("fishing-settings.vanilla-exp-multiplier", 1.0);
-            
-            mainConfig.set("fishing-settings.rarity.weights.legendary", 2);
-            mainConfig.set("fishing-settings.rarity.weights.epic", 8);
-            mainConfig.set("fishing-settings.rarity.weights.rare", 15);
-            mainConfig.set("fishing-settings.rarity.weights.common", 50);
-            
-            mainConfig.set("fishing-settings.durability.max-single-loss", 5);
-            mainConfig.set("fishing-settings.durability.base-loss", 1);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "fishing-settings"));
-        }
-        
-        if (!mainConfig.contains("fishing-settings.disable-vanilla-fishing")) {
-            mainConfig.set("fishing-settings.disable-vanilla-fishing", false);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "fishing-settings.disable-vanilla-fishing"));
-        }
-        
-        if (!mainConfig.contains("fishing-settings.progress-bar.rarity-impact")) {
-            mainConfig.set("fishing-settings.progress-bar.rarity-impact.enabled", true);
-            mainConfig.set("fishing-settings.progress-bar.rarity-impact.slowdown-per-rarity-level", 0.15);
-            mainConfig.set("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.45);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "fishing-settings.progress-bar.rarity-impact"));
-        }
 
-        
-        if (!mainConfig.contains("visual-effects")) {
-            mainConfig.set("visual-effects.fish-animation.enabled", true);
-            mainConfig.set("visual-effects.fish-animation.max-ticks", 40);
-            mainConfig.set("visual-effects.fish-animation.peak-height", 2.5);
-            mainConfig.set("visual-effects.fish-animation.max-speed", 0.5);
-            mainConfig.set("visual-effects.fish-animation.upward-force-factor", 0.25);
-            mainConfig.set("visual-effects.fish-animation.peak-progress", 0.25);
-            mainConfig.set("visual-effects.fish-animation.min-y-offset", 0.8);
-            
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.base-duration", 20);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.distance-multiplier", 5);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.max-duration", 60);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.initial-jump-height", 2.0);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.curve-height", 3.0);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.easing-factor", 2.0);
-            
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "visual-effects"));
+    /**
+     * 直接从jar内加载语言包模板配置（数据目录的pack是临时释放的，会被清理）
+     */
+    private FileConfiguration loadPackTemplate(String langCode, String fileName) {
+        InputStream in = plugin.getResource("config_packs/" + langCode + "/" + fileName);
+        if (in == null) {
+            return null;
         }
-        
-        if (!mainConfig.contains("visual-effects.fish-animation")) {
-            mainConfig.set("visual-effects.fish-animation.enabled", true);
-            mainConfig.set("visual-effects.fish-animation.max-ticks", 40);
-            mainConfig.set("visual-effects.fish-animation.peak-height", 2.5);
-            mainConfig.set("visual-effects.fish-animation.max-speed", 0.5);
-            mainConfig.set("visual-effects.fish-animation.upward-force-factor", 0.25);
-            mainConfig.set("visual-effects.fish-animation.peak-progress", 0.25);
-            mainConfig.set("visual-effects.fish-animation.min-y-offset", 0.8);
-            
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.base-duration", 20);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.distance-multiplier", 5);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.max-duration", 60);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.initial-jump-height", 2.0);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.curve-height", 3.0);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.easing-factor", 2.0);
-        }
-        
-        ensureFishAnimationSubConfigs();
-        
-        if (!mainConfig.contains("economy")) {
-            mainConfig.set("economy.enabled", true);
-            mainConfig.set("economy.economy", true);
-            mainConfig.set("economy.playerpoints", true);
-            mainConfig.set("economy.primary", "vault");
-            mainConfig.set("economy.fallback", true);
-            mainConfig.set("economy.sell", true);
-            mainConfig.set("economy.sellgui", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy"));
-        } else if (!mainConfig.contains("economy.enabled")) {
-            mainConfig.set("economy.enabled", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.enabled"));
-        }
-        if (!mainConfig.contains("economy.economy")) {
-            mainConfig.set("economy.economy", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.economy"));
-        }
-        if (!mainConfig.contains("economy.playerpoints")) {
-            mainConfig.set("economy.playerpoints", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.playerpoints"));
-        }
-        if (!mainConfig.contains("economy.primary")) {
-            mainConfig.set("economy.primary", "vault");
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.primary"));
-        }
-        if (!mainConfig.contains("economy.fallback")) {
-            mainConfig.set("economy.fallback", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.fallback"));
-        }
-        if (!mainConfig.contains("economy.sell")) {
-            mainConfig.set("economy.sell", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.sell"));
-        }
-        if (!mainConfig.contains("economy.sellgui")) {
-            mainConfig.set("economy.sellgui", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "economy.sellgui"));
-        }
-    }
-    
-    private void ensureFishAnimationSubConfigs() {
-        if (!mainConfig.contains("visual-effects.fish-animation.enabled")) {
-            mainConfig.set("visual-effects.fish-animation.enabled", true);
-        }
-        if (!mainConfig.contains("visual-effects.fish-animation.max-ticks")) {
-            mainConfig.set("visual-effects.fish-animation.max-ticks", 40);
-        }
-        if (!mainConfig.contains("visual-effects.fish-animation.peak-height")) {
-            mainConfig.set("visual-effects.fish-animation.peak-height", 2.5);
-        }
-        if (!mainConfig.contains("visual-effects.fish-animation.max-speed")) {
-            mainConfig.set("visual-effects.fish-animation.max-speed", 0.5);
-        }
-        if (!mainConfig.contains("visual-effects.fish-animation.upward-force-factor")) {
-            mainConfig.set("visual-effects.fish-animation.upward-force-factor", 0.25);
-        }
-        if (!mainConfig.contains("visual-effects.fish-animation.peak-progress")) {
-            mainConfig.set("visual-effects.fish-animation.peak-progress", 0.25);
-        }
-        if (!mainConfig.contains("visual-effects.fish-animation.min-y-offset")) {
-            mainConfig.set("visual-effects.fish-animation.min-y-offset", 0.8);
-        }
-        
-        if (!mainConfig.contains("visual-effects.fish-animation.jump-to-head")) {
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.base-duration", 20);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.distance-multiplier", 5);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.max-duration", 60);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.initial-jump-height", 2.0);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.curve-height", 3.0);
-            mainConfig.set("visual-effects.fish-animation.jump-to-head.easing-factor", 2.0);
-        } else {
-            if (!mainConfig.contains("visual-effects.fish-animation.jump-to-head.base-duration")) {
-                mainConfig.set("visual-effects.fish-animation.jump-to-head.base-duration", 20);
-            }
-            if (!mainConfig.contains("visual-effects.fish-animation.jump-to-head.distance-multiplier")) {
-                mainConfig.set("visual-effects.fish-animation.jump-to-head.distance-multiplier", 5);
-            }
-            if (!mainConfig.contains("visual-effects.fish-animation.jump-to-head.max-duration")) {
-                mainConfig.set("visual-effects.fish-animation.jump-to-head.max-duration", 60);
-            }
-            if (!mainConfig.contains("visual-effects.fish-animation.jump-to-head.initial-jump-height")) {
-                mainConfig.set("visual-effects.fish-animation.jump-to-head.initial-jump-height", 2.0);
-            }
-            if (!mainConfig.contains("visual-effects.fish-animation.jump-to-head.curve-height")) {
-                mainConfig.set("visual-effects.fish-animation.jump-to-head.curve-height", 3.0);
-            }
-            if (!mainConfig.contains("visual-effects.fish-animation.jump-to-head.easing-factor")) {
-                mainConfig.set("visual-effects.fish-animation.jump-to-head.easing-factor", 2.0);
-            }
-        }
-        
-        if (!mainConfig.contains("debug")) {
-            mainConfig.set("debug.enabled", false);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "debug"));
-        }
-        
-        if (!mainConfig.contains("language")) {
-            // 修复：真正读取JVM默认Locale，原代码硬编码为zh_cn导致非中国服务器也默认中文
-            String serverLocale = Locale.getDefault().toString().toLowerCase();
-            if (serverLocale.length() >= 5) {
-                serverLocale = serverLocale.substring(0, 5);
-            }
-
-            String defaultLanguage = "en_us";
-            for (String lang : SUPPORTED_LANGS) {
-                if (serverLocale.startsWith(lang.substring(0, 2))) {
-                    defaultLanguage = lang;
-                    break;
-                }
-            }
-
-            mainConfig.set("language.current", defaultLanguage);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s，自动检测并设置默认语言为: %s", "language", defaultLanguage));
-        }
-
-        if (!mainConfig.contains("backup")) {
-            mainConfig.set("backup.enabled", true);
-            mainConfig.set("backup.retention-seconds", 604800);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "backup"));
-        }
-        
-        if (!mainConfig.contains("update-check")) {
-            mainConfig.set("update-check.enabled", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "update-check"));
-        }
-        
-        if (!mainConfig.contains("database")) {
-            mainConfig.set("database.type", "sqlite");
-            mainConfig.set("database.sqlite.file", "data.db");
-            mainConfig.set("database.mysql.host", "localhost");
-            mainConfig.set("database.mysql.port", 3306);
-            mainConfig.set("database.mysql.database", "kkfish");
-            mainConfig.set("database.mysql.username", "root");
-            mainConfig.set("database.mysql.password", "password");
-            mainConfig.set("database.mysql.table-prefix", "kkfish_");
-            mainConfig.set("database.mysql.use-ssl", false);
-            mainConfig.set("database.mysql.timeout", 30000);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "database"));
-        }
-        
-        if (!mainConfig.contains("seasonal")) {
-            mainConfig.set("seasonal.enabled", true);
-            mainConfig.set("seasonal.price-fluctuation.enabled", true);
-            mainConfig.set("seasonal.price-fluctuation.spring", 0.1);
-            mainConfig.set("seasonal.price-fluctuation.summer", 0.2);
-            mainConfig.set("seasonal.price-fluctuation.autumn", -0.1);
-            mainConfig.set("seasonal.price-fluctuation.winter", -0.2);
-            mainConfig.set("seasonal.price-fluctuation.base", 0.05);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "seasonal"));
-        }
-        
-        if (!mainConfig.contains("seasonal.price-fluctuation")) {
-            mainConfig.set("seasonal.price-fluctuation.enabled", true);
-            mainConfig.set("seasonal.price-fluctuation.spring", 0.1);
-            mainConfig.set("seasonal.price-fluctuation.summer", 0.2);
-            mainConfig.set("seasonal.price-fluctuation.autumn", -0.1);
-            mainConfig.set("seasonal.price-fluctuation.winter", -0.2);
-            mainConfig.set("seasonal.price-fluctuation.base", 0.05);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "seasonal.price-fluctuation"));
-        }
-        
-        if (!mainConfig.contains("lava-fishing")) {
-            mainConfig.set("lava-fishing.enabled", true);
-            mainConfig.set("lava-fishing.trigger-mode", "AUTO");
-            mainConfig.set("lava-fishing.bite-time-min", 100);
-            mainConfig.set("lava-fishing.bite-time-max", 400);
-            mainConfig.set("lava-fishing.bite-chance-multiplier", 0.8);
-            mainConfig.set("lava-fishing.minigame.difficulty-multiplier", 1.2);
-            mainConfig.set("lava-fishing.effects.ambient-particle", "FLAME");
-            mainConfig.set("lava-fishing.effects.ambient-particle-count", 2);
-            mainConfig.set("lava-fishing.effects.bite-particle", "FLAME");
-            mainConfig.set("lava-fishing.effects.bite-particle-count", 20);
-            mainConfig.set("lava-fishing.effects.bite-sound", "ENTITY_GENERIC_EXTINGUISH_FIRE");
-            mainConfig.set("lava-fishing.effects.bite-sound-volume", 0.25);
-            mainConfig.set("lava-fishing.effects.bite-sound-pitch", 1.0);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "lava-fishing"));
-        }
-        
-        if (!mainConfig.contains("void-fishing")) {
-            mainConfig.set("void-fishing.enabled", true);
-            mainConfig.set("void-fishing.trigger-mode", "AUTO");
-            mainConfig.set("void-fishing.end-detection.enabled", true);
-            mainConfig.set("void-fishing.end-detection.countdown-ticks", 2);
-            mainConfig.set("void-fishing.end-detection.require-below-player", true);
-            mainConfig.set("void-fishing.bite-time-min", 120);
-            mainConfig.set("void-fishing.bite-time-max", 500);
-            mainConfig.set("void-fishing.bite-chance-multiplier", 0.7);
-            mainConfig.set("void-fishing.minigame.difficulty-multiplier", 1.5);
-            mainConfig.set("void-fishing.effects.ambient-particle", "END_ROD");
-            mainConfig.set("void-fishing.effects.ambient-particle-count", 1);
-            mainConfig.set("void-fishing.effects.bite-particle", "END_ROD");
-            mainConfig.set("void-fishing.effects.bite-particle-count", 20);
-            mainConfig.set("void-fishing.effects.bite-sound", "ITEM_TRIDENT_THUNDER");
-            mainConfig.set("void-fishing.effects.bite-sound-volume", 0.25);
-            mainConfig.set("void-fishing.effects.bite-sound-pitch", 1.0);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "void-fishing"));
-        }
-        
-        if (!mainConfig.contains("styles")) {
-            mainConfig.set("styles.default.progress-char", "&9=");
-            mainConfig.set("styles.default.progress-bar-empty-char", "&7-");
-            mainConfig.set("styles.default.green-bar-char", "&a|");
-            mainConfig.set("styles.default.green-bar-edge-char", "&2|");
-            mainConfig.set("styles.default.background-char", "&7|");
-            mainConfig.set("styles.default.fish-indicator-char", "&9|||");
-            mainConfig.set("styles.lava.progress-char", "&6=");
-            mainConfig.set("styles.lava.progress-bar-empty-char", "&8-");
-            mainConfig.set("styles.lava.green-bar-char", "&c▌");
-            mainConfig.set("styles.lava.green-bar-edge-char", "&4▌");
-            mainConfig.set("styles.lava.background-char", "&8░");
-            mainConfig.set("styles.lava.fish-indicator-char", "&e|||");
-            mainConfig.set("styles.void.progress-char", "&5═");
-            mainConfig.set("styles.void.progress-bar-empty-char", "&8─");
-            mainConfig.set("styles.void.green-bar-char", "&d▐");
-            mainConfig.set("styles.void.green-bar-edge-char", "&5▐");
-            mainConfig.set("styles.void.background-char", "&8░");
-            mainConfig.set("styles.void.fish-indicator-char", "&b✦");
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "styles"));
-        }
-
-        if (!mainConfig.contains("item-templates")) {
-            mainConfig.set("item-templates.fish-templates.default.content", "%separator%\n%name%\n%separator%\n%description%\n\n%size%\n%value%\n%rarity%\n\n%effects%\n%separator%\n%tip%");
-            mainConfig.set("item-templates.fish-templates.simple.content", "%name%\n%description%\n%size%\n%value%");
-            
-            mainConfig.set("item-templates.rod-templates.default.content", "&6[===== 鱼竿属性 =====]\n&b│ 难度系数: %difficulty%\n&a│ 浮标区域: %float_area%\n&c│ 耐久度: %durability%\n&d│ 充能速度: %charge_speed%\n&d│ 咬钩几率加成: %bite_rate_bonus%\n&6[====================]\n \n%tip%");
-            mainConfig.set("item-templates.rod-templates.compact.content", "%name%\n%description%\n难度系数: %difficulty%\n浮标区域: %float_area%\n耐久度: %durability%");
-            
-            mainConfig.set("item-templates.hook-templates.default.content", "&7等级: %level%\n%rarity_color%稀有度: %rarity_name%\n%description%\n&7--- 性能指标 ---%performance_metrics%\n--- 状态信息 ---%status_info%\n%equipment_info%");
-            mainConfig.set("item-templates.hook-templates.simple.content", "%name%\n%description%\n等级: %level%\n稀有度: %rarity_name%");
-            
-            mainConfig.set("item-templates.bait-templates.default.content", "&a[===== 鱼饵属性 =====]\n&b名称: %name%\n&a效果: %effects%\n&c描述: %description%\n&a[====================]");
-            mainConfig.set("item-templates.bait-templates.compact.content", "%name%\n%description%\n%effects%");
-            
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "item-templates"));
-        }
-        
-        if (!mainConfig.contains("broadcast")) {
-            mainConfig.set("broadcast.enabled", true);
-            mainConfig.set("broadcast.range", "global");
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_main", "添加缺失的主配置: %s", "broadcast"));
-        }
-
+        return YamlConfiguration.loadConfiguration(new InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
     }
     
     private void checkAndAddFishConfigDefaults() {
@@ -2114,52 +1800,6 @@ public class Config {
         }
     }
     
-    private void checkAndAddSoundConfigDefaults() {
-        if (!soundConfig.contains("settings")) {
-            soundConfig.set("settings.enabled", true);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_sound", "添加缺失的音效配置: %s", "settings"));
-        }
-        
-        if (!soundConfig.contains("cast")) {
-            soundConfig.set("cast.enabled", true);
-            soundConfig.set("cast.name", "ENTITY_FISHING_BOBBER_THROW");
-            soundConfig.set("cast.volume", 1.0);
-            soundConfig.set("cast.pitch", 1.0);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_sound", "添加缺失的音效配置: %s", "cast"));
-        }
-        
-        if (!soundConfig.contains("bite_hint")) {
-            soundConfig.set("bite_hint.enabled", true);
-            soundConfig.set("bite_hint.name", "ENTITY_FISHING_BOBBER_SPLASH");
-            soundConfig.set("bite_hint.volume", 0.8);
-            soundConfig.set("bite_hint.pitch", 1.2);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_sound", "添加缺失的音效配置: %s", "bite_hint"));
-        }
-        
-        if (!soundConfig.contains("success")) {
-            soundConfig.set("success.enabled", true);
-            soundConfig.set("success.name", "ENTITY_PLAYER_LEVELUP");
-            soundConfig.set("success.volume", 1.0);
-            soundConfig.set("success.pitch", 1.3);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_sound", "添加缺失的音效配置: %s", "success"));
-        }
-        
-        if (!soundConfig.contains("fail")) {
-            soundConfig.set("fail.enabled", true);
-            soundConfig.set("fail.name", "ENTITY_VILLAGER_NO");
-            soundConfig.set("fail.volume", 0.8);
-            soundConfig.set("fail.pitch", 0.9);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_sound", "添加缺失的音效配置: %s", "fail"));
-        }
-        
-        if (!soundConfig.contains("minigame")) {
-            soundConfig.set("minigame.enabled", true);
-            soundConfig.set("minigame.name", "UI_BUTTON_CLICK");
-            soundConfig.set("minigame.volume", 0.5);
-            soundConfig.set("minigame.pitch", 1.0);
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_sound", "添加缺失的音效配置: %s", "minigame"));
-        }
-    }
 
     public FileConfiguration getPoolConfig() {
         return poolConfig;

@@ -598,6 +598,7 @@ log.papi_register_error: "Error registering PlaceholderAPI expansion: %s"
 # Config/Database warning logs
 # ==========================
 log.config_save_failed: "Failed to save configuration file"
+log.config_upgraded: "Config upgrade done: %s missing keys added (%s)"
 log.config_pool_fish_not_found: "Fish '%s' in pool %s does not exist in fish.yml, please check pools.yml and fish.yml consistency"
 log.db_get_player_column_failed: "Failed to get player %s!"
 log.db_set_player_column_failed: "Failed to set player %s!"

@@ -12,6 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.bukkit.configuration.file.FileConfiguration;
@@ -28,6 +31,20 @@ public class DB {
     private String dbType;
     private String tablePrefix;
     private boolean initialized = false; // 添加初始化状态标志
+    
+    // 写操作专用单线程执行器：SQLite 同一时间只允许一个写者，
+    // 用单线程串行写既能避免锁竞争，又能把写操作从主线程挪走
+    private final ExecutorService writeExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "kkfish-db-writer");
+        t.setDaemon(true);
+        return t;
+    });
+    
+    // 连接有效性检查缓存：isValid(5) 对 SQLite 是真实查询，高频调用有开销，
+    // 本地文件连接几乎不会失效，30 秒内复用上次结果即可
+    private static final long VALID_CHECK_INTERVAL = 30_000L;
+    private long lastValidCheckTime = 0;
+    private boolean connectionValidCache = true;
     
     // 缓存相关
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
@@ -64,7 +81,10 @@ public class DB {
         }
     }
 
-    private void initialize() throws SQLException, ClassNotFoundException {
+    /**
+     * 初始化数据库连接（synchronized 防止主线程读与写线程并发重连时竞争）
+     */
+    private synchronized void initialize() throws SQLException, ClassNotFoundException {
         FileConfiguration config = plugin.getCustomConfig().getMainConfig();
         dbType = config.getString("database.type", "sqlite").toLowerCase();
         
@@ -110,6 +130,9 @@ public class DB {
         }
         
         String url = "jdbc:sqlite:" + new File(dataFolder, dbFile).getAbsolutePath();
+        // 连接级 PRAGMA：WAL 模式读写不互斥 + NORMAL 同步大幅减少 fsync + busy_timeout 避免写锁直接报错
+        int busyTimeout = config.getInt("database.sqlite.busy-timeout", 5000);
+        url += "?journal_mode=WAL&synchronous=NORMAL&busy_timeout=" + busyTimeout;
         connection = DriverManager.getConnection(url);
         tablePrefix = "";
     }
@@ -354,40 +377,50 @@ public class DB {
      */
     public void logFishing(Player player, String fishName, String fishLevel, double fishSize, int fishValue) {
         if (!isDatabaseAvailable()) return;
-        try {
-            // 记录到钓鱼日志
-            String insertLog = "INSERT INTO " + tablePrefix + "fishing_log (player_uuid, fish_name, fish_level, fish_size, fish_value, location_x, location_y, location_z, world_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            try (PreparedStatement pstmt = getConnection().prepareStatement(insertLog)) {
-                pstmt.setString(1, player.getUniqueId().toString());
-                pstmt.setString(2, fishName);
-                pstmt.setString(3, fishLevel);
-                pstmt.setDouble(4, fishSize);
-                pstmt.setInt(5, fishValue);
-                pstmt.setDouble(6, player.getLocation().getX());
-                pstmt.setDouble(7, player.getLocation().getY());
-                pstmt.setDouble(8, player.getLocation().getZ());
-                pstmt.setString(9, player.getWorld().getName());
-                pstmt.executeUpdate();
+        // 主线程先提取实体数据，避免异步线程跨线程访问 Bukkit 对象（Folia 会抛异常）
+        final String playerId = player.getUniqueId().toString();
+        final String playerName = player.getName();
+        final double locX = player.getLocation().getX();
+        final double locY = player.getLocation().getY();
+        final double locZ = player.getLocation().getZ();
+        final String worldName = player.getWorld().getName();
+        final boolean isLegendary = fishLevel != null && fishLevel.contains(plugin.getMessageManager().getMessageWithoutPrefix("rarity_name.legendary", "legendary"));
+
+        writeExecutor.execute(() -> {
+            try {
+                // 记录到钓鱼日志
+                String insertLog = "INSERT INTO " + tablePrefix + "fishing_log (player_uuid, fish_name, fish_level, fish_size, fish_value, location_x, location_y, location_z, world_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement pstmt = getConnection().prepareStatement(insertLog)) {
+                    pstmt.setString(1, playerId);
+                    pstmt.setString(2, fishName);
+                    pstmt.setString(3, fishLevel);
+                    pstmt.setDouble(4, fishSize);
+                    pstmt.setInt(5, fishValue);
+                    pstmt.setDouble(6, locX);
+                    pstmt.setDouble(7, locY);
+                    pstmt.setDouble(8, locZ);
+                    pstmt.setString(9, worldName);
+                    pstmt.executeUpdate();
+                }
+
+                // 更新玩家统计数据
+                updatePlayerStats(playerId, playerName, fishSize, fishValue, isLegendary);
+
+                // 清除钓鱼日志聚合缓存，保证占位符读取最新数据
+                clearFishingLogCache(playerId);
+
+            } catch (SQLException e) {
+                kkfish.log("§c" + plugin.getMessageManager().getMessageWithoutPrefix("log.database_fishing_log_failed", "Failed to log fishing data!")); e.printStackTrace();
             }
-            
-            // 更新玩家统计数据
-            updatePlayerStats(player, fishSize, fishValue, fishLevel.contains(plugin.getMessageManager().getMessageWithoutPrefix("rarity_name.legendary", "legendary")));
-            
-            // 清除钓鱼日志聚合缓存，保证占位符读取最新数据
-            clearFishingLogCache(player.getUniqueId().toString());
-            
-        } catch (SQLException e) {
-            kkfish.log("§c" + plugin.getMessageManager().getMessageWithoutPrefix("log.database_fishing_log_failed", "Failed to log fishing data!")); e.printStackTrace();
-        }
+        });
     }
 
     /**
      * 更新玩家统计数据
+     * 注意：此方法在写线程执行，只能接收主线程提前提取好的数据，不能直接拿 Player 对象
      */
-    private void updatePlayerStats(Player player, double fishSize, int fishValue, boolean isLegendary) throws SQLException {
+    private void updatePlayerStats(String playerId, String playerName, double fishSize, int fishValue, boolean isLegendary) throws SQLException {
         if (!isDatabaseAvailable()) return;
-        String uuid = player.getUniqueId().toString();
-        String name = player.getName();
         int legendaryIncrement = isLegendary ? 1 : 0;
 
         if (dbType.equals("mysql")) {
@@ -402,8 +435,8 @@ public class DB {
                     "legendary_fish_caught = legendary_fish_caught + ?, " +
                     "last_fishing_time = CURRENT_TIMESTAMP";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                pstmt.setString(1, uuid);
-                pstmt.setString(2, name);
+                pstmt.setString(1, playerId);
+                pstmt.setString(2, playerName);
                 pstmt.setDouble(3, fishSize);
                 pstmt.setInt(4, fishValue);
                 pstmt.setInt(5, legendaryIncrement);
@@ -426,12 +459,12 @@ public class DB {
                     "COALESCE(MAX(fail_count), 0) " +
                     "FROM " + tablePrefix + "player_fishing_stats WHERE player_uuid = ?";
             try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                pstmt.setString(1, uuid);
-                pstmt.setString(2, name);
+                pstmt.setString(1, playerId);
+                pstmt.setString(2, playerName);
                 pstmt.setDouble(3, fishSize);
                 pstmt.setInt(4, fishValue);
                 pstmt.setInt(5, legendaryIncrement);
-                pstmt.setString(6, uuid);
+                pstmt.setString(6, playerId);
                 pstmt.executeUpdate();
             }
         }
@@ -441,6 +474,13 @@ public class DB {
      * 关闭数据库连接
      */
     public void close() {
+        // 先关写线程，等排队的写操作落库
+        writeExecutor.shutdown();
+        try {
+            writeExecutor.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         if (connection != null) {
             try {
                 connection.close();
@@ -457,12 +497,10 @@ public class DB {
     public Connection getConnection() {
         plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_request", "Requesting database connection"));
         try {
-            // 检查连接是否为空、已关闭或不可用
+            // 检查连接是否为空、已关闭或不可用（带时间戳缓存，避免每次调用都真实查询）
             if (connection == null) {
                 plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_empty", "Database connection is null, need to initialize"));
-            } else if (connection.isClosed()) {
-                plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_closed", "Database connection is closed, need to reconnect"));
-            } else if (!connection.isValid(5)) {
+            } else if (!isConnectionValid()) {
                 plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_invalid", "Database connection is invalid, need to reconnect"));
             } else {
                 plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_valid", "Database connection is valid, returning directly"));
@@ -527,13 +565,30 @@ public class DB {
                 return false;
             }
             
-            boolean result = connection != null && !connection.isClosed() && connection.isValid(5);
+            boolean result = connection != null && isConnectionValid();
             plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_availability_result", "Database availability check result: %s, Connection: %s", result, (connection != null ? "Exists" : "Not exists")));
             return result;
         } catch (SQLException e) {
             kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("log.database_connection_check_error", "Error checking database connection status: ") + e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * 检查连接有效性（带时间戳缓存，30 秒内复用上次结果）。
+     * SQLite 本地文件连接几乎不会失效，没必要每次调用都执行真实查询。
+     */
+    private boolean isConnectionValid() throws SQLException {
+        if (connection == null) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastValidCheckTime < VALID_CHECK_INTERVAL) {
+            return connectionValidCache;
+        }
+        lastValidCheckTime = now;
+        connectionValidCache = !connection.isClosed() && connection.isValid(5);
+        return connectionValidCache;
     }
     
     /**
@@ -730,9 +785,12 @@ public class DB {
     
     /**
      * 设置玩家语言
+     * 先同步更新缓存（写后立即读能拿到新值），再异步落库
      */
     public void setPlayerLanguage(String playerId, String language) {
-        setPlayerStringValue(playerId, "player_language", language, "language");
+        if (language == null) return;
+        addToCache("language:" + playerId, language, DEFAULT_CACHE_EXPIRY);
+        writeExecutor.execute(() -> setPlayerStringValue(playerId, "player_language", language, "language"));
     }
     
     /**
@@ -770,23 +828,26 @@ public class DB {
     
     /**
      * 将鱼钩材质标记为玩家已购买
+     * 先同步更新缓存（购买后GUI立即刷新能显示新状态），再异步落库
      */
     public void markHookAsPurchased(String playerId, String hookMaterial) {
-        if (!isDatabaseAvailable()) return;
-        try {
-            String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "player_purchased_hooks (player_uuid, hook_material) VALUES (?, ?)";
-            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                pstmt.setString(1, playerId);
-                pstmt.setString(2, hookMaterial);
-                pstmt.executeUpdate();
-                
-                // 清除相关缓存
-                clearCache("purchased_hook:" + playerId + ":" + hookMaterial);
-                clearCache("purchased_hooks:" + playerId);
+        addToCache("purchased_hook:" + playerId + ":" + hookMaterial, true, DEFAULT_CACHE_EXPIRY);
+        writeExecutor.execute(() -> {
+            if (!isDatabaseAvailable()) return;
+            try {
+                String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "player_purchased_hooks (player_uuid, hook_material) VALUES (?, ?)";
+                try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                    pstmt.setString(1, playerId);
+                    pstmt.setString(2, hookMaterial);
+                    pstmt.executeUpdate();
+
+                    // 清除相关缓存
+                    clearCache("purchased_hooks:" + playerId);
+                }
+            } catch (SQLException e) {
+                kkfish.log("§c" + "标记鱼钩材质为已购买失败！"); e.printStackTrace();
             }
-        } catch (SQLException e) {
-            kkfish.log("§c" + "标记鱼钩材质为已购买失败！"); e.printStackTrace();
-        }
+        });
     }
     
     /**
@@ -832,18 +893,21 @@ public class DB {
     
     /**
      * 设置玩家鱼钩材质
+     * 先同步更新缓存（设置后GUI立即刷新能显示新材质），再异步落库
      */
     public void setPlayerHookMaterial(String playerId, String materialType) {
-        if (!isDatabaseAvailable()) return;
         // 只有在debug模式下才记录调试日志
         if (plugin.getCustomConfig().isDebugMode()) {
             kkfish.log("[DEBUG] 开始设置玩家鱼钩材质 | 玩家: " + playerId + " 材质: " + materialType);
         }
-        try {
-            setPlayerStringValue(playerId, "hook_material", materialType, "hook");
-        } catch (Exception e) {
-            kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_set_hook_material_failed", "§c设置玩家鱼钩材质失败！")); e.printStackTrace();
-        }
+        addToCache("hook:" + playerId, materialType, DEFAULT_CACHE_EXPIRY);
+        writeExecutor.execute(() -> {
+            try {
+                setPlayerStringValue(playerId, "hook_material", materialType, "hook");
+            } catch (Exception e) {
+                kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.db_set_hook_material_failed", "§c设置玩家鱼钩材质失败！")); e.printStackTrace();
+            }
+        });
     }
     
     /**
@@ -931,9 +995,11 @@ public class DB {
     
     /**
      * 设置玩家钓鱼总次数
+     * 先同步更新缓存，再异步落库
      */
     public void setPlayerTotalAttempts(String playerId, int attempts) {
-        setPlayerIntValue(playerId, "total_attempts", attempts, "attempts");
+        addToCache("attempts:" + playerId, attempts, DEFAULT_CACHE_EXPIRY);
+        writeExecutor.execute(() -> setPlayerIntValue(playerId, "total_attempts", attempts, "attempts"));
     }
     
     /**
@@ -945,9 +1011,11 @@ public class DB {
     
     /**
      * 设置玩家钓鱼失败次数
+     * 先同步更新缓存，再异步落库
      */
     public void setPlayerFailCount(String playerId, int fails) {
-        setPlayerIntValue(playerId, "fail_count", fails, "fails");
+        addToCache("fails:" + playerId, fails, DEFAULT_CACHE_EXPIRY);
+        writeExecutor.execute(() -> setPlayerIntValue(playerId, "fail_count", fails, "fails"));
     }
     
     /**
@@ -1021,22 +1089,27 @@ public class DB {
     }
 
     public void storeFishUUIDValue(String fishUUID, SellValue sellValue) {
-        if (!isDatabaseAvailable()) return;
         if (sellValue == null) {
             sellValue = SellValue.oldValue(0);
         }
-        try {
-            String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "fish_uuid_values (fish_uuid, fish_value, vault_value, points_value) VALUES (?, ?, ?, ?)";
-            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                pstmt.setString(1, fishUUID);
-                pstmt.setInt(2, sellValue.getDisplayValue());
-                pstmt.setInt(3, sellValue.getVaultValue());
-                pstmt.setInt(4, sellValue.getPointsValue());
-                pstmt.executeUpdate();
+        final SellValue finalSellValue = sellValue;
+        // 先同步写入缓存：玩家钓到鱼后可能立即出售，异步落库还没完成时缓存能兜住价值
+        addToCache("fish_sell:" + fishUUID, finalSellValue, DEFAULT_CACHE_EXPIRY);
+        writeExecutor.execute(() -> {
+            if (!isDatabaseAvailable()) return;
+            try {
+                String query = (dbType.equals("mysql") ? "REPLACE INTO " : "INSERT OR REPLACE INTO ") + tablePrefix + "fish_uuid_values (fish_uuid, fish_value, vault_value, points_value) VALUES (?, ?, ?, ?)";
+                try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                    pstmt.setString(1, fishUUID);
+                    pstmt.setInt(2, finalSellValue.getDisplayValue());
+                    pstmt.setInt(3, finalSellValue.getVaultValue());
+                    pstmt.setInt(4, finalSellValue.getPointsValue());
+                    pstmt.executeUpdate();
+                }
+            } catch (SQLException e) {
+                kkfish.log("§c" + "存储鱼UUID价值失败！"); e.printStackTrace();
             }
-        } catch (SQLException e) {
-            kkfish.log("§c" + "存储鱼UUID价值失败！"); e.printStackTrace();
-        }
+        });
     }
     
     /**
@@ -1046,40 +1119,43 @@ public class DB {
         if (effects == null || effects.isEmpty()) {
             return;
         }
-        if (!isDatabaseAvailable()) return;
-        
-        try {
-            String query = "INSERT INTO " + tablePrefix + "fish_effects (fish_uuid, effect_type, effect_level, effect_duration) VALUES (?, ?, ?, ?)";
-            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                for (String effectStr : effects) {
-                    try {
-                        // 解析特效格式: "效果类型 等级:持续时间"
-                        String[] parts = effectStr.split(" ");
-                        if (parts.length < 2) continue;
-                          
-                        String effectType = parts[0];
-                        String[] levelDuration = parts[1].split(":");
-                          
-                        if (levelDuration.length < 2) continue;
-                          
-                        int level = Integer.parseInt(levelDuration[0]);
-                        int duration = Integer.parseInt(levelDuration[1]);
-                          
-                        pstmt.setString(1, fishUUID);
-                        pstmt.setString(2, effectType);
-                        pstmt.setInt(3, level);
-                        pstmt.setInt(4, duration);
-                        pstmt.addBatch();
-                    } catch (Exception e) {
-                        kkfish.log("§e" + "解析鱼特效失败: " + effectStr + " - " + e.getMessage());
+        final List<String> finalEffects = new ArrayList<>(effects);
+        writeExecutor.execute(() -> {
+            if (!isDatabaseAvailable()) return;
+
+            try {
+                String query = "INSERT INTO " + tablePrefix + "fish_effects (fish_uuid, effect_type, effect_level, effect_duration) VALUES (?, ?, ?, ?)";
+                try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                    for (String effectStr : finalEffects) {
+                        try {
+                            // 解析特效格式: "效果类型 等级:持续时间"
+                            String[] parts = effectStr.split(" ");
+                            if (parts.length < 2) continue;
+
+                            String effectType = parts[0];
+                            String[] levelDuration = parts[1].split(":");
+
+                            if (levelDuration.length < 2) continue;
+
+                            int level = Integer.parseInt(levelDuration[0]);
+                            int duration = Integer.parseInt(levelDuration[1]);
+
+                            pstmt.setString(1, fishUUID);
+                            pstmt.setString(2, effectType);
+                            pstmt.setInt(3, level);
+                            pstmt.setInt(4, duration);
+                            pstmt.addBatch();
+                        } catch (Exception e) {
+                            kkfish.log("§e" + "解析鱼特效失败: " + effectStr + " - " + e.getMessage());
+                        }
                     }
+
+                    pstmt.executeBatch();
                 }
-                
-                pstmt.executeBatch();
+            } catch (SQLException e) {
+                kkfish.log("§c" + "存储鱼特效失败！"); e.printStackTrace();
             }
-        } catch (SQLException e) {
-            kkfish.log("§c" + "存储鱼特效失败！"); e.printStackTrace();
-        }
+        });
     }
     
     /**
@@ -1119,6 +1195,11 @@ public class DB {
     }
 
     public SellValue getFishSellValueByUUID(String fishUUID) {
+        // 先查缓存（storeFishUUIDValue 已同步写入，防止异步落库未完成时查不到）
+        Object cachedValue = getFromCache("fish_sell:" + fishUUID);
+        if (cachedValue != null) {
+            return (SellValue) cachedValue;
+        }
         if (!isDatabaseAvailable()) return SellValue.oldValue(0);
         try {
             String query = "SELECT fish_value, vault_value, points_value FROM " + tablePrefix + "fish_uuid_values WHERE fish_uuid = ?";
@@ -1139,16 +1220,20 @@ public class DB {
      * 从数据库中删除鱼的UUID记录
      */
     public void removeFishUUIDValue(String fishUUID) {
-        if (!isDatabaseAvailable()) return;
-        try {
-            String query = "DELETE FROM " + tablePrefix + "fish_uuid_values WHERE fish_uuid = ?";
-            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                pstmt.setString(1, fishUUID);
-                pstmt.executeUpdate();
+        // 同步清缓存，防止删除后仍读到旧价值
+        clearCache("fish_sell:" + fishUUID);
+        writeExecutor.execute(() -> {
+            if (!isDatabaseAvailable()) return;
+            try {
+                String query = "DELETE FROM " + tablePrefix + "fish_uuid_values WHERE fish_uuid = ?";
+                try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                    pstmt.setString(1, fishUUID);
+                    pstmt.executeUpdate();
+                }
+            } catch (SQLException e) {
+                kkfish.log("§c" + "删除鱼UUID价值失败！"); e.printStackTrace();
             }
-        } catch (SQLException e) {
-            kkfish.log("§c" + "删除鱼UUID价值失败！"); e.printStackTrace();
-        }
+        });
     }
     
     /**
@@ -1158,33 +1243,35 @@ public class DB {
      * @param unlockSize 解锁时记录的鱼尺寸
      */
     public void unlockFishForPlayer(String playerId, String fishName, double unlockSize) {
-        if (!isDatabaseAvailable()) return;
-        try {
-            // 检查是否已经解锁
-            Map<String, Object> stats = getPlayerFishStats(playerId, fishName);
-            if ((int) stats.get("caughtCount") > 0) {
-                return; // 已经解锁，不需要重复操作
+        writeExecutor.execute(() -> {
+            if (!isDatabaseAvailable()) return;
+            try {
+                // 检查是否已经解锁
+                Map<String, Object> stats = getPlayerFishStats(playerId, fishName);
+                if ((int) stats.get("caughtCount") > 0) {
+                    return; // 已经解锁，不需要重复操作
+                }
+
+                // 插入一条记录，解锁鱼类图鉴
+                String query = "INSERT INTO " + tablePrefix + "fishing_log (player_uuid, fish_name, fish_level, fish_size, fish_value, location_x, location_y, location_z, world_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                    pstmt.setString(1, playerId);
+                    pstmt.setString(2, fishName);
+                    pstmt.setString(3, "common"); // 使用普通等级
+                    pstmt.setDouble(4, unlockSize);
+                    pstmt.setInt(5, 0); // 价值为0，不影响实际游戏
+                    pstmt.setDouble(6, 0); // 默认位置X
+                    pstmt.setDouble(7, 0); // 默认位置Y
+                    pstmt.setDouble(8, 0); // 默认位置Z
+                    pstmt.setString(9, "world"); // 默认世界名称
+                    pstmt.executeUpdate();
+                }
+                // 清除钓鱼日志聚合缓存
+                clearFishingLogCache(playerId);
+            } catch (SQLException e) {
+                kkfish.log("§c" + "解锁玩家鱼类图鉴失败！"); e.printStackTrace();
             }
-            
-            // 插入一条记录，解锁鱼类图鉴
-            String query = "INSERT INTO " + tablePrefix + "fishing_log (player_uuid, fish_name, fish_level, fish_size, fish_value, location_x, location_y, location_z, world_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                pstmt.setString(1, playerId);
-                pstmt.setString(2, fishName);
-                pstmt.setString(3, "common"); // 使用普通等级
-                pstmt.setDouble(4, unlockSize);
-                pstmt.setInt(5, 0); // 价值为0，不影响实际游戏
-                pstmt.setDouble(6, 0); // 默认位置X
-                pstmt.setDouble(7, 0); // 默认位置Y
-                pstmt.setDouble(8, 0); // 默认位置Z
-                pstmt.setString(9, "world"); // 默认世界名称
-                pstmt.executeUpdate();
-            }
-            // 清除钓鱼日志聚合缓存
-            clearFishingLogCache(playerId);
-        } catch (SQLException e) {
-            kkfish.log("§c" + "解锁玩家鱼类图鉴失败！"); e.printStackTrace();
-        }
+        });
     }
     
     /**
@@ -1193,30 +1280,32 @@ public class DB {
      * @param fishName 鱼类名称
      */
     public void lockFishForPlayer(String playerId, String fishName) {
-        if (!isDatabaseAvailable()) return;
-        try {
-            String query;
-            if ("all".equalsIgnoreCase(fishName)) {
-                // 锁定所有鱼类，删除该玩家的所有钓鱼记录
-                query = "DELETE FROM " + tablePrefix + "fishing_log WHERE player_uuid = ?";
-                try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                    pstmt.setString(1, playerId);
-                    pstmt.executeUpdate();
+        writeExecutor.execute(() -> {
+            if (!isDatabaseAvailable()) return;
+            try {
+                String query;
+                if ("all".equalsIgnoreCase(fishName)) {
+                    // 锁定所有鱼类，删除该玩家的所有钓鱼记录
+                    query = "DELETE FROM " + tablePrefix + "fishing_log WHERE player_uuid = ?";
+                    try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                        pstmt.setString(1, playerId);
+                        pstmt.executeUpdate();
+                    }
+                } else {
+                    // 锁定特定鱼类，删除该玩家的特定鱼类记录
+                    query = "DELETE FROM " + tablePrefix + "fishing_log WHERE player_uuid = ? AND fish_name = ?";
+                    try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
+                        pstmt.setString(1, playerId);
+                        pstmt.setString(2, fishName);
+                        pstmt.executeUpdate();
+                    }
                 }
-            } else {
-                // 锁定特定鱼类，删除该玩家的特定鱼类记录
-                query = "DELETE FROM " + tablePrefix + "fishing_log WHERE player_uuid = ? AND fish_name = ?";
-                try (PreparedStatement pstmt = getConnection().prepareStatement(query)) {
-                    pstmt.setString(1, playerId);
-                    pstmt.setString(2, fishName);
-                    pstmt.executeUpdate();
-                }
+                // 清除钓鱼日志聚合缓存
+                clearFishingLogCache(playerId);
+            } catch (SQLException e) {
+                kkfish.log("§c" + "锁定玩家鱼类图鉴失败！"); e.printStackTrace();
             }
-            // 清除钓鱼日志聚合缓存
-            clearFishingLogCache(playerId);
-        } catch (SQLException e) {
-            kkfish.log("§c" + "锁定玩家鱼类图鉴失败！"); e.printStackTrace();
-        }
+        });
     }
     
     /**

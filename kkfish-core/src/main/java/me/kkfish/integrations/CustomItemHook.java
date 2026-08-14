@@ -70,6 +70,10 @@ public class CustomItemHook {
     private static Method ceItemDefBuildItem;
     private static Method ceItemDefGetItem;
     private static Method ceItemToBukkit;
+    // 官方安全入口：BukkitItemDefinition.buildBukkitItem() 无参直接返回 ItemStack（内部用 ItemBuildContext.empty()）
+    private static Method ceItemDefBuildBukkit;
+    // ItemBuildContext.empty() 静态工厂，给 buildItem(ItemBuildContext,..) 构造非 null context 用
+    private static Method ceItemBuildContextEmpty;
 
     // 字体图片占位符正则：:namespace:name: 或 :name:
     private static final Pattern FONT_IMAGE_PATTERN = Pattern.compile(":([a-zA-Z0-9_]+):([a-zA-Z0-9_]+):|:([a-zA-Z0-9_]+):");
@@ -94,7 +98,9 @@ public class CustomItemHook {
 
             iaAvailable = true;
             kkfish.log("§a[CustomItemHook] ItemsAdder detected~");
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            kkfish.log("§e[CustomItemHook] ItemsAdder init failed: " + e);
+        }
     }
 
     // ======================== Oraxen 初始化 ========================
@@ -114,7 +120,9 @@ public class CustomItemHook {
 
             oraxenAvailable = true;
             kkfish.log("§a[CustomItemHook] Oraxen detected~");
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            kkfish.log("§e[CustomItemHook] Oraxen init failed: " + e);
+        }
     }
 
     // ======================== Nexo 初始化 ========================
@@ -133,7 +141,9 @@ public class CustomItemHook {
 
             nexoAvailable = true;
             kkfish.log("§a[CustomItemHook] Nexo detected~");
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            kkfish.log("§e[CustomItemHook] Nexo init failed: " + e);
+        }
     }
 
     // ======================== CraftEngine 初始化 ========================
@@ -149,10 +159,17 @@ public class CustomItemHook {
             ceById = ceItemsClass.getMethod("byId", String.class);
             ceIsCustomItem = ceItemsClass.getMethod("isCustomItem", ItemStack.class);
             ceGetCustomItemId = ceItemsClass.getMethod("getCustomItemId", ItemStack.class);
-            // 新版 API：BuildableItem.buildItem(Player) 构建物品（core Player 可传 null，官方 Item.byId 即如此）
+            // 新版 API：buildBukkitItem() 无参，官方推荐安全入口，直接返回 ItemStack
+            ceItemDefBuildBukkit = findNoArgMethod(itemDefClass, "buildBukkitItem");
+            // 新版 API 兜底：buildItem(Player) 或 buildItem(ItemBuildContext,..)，core Player 可传 null
             ceItemDefBuildItem = findBuildMethod(itemDefClass, "buildItem");
             // 旧版 API 兜底：ItemDefinition.getItem()
             ceItemDefGetItem = findBuildMethod(itemDefClass, "getItem");
+            // ItemBuildContext.empty()，给 buildItem 构造非 null context（null context 会触发处理器 NPE）
+            try {
+                Class<?> itemBuildContextClass = Class.forName("net.momirealms.craftengine.core.item.ItemBuildContext");
+                ceItemBuildContextEmpty = itemBuildContextClass.getMethod("empty");
+            } catch (Exception ignored) {}
             // Item -> ItemStack：BukkitItem.getBukkitItem()，兜底 Item.platformItem()
             try {
                 Class<?> bukkitItemClass = Class.forName("net.momirealms.craftengine.bukkit.item.BukkitItem");
@@ -164,7 +181,10 @@ public class CustomItemHook {
             }
 
             ceAvailable = true;
-        } catch (Exception ignored) {}
+            kkfish.log("§a[CustomItemHook] CraftEngine detected~");
+        } catch (Exception e) {
+            kkfish.log("§e[CustomItemHook] CraftEngine init failed: " + e);
+        }
     }
 
     /** 在类及父类中查找方法 */
@@ -172,6 +192,19 @@ public class CustomItemHook {
         for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
             for (Method m : c.getDeclaredMethods()) {
                 if (m.getName().equals(name) && (returnType == null || returnType.isAssignableFrom(m.getReturnType()))) {
+                    m.setAccessible(true);
+                    return m;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** 查找无参方法 */
+    private static Method findNoArgMethod(Class<?> clazz, String name) {
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            for (Method m : c.getDeclaredMethods()) {
+                if (m.getName().equals(name) && m.getParameterCount() == 0) {
                     m.setAccessible(true);
                     return m;
                 }
@@ -293,6 +326,7 @@ public class CustomItemHook {
                     if (ceAvailable) {
                         ItemStack item = getCEItem(itemId);
                         if (item != null) { item.setAmount(amount); return item; }
+                        kkfish.log("§e[CustomItemHook] CraftEngine item not found: " + itemId);
                     }
                     materialStr = itemId;
                 }
@@ -442,9 +476,26 @@ public class CustomItemHook {
                 def = opt.get();
             }
             Object item;
-            if (ceItemDefBuildItem != null) {
+            if (ceItemDefBuildBukkit != null) {
+                // 官方安全入口，无参直接返回 ItemStack
+                item = ceItemDefBuildBukkit.invoke(def);
+            } else if (ceItemDefBuildItem != null) {
                 Method m = ceItemDefBuildItem;
-                item = m.getParameterCount() == 2 ? m.invoke(def, null, 1) : m.invoke(def, (Object) null);
+                Class<?>[] paramTypes = m.getParameterTypes();
+                if (paramTypes.length == 2) {
+                    // buildItem(ItemBuildContext, int)：context 必须非 null，否则处理器 NPE
+                    Object context = ceItemBuildContextEmpty != null ? ceItemBuildContextEmpty.invoke(null) : null;
+                    item = m.invoke(def, context, 1);
+                } else if (paramTypes.length == 1 && paramTypes[0].getName().equals("net.momirealms.craftengine.core.entity.player.Player")) {
+                    // buildItem(Player)：core Player @Nullable，传 null 安全
+                    item = m.invoke(def, (Object) null);
+                } else if (paramTypes.length == 1) {
+                    // buildItem(ItemBuildContext)：同样要非 null context
+                    Object context = ceItemBuildContextEmpty != null ? ceItemBuildContextEmpty.invoke(null) : null;
+                    item = m.invoke(def, context);
+                } else {
+                    item = null;
+                }
             } else if (ceItemDefGetItem != null) {
                 item = ceItemDefGetItem.invoke(def);
             } else {
@@ -457,7 +508,10 @@ public class CustomItemHook {
                 Object bukkit = ceItemToBukkit.invoke(item);
                 if (bukkit instanceof ItemStack) return ((ItemStack) bukkit).clone();
             }
-        } catch (Exception e) { return null; }
+        } catch (Exception e) {
+            kkfish.log("§e[CustomItemHook] CraftEngine build failed: " + id + " -> " + e);
+            return null;
+        }
         return null;
     }
 
