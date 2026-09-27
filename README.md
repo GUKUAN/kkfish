@@ -1,5 +1,5 @@
 <div align="center">
-
+本项目在2026年9月初停更并计划开发elysianfish闭源付费插件，对于kkfish有任何bug和自己的想法请fork XP
 # KKFish
 
 **Stardew Valley Style Fishing Plugin for Minecraft**
