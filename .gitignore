@@ -6,6 +6,7 @@ target/
 .idea/
 .openclaude/
 .superpowers/
+.workbuddy/
 *.iml
 *.ipr
 *.iws

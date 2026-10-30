@@ -2,7 +2,6 @@ package me.kkfish.managers;
 
 import java.io.File;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -75,7 +74,7 @@ public class DB {
         this.plugin = plugin;
         try {
             initialize();
-        } catch (SQLException | ClassNotFoundException e) {
+        } catch (SQLException e) {
             kkfish.log("§c" + plugin.getMessageManager().getMessageWithoutPrefix("log.database_init_failed", "Database initialization failed!")); e.printStackTrace();
             // 可以选择在初始化失败时设置一个标志，或者让插件禁用数据库功能
         }
@@ -84,7 +83,7 @@ public class DB {
     /**
      * 初始化数据库连接（synchronized 防止主线程读与写线程并发重连时竞争）
      */
-    private synchronized void initialize() throws SQLException, ClassNotFoundException {
+    private synchronized void initialize() throws SQLException {
         FileConfiguration config = plugin.getCustomConfig().getMainConfig();
         dbType = config.getString("database.type", "sqlite").toLowerCase();
         
@@ -108,7 +107,7 @@ public class DB {
             initialized = true; // 初始化成功
             plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_success", "Database initialization successful! Using " + dbType.toUpperCase() + " database~"));
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_success", "Database connection successful! Using %s database~", dbType.toUpperCase()));
-        } catch (SQLException | ClassNotFoundException e) {
+        } catch (SQLException e) {
             initialized = false; // 初始化失败
             kkfish.log("§c" + plugin.getMessageManager().getMessageWithoutPrefix("log.database_init_failed", "Database initialization failed!")); e.printStackTrace();
             throw e; // 重新抛出异常，让调用者知道初始化失败
@@ -117,11 +116,10 @@ public class DB {
 
     /**
      * 初始化SQLite连接
+     * 直连驱动实例而非走 DriverManager：DriverManager 的静态初始化全局只发生一次，
+     * 若本插件先于其他插件触发它，会导致其他插件（如 nightcore）扫不到自带驱动报 No suitable driver
      */
-    private void initializeSQLite(FileConfiguration config) throws SQLException, ClassNotFoundException {
-        // 加载SQLite驱动
-        Class.forName("org.sqlite.JDBC");
-        
+    private void initializeSQLite(FileConfiguration config) throws SQLException {
         // 获取数据库文件路径
         String dbFile = config.getString("database.sqlite.file", "data.db");
         File dataFolder = plugin.getDataFolder();
@@ -133,17 +131,15 @@ public class DB {
         // 连接级 PRAGMA：WAL 模式读写不互斥 + NORMAL 同步大幅减少 fsync + busy_timeout 避免写锁直接报错
         int busyTimeout = config.getInt("database.sqlite.busy-timeout", 5000);
         url += "?journal_mode=WAL&synchronous=NORMAL&busy_timeout=" + busyTimeout;
-        connection = DriverManager.getConnection(url);
+        connection = new org.sqlite.JDBC().connect(url, new java.util.Properties());
         tablePrefix = "";
     }
 
     /**
      * 初始化MySQL连接
+     * 同 SQLite：直连驱动实例，避免触发 DriverManager 的一次性静态扫描影响其他插件
      */
-    private void initializeMySQL(FileConfiguration config) throws SQLException, ClassNotFoundException {
-        // 加载MySQL驱动
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        
+    private void initializeMySQL(FileConfiguration config) throws SQLException {
         // 获取MySQL配置
         String host = config.getString("database.mysql.host", "localhost");
         int port = config.getInt("database.mysql.port", 3306);
@@ -160,7 +156,10 @@ public class DB {
                 "&serverTimezone=UTC" + 
                 "&connectTimeout=" + timeout;
         
-        connection = DriverManager.getConnection(url, username, password);
+        java.util.Properties props = new java.util.Properties();
+        props.setProperty("user", username);
+        props.setProperty("password", password);
+        connection = new com.mysql.cj.jdbc.Driver().connect(url, props);
     }
 
     /**
@@ -522,7 +521,7 @@ public class DB {
             plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_reinitialize", "Starting to reinitialize database connection"));
             initialize();
             plugin.getCustomConfig().debugLog(plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_result", "Database connection result: " + (connection != null ? "Success" : "Failed")));
-        } catch (SQLException | ClassNotFoundException e) {
+        } catch (SQLException e) {
             kkfish.log("§c" + plugin.getMessageManager().getMessageWithoutPrefix("log.database_connect_reconnect_failed", "Failed to reconnect to database!")); e.printStackTrace();
             connection = null;
         }

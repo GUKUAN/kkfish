@@ -8,18 +8,12 @@ public class NBTUtilAPI {
 
     static {
         try {
-            try {
-                ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-                contextClassLoader.loadClass("de.tr7zw.nbtapi.NBTItem");
-                nbtApiAvailable = true;
-            } catch (ClassNotFoundException e) {
-                try {
-                    Class.forName("de.tr7zw.nbtapi.NBTItem");
-                    nbtApiAvailable = true;
-                } catch (ClassNotFoundException ex) {
-                }
-            }
-        } catch (Exception e) {
+            // 只认插件自己的类加载器。DependencyManager 会把 lib/ 下的 jar 挂到临时 URLClassLoader 并
+            // 设成线程上下文，跟着上下文探测就会误判成可用，可后面反射又是用插件加载器找类，一样 ClassNotFound，
+            // 结果是 NBT 写入全部失败还刷一堆堆栈
+            Class.forName("de.tr7zw.nbtapi.NBTItem", false, NBTUtilAPI.class.getClassLoader());
+            nbtApiAvailable = true;
+        } catch (ClassNotFoundException ignored) {
         }
     }
 

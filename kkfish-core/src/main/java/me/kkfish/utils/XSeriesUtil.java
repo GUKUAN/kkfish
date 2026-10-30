@@ -1,45 +1,77 @@
 package me.kkfish.utils;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.Particle;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Player;
 import org.bukkit.Location;
 
-import java.lang.reflect.Method;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 public class XSeriesUtil {
 
     private static boolean initialized = false;
     private static Class<?> xMaterialClass;
     private static Class<?> xSoundClass;
-    private static Class<?> xParticleClass;
+
+    // XSeries 14 起粒子统一走 ParticleDisplay，XParticle 只剩枚举查表
+    private static Class<?> displayClass;
+    private static Method xParticleOf;
+    private static Method xParticleGet;
+    private static Method displayOf;
+    private static Method displayOffset;
+    private static Method displaySpawn;
+    private static Field displayCount;
+    private static Field displayExtra;
+    private static Method optionalIsPresent;
+    private static Method optionalGet;
 
     private static void initialize() {
-        if (!initialized) {
+        if (initialized) return;
+
+        try {
+            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+            xMaterialClass = contextClassLoader.loadClass("com.cryptomorin.xseries.XMaterial");
+            xSoundClass = contextClassLoader.loadClass("com.cryptomorin.xseries.XSound");
+            initialized = true;
+        } catch (Throwable e) {
             try {
-                try {
-                    ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-                    xMaterialClass = contextClassLoader.loadClass("com.cryptomorin.xseries.XMaterial");
-                    xSoundClass = contextClassLoader.loadClass("com.cryptomorin.xseries.XSound");
-                    xParticleClass = contextClassLoader.loadClass("com.cryptomorin.xseries.XParticle");
-                    initialized = true;
-                    return;
-                } catch (ClassNotFoundException e) {
-                }
-                
-                try {
-                    xMaterialClass = Class.forName("com.cryptomorin.xseries.XMaterial");
-                    xSoundClass = Class.forName("com.cryptomorin.xseries.XSound");
-                    xParticleClass = Class.forName("com.cryptomorin.xseries.XParticle");
-                    initialized = true;
-                    return;
-                } catch (ClassNotFoundException e) {
-                }
-            } catch (Exception e) {
+                xMaterialClass = Class.forName("com.cryptomorin.xseries.XMaterial");
+                xSoundClass = Class.forName("com.cryptomorin.xseries.XSound");
+                initialized = true;
+            } catch (Throwable ex) {
             }
+        }
+
+        // 分两段加载：display 引用了 1.17 才有的 Vibration.Destination，低版本端一加载就抛
+        // NoClassDefFoundError（Error 不是 Exception），合在一起会把名字映射也带崩
+        try {
+            optionalIsPresent = java.util.Optional.class.getMethod("isPresent");
+            optionalGet = java.util.Optional.class.getMethod("get");
+
+            Class<?> particleClass = Class.forName("com.cryptomorin.xseries.particles.XParticle");
+            xParticleOf = particleClass.getMethod("of", String.class);
+            xParticleGet = particleClass.getMethod("get");
+        } catch (Throwable ignored) {
+        }
+
+        // 全部方法都拿到了才认这个类，避免 displayClass 非空但某个 Method 为 null，每次出粒子都空指针
+        try {
+            Class<?> displayType = Class.forName("com.cryptomorin.xseries.particles.ParticleDisplay");
+            Method of = displayType.getMethod("display", Location.class, Particle.class);
+            Method offset = displayType.getMethod("offset", double.class, double.class, double.class);
+            Method spawn = displayType.getMethod("spawn");
+            Field count = displayType.getField("count");
+            Field extra = displayType.getField("extra");
+
+            displayClass = displayType;
+            displayOf = of;
+            displayOffset = offset;
+            displaySpawn = spawn;
+            displayCount = count;
+            displayExtra = extra;
+        } catch (Throwable ignored) {
         }
     }
 
@@ -274,75 +306,77 @@ public class XSeriesUtil {
 
     public static void spawnParticle(Location location, String particleName, int count, double spreadX, double spreadY, double spreadZ, double extra) {
         if (location == null || location.getWorld() == null) return;
-        
+
         initialize();
-        
-        if (xParticleClass != null) {
-            try {
-                Method matchMethod = xParticleClass.getMethod("matchXParticle", String.class);
-                Object optionalXParticle = matchMethod.invoke(null, particleName);
-                
-                Method isPresentMethod = optionalXParticle.getClass().getMethod("isPresent");
-                if (!(Boolean) isPresentMethod.invoke(optionalXParticle)) return;
-                
-                Method getMethod = optionalXParticle.getClass().getMethod("get");
-                Object xParticle = getMethod.invoke(optionalXParticle);
-                
-                Method spawnMethod = xParticle.getClass().getMethod("spawn", Location.class, int.class, double.class, double.class, double.class, double.class);
-                spawnMethod.invoke(xParticle, location, count, spreadX, spreadY, spreadZ, extra);
-                return;
-            } catch (Exception e) {
-            }
-        }
-        
+        Particle particle = resolveParticle(particleName);
+        if (particle == null) return;
+
+        if (spawnByDisplay(location, particle, count, spreadX, spreadY, spreadZ, extra)) return;
+
+        // 需要数据的粒子（BLOCK_CRACK 这类）在这里没数据会直接抛，不能让它把调用方带崩
         try {
-            org.bukkit.Particle particle = org.bukkit.Particle.valueOf(particleName.toUpperCase());
-            if (location.getWorld() != null) {
-                location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra);
-            }
-        } catch (Exception e) {
+            location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra);
+        } catch (Exception ignored) {
         }
     }
 
     public static void spawnParticleWithData(Location location, String particleName, int count, double spreadX, double spreadY, double spreadZ, double extra, Object data) {
         if (location == null || location.getWorld() == null) return;
-        
+
         initialize();
-        
-        if (xParticleClass != null) {
+        Particle particle = resolveParticle(particleName);
+        if (particle == null) return;
+
+        try {
+            // 调用方传的 data 是 Bukkit 的 ItemStack / BlockData，ParticleDisplay 要的是它自己的 ParticleData 接口，
+            // 中间没有现成转换，带数据的一律走 Bukkit 原生
+            if (data != null) {
+                location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra, data);
+            } else if (!spawnByDisplay(location, particle, count, spreadX, spreadY, spreadZ, extra)) {
+                location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 用 ParticleDisplay 出粒子；拿不到 display 类就返回 false，由调用方退回 Bukkit 原生 */
+    private static boolean spawnByDisplay(Location location, Particle particle, int count, double spreadX, double spreadY, double spreadZ, double extra) {
+        if (displayClass == null) return false;
+
+        try {
+            Object display = displayOf.invoke(null, location, particle);
+            if (display == null) return false;
+
+            displayCount.setInt(display, count);
+            displayExtra.setDouble(display, extra);
+            displayOffset.invoke(display, spreadX, spreadY, spreadZ);
+            displaySpawn.invoke(display);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** 粒子名 → Bukkit Particle：先过 XParticle 别名表（能认旧名和新版改名），再退回枚举原名 */
+    private static Particle resolveParticle(String particleName) {
+        if (particleName == null || particleName.isEmpty()) return null;
+
+        if (xParticleOf != null) {
             try {
-                Method matchMethod = xParticleClass.getMethod("matchXParticle", String.class);
-                Object optionalXParticle = matchMethod.invoke(null, particleName);
-                
-                Method isPresentMethod = optionalXParticle.getClass().getMethod("isPresent");
-                if (!(Boolean) isPresentMethod.invoke(optionalXParticle)) return;
-                
-                Method getMethod = optionalXParticle.getClass().getMethod("get");
-                Object xParticle = getMethod.invoke(optionalXParticle);
-                
-                try {
-                    Method spawnMethod = xParticle.getClass().getMethod("spawn", Location.class, int.class, double.class, double.class, double.class, double.class, Object.class);
-                    spawnMethod.invoke(xParticle, location, count, spreadX, spreadY, spreadZ, extra, data);
-                    return;
-                } catch (NoSuchMethodException e) {
-                    Method spawnMethod = xParticle.getClass().getMethod("spawn", Location.class, int.class, double.class, double.class, double.class, double.class);
-                    spawnMethod.invoke(xParticle, location, count, spreadX, spreadY, spreadZ, extra);
-                    return;
+                Object optional = xParticleOf.invoke(null, particleName);
+                if (optional != null && (Boolean) optionalIsPresent.invoke(optional)) {
+                    Object xParticle = optionalGet.invoke(optional);
+                    Object particle = xParticleGet.invoke(xParticle);
+                    if (particle instanceof Particle) return (Particle) particle;
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
-        
+
         try {
-            org.bukkit.Particle particle = org.bukkit.Particle.valueOf(particleName.toUpperCase());
-            if (location.getWorld() != null) {
-                if (data != null) {
-                    location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra, data);
-                } else {
-                    location.getWorld().spawnParticle(particle, location, count, spreadX, spreadY, spreadZ, (float) extra);
-                }
-            }
+            return Particle.valueOf(particleName.toUpperCase());
         } catch (Exception e) {
+            return null;
         }
     }
 
@@ -423,40 +457,13 @@ public class XSeriesUtil {
         return isWaterBlock(block) || isLavaBlock(block);
     }
 
-    public static org.bukkit.Particle getParticle(String particleName) {
-        if (particleName == null || particleName.isEmpty()) return null;
-        
+    public static Particle getParticle(String particleName) {
         initialize();
-        
-        if (xParticleClass != null) {
-            try {
-                Method matchMethod = xParticleClass.getMethod("matchXParticle", String.class);
-                Object optionalXParticle = matchMethod.invoke(null, particleName);
-                
-                Method isPresentMethod = optionalXParticle.getClass().getMethod("isPresent");
-                if ((Boolean) isPresentMethod.invoke(optionalXParticle)) {
-                    Method getMethod = optionalXParticle.getClass().getMethod("get");
-                    Object xParticle = getMethod.invoke(optionalXParticle);
-                    
-                    Method parseMethod = xParticle.getClass().getMethod("get");
-                    Object particle = parseMethod.invoke(xParticle);
-                    if (particle instanceof org.bukkit.Particle) {
-                        return (org.bukkit.Particle) particle;
-                    }
-                }
-            } catch (Exception e) {
-            }
-        }
-        
-        try {
-            return org.bukkit.Particle.valueOf(particleName.toUpperCase());
-        } catch (Exception e) {
-            return null;
-        }
+        return resolveParticle(particleName);
     }
 
-    public static org.bukkit.Particle getParticle(String particleName, org.bukkit.Particle fallback) {
-        org.bukkit.Particle particle = getParticle(particleName);
+    public static Particle getParticle(String particleName, Particle fallback) {
+        Particle particle = getParticle(particleName);
         return particle != null ? particle : fallback;
     }
 }

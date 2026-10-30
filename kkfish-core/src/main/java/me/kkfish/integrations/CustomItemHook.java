@@ -3,12 +3,14 @@ package me.kkfish.integrations;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 
 import me.kkfish.kkfish;
 import me.kkfish.utils.XSeriesUtil;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,7 +36,9 @@ public class CustomItemHook {
 
     // ======================== ItemsAdder 反射缓存 ========================
     private static boolean iaChecked = false;
-    private static boolean iaAvailable = false;
+    private static boolean iaAvailable = false;      // CustomStack，物品
+    private static boolean iaFontAvailable = false;  // FontImageWrapper，字体图片
+    private static ClassLoader iaLoader;
     private static Class<?> iaCustomStackClass;
     private static Method iaGetInstance;
     private static Method iaIsInRegistry;
@@ -42,6 +46,12 @@ public class CustomItemHook {
     private static Method iaByItemStack;
     private static Constructor<?> iaFontImageCtor;
     private static Method iaFontImageGetString;
+
+    // IA 4.x 把 FontImageWrapper 挪到了 FontImages 子包，3.x 在 api 根包，按新到旧试
+    private static final String[] IA_FONT_CLASSES = {
+            "dev.lone.itemsadder.api.FontImages.FontImageWrapper",
+            "dev.lone.itemsadder.api.FontImageWrapper"
+    };
 
     // ======================== Oraxen 反射缓存 ========================
     private static boolean oraxenChecked = false;
@@ -83,24 +93,53 @@ public class CustomItemHook {
     private static void checkIA() {
         if (iaChecked) return;
         iaChecked = true;
+
+        Plugin ia = Bukkit.getPluginManager().getPlugin("ItemsAdder");
+        if (ia == null) return;
+        iaLoader = ia.getClass().getClassLoader();
+
+        // 物品 API
         try {
-            if (Bukkit.getPluginManager().getPlugin("ItemsAdder") == null) return;
-            iaCustomStackClass = Class.forName("dev.lone.itemsadder.api.CustomStack");
-            Class<?> fontImageClass = Class.forName("dev.lone.itemsadder.api.FontImageWrapper");
+            iaCustomStackClass = loadIA("dev.lone.itemsadder.api.CustomStack");
 
             iaGetInstance = iaCustomStackClass.getMethod("getInstance", String.class);
             iaIsInRegistry = iaCustomStackClass.getMethod("isInRegistry", String.class);
             iaGetItemStack = iaCustomStackClass.getMethod("getItemStack");
             iaByItemStack = iaCustomStackClass.getMethod("byItemStack", ItemStack.class);
 
-            iaFontImageCtor = fontImageClass.getConstructor(String.class);
-            iaFontImageGetString = fontImageClass.getMethod("getString");
-
             iaAvailable = true;
             kkfish.log("§a[CustomItemHook] ItemsAdder detected~");
         } catch (Exception e) {
-            kkfish.log("§e[CustomItemHook] ItemsAdder init failed: " + e);
+            kkfish.log("§e[CustomItemHook] ItemsAdder CustomStack init failed: " + e);
         }
+
+        // 字体图片 API：单独 try，取不到只是不替换占位符，别把物品那边一起拖垮
+        try {
+            Class<?> fontImageClass = null;
+            for (String name : IA_FONT_CLASSES) {
+                try {
+                    fontImageClass = loadIA(name);
+                    break;
+                } catch (ClassNotFoundException ignored) {}
+            }
+
+            if (fontImageClass != null) {
+                iaFontImageCtor = fontImageClass.getConstructor(String.class);
+                iaFontImageGetString = fontImageClass.getMethod("getString");
+
+                iaFontAvailable = true;
+                kkfish.log("§a[CustomItemHook] ItemsAdder font images detected~ (" + fontImageClass.getName() + ")");
+            } else {
+                kkfish.log("§e[CustomItemHook] ItemsAdder font image class missing, tried " + Arrays.toString(IA_FONT_CLASSES));
+            }
+        } catch (Exception e) {
+            kkfish.log("§e[CustomItemHook] ItemsAdder font images init failed: " + e);
+        }
+    }
+
+    /** 走 ItemsAdder 自己的类加载器，避免 ClassLoader 隔离下看不到 API 类 */
+    private static Class<?> loadIA(String name) throws ClassNotFoundException {
+        return iaLoader.loadClass(name);
     }
 
     // ======================== Oraxen 初始化 ========================
@@ -383,7 +422,7 @@ public class CustomItemHook {
     public static String replaceFontImages(String text) {
         if (text == null || text.isEmpty()) return text;
         checkIA();
-        if (!iaAvailable) return text;
+        if (!iaFontAvailable) return text;
         if (!text.contains(":")) return text;
 
         Matcher matcher = FONT_IMAGE_PATTERN.matcher(text);
@@ -415,7 +454,7 @@ public class CustomItemHook {
     public static java.util.List<String> replaceFontImages(java.util.List<String> lines) {
         if (lines == null || lines.isEmpty()) return lines;
         checkIA();
-        if (!iaAvailable) return lines;
+        if (!iaFontAvailable) return lines;
         java.util.List<String> result = new java.util.ArrayList<>(lines.size());
         for (String line : lines) {
             result.add(replaceFontImages(line));

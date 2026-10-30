@@ -6,7 +6,7 @@
 
     <groupId>me.kkfish</groupId>
     <artifactId>kkfish-parent</artifactId>
-    <version>1.7.11</version>
+    <version>1.8.0</version>
     <packaging>pom</packaging>
 
     <name>kkfish Parent</name>
@@ -20,14 +20,14 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spigot.version>1.16.1-R0.1-SNAPSHOT</spigot.version>
-        <bstats.version>3.1.0</bstats.version>
-        <xseries.version>13.8.0</xseries.version>
-        <sqlite.version>3.46.0.0</sqlite.version>
-        <mysql.version>8.0.33</mysql.version>
-        <vault.version>1.7</vault.version>
+        <xseries.version>14.0.0</xseries.version>
+        <nbt.version>2.16.1</nbt.version>
+        <slf4j.version>1.7.36</slf4j.version>
+        <sqlite.version>3.54.1.0</sqlite.version>
+        <mysql.version>26.10.0</mysql.version>
+        <vault.version>1.7.1</vault.version>
         <placeholderapi.version>2.12.3</placeholderapi.version>
-        <auraskills.version>2.2.4</auraskills.version>
-        <playerpoints.version>3.3.3</playerpoints.version>
+        <playerpoints.version>3.3.5</playerpoints.version>
     </properties>
 
     <repositories>
@@ -82,15 +82,9 @@
                 <version>${sqlite.version}</version>
             </dependency>
             <dependency>
-                <groupId>mysql</groupId>
-                <artifactId>mysql-connector-java</artifactId>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
                 <version>${mysql.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>dev.aurelium</groupId>
-                <artifactId>auraskills-api-bukkit</artifactId>
-                <version>${auraskills.version}</version>
-                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.black_ixx</groupId>
@@ -103,11 +97,6 @@
                 <artifactId>placeholderapi</artifactId>
                 <version>${placeholderapi.version}</version>
                 <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.bstats</groupId>
-                <artifactId>bstats-bukkit</artifactId>
-                <version>${bstats.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.cryptomorin</groupId>
@@ -123,7 +112,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.10.1</version>
+                    <version>3.16.0</version>
                     <configuration>
                         <encoding>UTF-8</encoding>
                     </configuration>
@@ -131,17 +120,17 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
-                    <version>3.3.0</version>
+                    <version>3.5.1</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-shade-plugin</artifactId>
-                    <version>3.4.1</version>
+                    <version>3.6.2</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-resources-plugin</artifactId>
-                    <version>3.3.0</version>
+                    <version>3.5.0</version>
                     <configuration>
                         <encoding>UTF-8</encoding>
                     </configuration>
@@ -149,7 +138,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.2.5</version>
+                    <version>3.6.1</version>
                     <configuration>
                         <skipTests>true</skipTests>
                     </configuration>
