@@ -1,11 +1,12 @@
 <div align="center">
+本项目原计划于 2026 年 9 月初停更，转向开发 elysianfish（闭源付费插件），现已改为同时维护 elysian 与 kkfish。kkfish 的 bug 反馈、功能建议和 fork 依然欢迎。
 
 # KKFish
 
 **星露谷物语风格 Minecraft 钓鱼插件**
 
-![Version](https://img.shields.io/badge/version-1.7.8-blue)
-![Minecraft](https://img.shields.io/badge/Minecraft-1.12--26.2-green)
+![Version](https://img.shields.io/github/v/release/GUKUAN/kkfish?include_prereleases&label=version&color=blue)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.12--26.3-green)
 ![Platform](https://img.shields.io/badge/Platform-Spigot%20%7C%20Paper%20%7C%20Folia-orange)
 ![License](https://img.shields.io/github/license/GUKUAN/kkfish)
 ![Stars](https://img.shields.io/github/stars/GUKUAN/kkfish)
@@ -76,7 +77,7 @@
 
 | | |
 |---|---|
-| **Minecraft** | 1.12 – 1.26.2 |
+| **Minecraft** | 1.12 – 1.26.3 |
 | **平台** | Spigot、Paper、Folia（单 jar） |
 | **经济** | Vault、PlayerPoints |
 | **自定义物品** | ItemsAdder、Oraxen、Nexo、CraftEngine |

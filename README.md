@@ -1,12 +1,12 @@
 <div align="center">
-本项目在2026年9月初停更并计划开发elysianfish闭源付费插件，对于kkfish有任何bug和自己的想法请fork XP (注:停更仅限于新功能/非必要性bug，若有如新版本兼容之类的bug会进行更新修复）
+KKFish was originally planned to stop receiving updates in early September 2026, when development moved to elysianfish (a closed-source paid plugin). That plan has changed — elysianfish and kkfish are now maintained side by side. Bug reports, feature ideas, and forks for kkfish are all still welcome.
   
 # KKFish
 
 **Stardew Valley Style Fishing Plugin for Minecraft**
 
-![Version](https://img.shields.io/badge/version-1.7.8-blue)
-![Minecraft](https://img.shields.io/badge/Minecraft-1.12--26.2-green)
+![Version](https://img.shields.io/github/v/release/GUKUAN/kkfish?include_prereleases&label=version&color=blue)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.12--26.3-green)
 ![Platform](https://img.shields.io/badge/Platform-Spigot%20%7C%20Paper%20%7C%20Folia-orange)
 ![License](https://img.shields.io/github/license/GUKUAN/kkfish)
 ![Stars](https://img.shields.io/github/stars/GUKUAN/kkfish)
@@ -77,7 +77,7 @@ Full documentation: [Wiki](https://wiki.bestcraft.cc)
 
 | | |
 |---|---|
-| **Minecraft** | 1.12 – 1.26.2 |
+| **Minecraft** | 1.12 – 1.26.3 |
 | **Platforms** | Spigot, Paper, Folia (single jar) |
 | **Economy** | Vault, PlayerPoints |
 | **Custom items** | ItemsAdder, Oraxen, Nexo, CraftEngine |
