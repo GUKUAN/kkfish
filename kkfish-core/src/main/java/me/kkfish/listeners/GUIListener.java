@@ -263,6 +263,8 @@ public class GUIListener implements Listener {
                 return "reward_preview";
             case SELL_GUI:
                 return "sell_gui";
+            case ROD_SHOP:
+                return "rod_shop";
             default:
                 return null;
         }
