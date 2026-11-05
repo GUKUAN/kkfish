@@ -89,6 +89,9 @@ public class GUI {
 
     public void reloadMenuConfigs() {
         menuLoader.loadAllMenus();
+        // 菜单配置重新载入后，两个底座物品缓存也得跟着重建，不然还用着旧名字
+        rodShopHandler.buildRodItemCache();
+        hookMaterialHandler.buildHookItemCache();
         guiListener.reloadDisplayNameMap();
     }
 

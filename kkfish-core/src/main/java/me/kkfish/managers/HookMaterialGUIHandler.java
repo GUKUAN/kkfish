@@ -87,7 +87,10 @@ public class HookMaterialGUIHandler {
         }
         ItemMeta meta = item.getItemMeta();
 
-        String displayNameConfig = menuConfig.getItems().values().iterator().next().getDisplayName();
+        String displayNameConfig = menuConfig.getNameTemplate("hook_material_items");
+        if (displayNameConfig == null) {
+            displayNameConfig = displayName;
+        }
         if (displayNameConfig.startsWith("i18n:")) {
             displayNameConfig = messageManager.getMessageWithoutPrefix(displayNameConfig.substring(5), displayNameConfig);
         }
@@ -272,7 +275,17 @@ public class HookMaterialGUIHandler {
             lore.add(replacedLine);
         }
 
-        meta.setDisplayName(baseDisplayName);
+        String nameTemplate = itemConfig.getDisplayName();
+        if (nameTemplate == null || nameTemplate.isEmpty()) {
+            nameTemplate = baseDisplayName;
+        }
+        if (nameTemplate.startsWith("i18n:")) {
+            nameTemplate = messageManager.getMessageWithoutPrefix(player, nameTemplate.substring(5), nameTemplate);
+        }
+        nameTemplate = nameTemplate.replace("%hook_name%", displayName);
+        nameTemplate = ChatColor.translateAlternateColorCodes('&', nameTemplate);
+        nameTemplate = CustomItemHook.replaceFontImages(nameTemplate);
+        meta.setDisplayName(nameTemplate);
         meta.setLore(lore);
         item.setItemMeta(meta);
 

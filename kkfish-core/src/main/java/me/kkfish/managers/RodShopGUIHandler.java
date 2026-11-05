@@ -100,7 +100,10 @@ public class RodShopGUIHandler {
         ItemMeta meta = item.getItemMeta();
 
         // 从菜单配置获取显示名称模板
-        String displayNameConfig = menuConfig.getItems().values().iterator().next().getDisplayName();
+        String displayNameConfig = menuConfig.getNameTemplate("rod_shop_items");
+        if (displayNameConfig == null) {
+            displayNameConfig = displayName;
+        }
         if (displayNameConfig.startsWith("i18n:")) {
             displayNameConfig = messageManager.getMessageWithoutPrefix(displayNameConfig.substring(5), displayNameConfig);
         }
@@ -294,7 +297,17 @@ public class RodShopGUIHandler {
             lore.add(replacedLine);
         }
 
-        meta.setDisplayName(baseDisplayName);
+        String nameTemplate = itemConfig.getDisplayName();
+        if (nameTemplate == null || nameTemplate.isEmpty()) {
+            nameTemplate = baseDisplayName;
+        }
+        if (nameTemplate.startsWith("i18n:")) {
+            nameTemplate = messageManager.getMessageWithoutPrefix(player, nameTemplate.substring(5), nameTemplate);
+        }
+        nameTemplate = nameTemplate.replace("%rod_name%", displayName);
+        nameTemplate = ChatColor.translateAlternateColorCodes('&', nameTemplate);
+        nameTemplate = CustomItemHook.replaceFontImages(nameTemplate);
+        meta.setDisplayName(nameTemplate);
         meta.setLore(lore);
         item.setItemMeta(meta);
 

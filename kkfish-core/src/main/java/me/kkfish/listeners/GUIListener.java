@@ -222,7 +222,7 @@ public class GUIListener implements Listener {
             return false;
         }
         
-        GUIMenuLoader.MenuConfig.MenuItem clickedItem = findItemBySlot(menuConfig, slot);
+        GUIMenuLoader.MenuConfig.MenuItem clickedItem = findItemBySlot(menuConfig, slot, event.isLeftClick());
         if (clickedItem == null) {
             return false;
         }
@@ -236,13 +236,22 @@ public class GUIListener implements Listener {
         return true;
     }
     
-    private GUIMenuLoader.MenuConfig.MenuItem findItemBySlot(GUIMenuLoader.MenuConfig menuConfig, int slot) {
+    private GUIMenuLoader.MenuConfig.MenuItem findItemBySlot(GUIMenuLoader.MenuConfig menuConfig, int slot, boolean leftClick) {
+        GUIMenuLoader.MenuConfig.MenuItem first = null;
         for (GUIMenuLoader.MenuConfig.MenuItem item : menuConfig.getItems().values()) {
-            if (item.getSlots().contains(slot)) {
+            if (!item.getSlots().contains(slot)) {
+                continue;
+            }
+            if (first == null) {
+                first = item;
+            }
+            // 边框这类无命令项常和按钮共用槽位，优先把点击交给配了动作的那一项
+            java.util.List<String> actions = leftClick ? item.getLeftClickActions() : item.getRightClickActions();
+            if (actions != null && !actions.isEmpty()) {
                 return item;
             }
         }
-        return null;
+        return first;
     }
     
     private String getMenuNameFromType(GUI.GUIType type) {

@@ -39,6 +39,7 @@ public class GUIMenuLoader {
             "main_menu",
             "fish_dex",
             "hook_material",
+            "rod_shop",
             "fish_record",
             "help_gui",
             "competition_category",
@@ -125,6 +126,12 @@ public class GUIMenuLoader {
         
         public MenuItem getItem(String itemId) {
             return items.get(itemId);
+        }
+
+        /** 按菜单项 id 取显示名模板，取不到返回 null */
+        public String getNameTemplate(String itemId) {
+            MenuItem item = getItem(itemId);
+            return item == null ? null : item.getDisplayName();
         }
         
         public static class MenuItem {

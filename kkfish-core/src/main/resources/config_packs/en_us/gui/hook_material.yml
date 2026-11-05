@@ -13,7 +13,8 @@ items:
     left_click_commands: []
     right_click_commands: []
   'hook_material_items':
-    material: '%hook_material_item%'
+    # 实际材质取自鱼钩配置里的 material，这里放一个合法默认值
+    material: stick
     slots:
       - 10-16
       - 19-25

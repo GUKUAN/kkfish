@@ -13,7 +13,8 @@ items:
     left_click_commands: []
     right_click_commands: []
   'rod_shop_items':
-    material: '%rod_material_item%'
+    # 展示物品的实际材质取自 rods.yml 的 rods.<id>.material，这里放一个合法默认值
+    material: fishing_rod
     slots:
       - 10-16
       - 19-25
