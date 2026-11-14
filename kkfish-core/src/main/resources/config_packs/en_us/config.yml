@@ -130,6 +130,8 @@ fishing-settings:
       # Minimum increase speed ratio (never lower than this regardless of rarity)
       min-increase-speed-ratio: 0.45
   # Rarity system settings (higher weight = more common fish of that rarity)
+  # Base AuraSkills fishing XP awarded per catch (default: 5.0)
+  aura-skills-base-xp: 5.0
   rarity:
     common:
       # Rarity display name (color codes & supported)

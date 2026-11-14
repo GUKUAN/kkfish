@@ -1970,6 +1970,10 @@ public class Config {
         return mainConfig.getDouble("fishing-settings.rarity." + rarityName + ".aura-skills-xp-multiplier", 1.0);
     }
 
+    public double getAuraSkillsBaseXp() {
+        return mainConfig.getDouble("fishing-settings.aura-skills-base-xp", 5.0);
+    }
+
     public String getRarityDisplayName(String rarityName) {
         return mainConfig.getString("fishing-settings.rarity." + rarityName + ".display-name", rarityName);
     }

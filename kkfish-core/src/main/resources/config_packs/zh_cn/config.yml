@@ -129,6 +129,8 @@ fishing-settings:
       # 最小增加速度比例（无论稀有度多高，增加速度不会低于此比例）
       min-increase-speed-ratio: 0.45
   # 稀有度系统配置（权重值越大，该稀有度的鱼出现概率越高）
+  # 每次捕获获得的 AuraSkills 钓鱼基础经验（默认：5.0）
+  aura-skills-base-xp: 5.0
   rarity:
     common:
       # 稀有度显示名称（支持颜色代码 &）

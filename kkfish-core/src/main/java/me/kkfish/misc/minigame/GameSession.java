@@ -33,6 +33,8 @@ public class GameSession extends BukkitRunnable {
     public final WaterType waterType;
     public final String targetFish;
     public final double fishSize;
+    public final double fishSizeMin;
+    public final double fishSizeMax;
     public final String fishLevel;
 
     private double difficulty;
@@ -89,8 +91,8 @@ public class GameSession extends BukkitRunnable {
 
         // 4. 读取鱼的尺寸/振幅配置
         org.bukkit.configuration.file.FileConfiguration fishConfig = config.getFishConfig();
-        double fishSizeMin = fishConfig.getDouble("fish." + targetFish + ".min-size", 1.0);
-        double fishSizeMax = fishConfig.getDouble("fish." + targetFish + ".max-size", 3.0);
+        this.fishSizeMin = fishConfig.getDouble("fish." + targetFish + ".min-size", 1.0);
+        this.fishSizeMax = fishConfig.getDouble("fish." + targetFish + ".max-size", 3.0);
         double movementAmplitude = fishConfig.getDouble("fish." + targetFish + ".movement-amplitude", 1.0);
 
         // 5. 计算最终尺寸（应用 sizeBonus）

@@ -1,15 +1,14 @@
 package me.kkfish.handlers;
 
 import org.bukkit.Bukkit;
-import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import me.kkfish.kkfish;
 import me.kkfish.managers.Config;
 
 import java.lang.reflect.*;
+import java.util.Locale;
 import java.util.UUID;
 
 public class AuraSkills {
@@ -19,7 +18,9 @@ public class AuraSkills {
     private boolean isAuraSkillsEnabled = false;
     private Object auraSkillsApi = null; // 用Object避免硬依赖
     private Class<?> auraSkillsApiClass = null;
+    private Class<?> skillsUserClass = null;
     private Class<?> skillsClass = null;
+    private Class<?> skillClass = null;
     private Object fishingSkill = null;
 
     public AuraSkills(kkfish plugin) {
@@ -61,7 +62,15 @@ public class AuraSkills {
     private boolean setupApiConnection() {
         try {
             auraSkillsApiClass = Class.forName("dev.aurelium.auraskills.api.AuraSkillsApi");
+            try {
+                skillsUserClass = Class.forName("dev.aurelium.auraskills.api.user.SkillsUser");
+            } catch (ClassNotFoundException ignored) {
+            }
             skillsClass = Class.forName("dev.aurelium.auraskills.api.skill.Skills");
+            try {
+                skillClass = Class.forName("dev.aurelium.auraskills.api.skill.Skill");
+            } catch (ClassNotFoundException ignored) {
+            }
             
             Method getApiMethod = auraSkillsApiClass.getMethod("get");
             auraSkillsApi = getApiMethod.invoke(null);
@@ -85,7 +94,8 @@ public class AuraSkills {
         return false;
     }
 
-    public double addFishingExperience(Player player, double fishSize, int fishRarity) {
+    public double addFishingExperience(Player player, double fishSize, double fishSizeMin,
+                                       double fishSizeMax, String fishLevel) {
         if (player == null) return -1;
 
         if (!checkAuraSkillsConnection()) return -1;
@@ -94,10 +104,9 @@ public class AuraSkills {
             Object user = getUserObject(player);
             if (user == null) return -1;
             
-            double baseXp = 5.0;
-            double sizeMultiplier = Math.max(1.0, fishSize / 100.0);
-            double rarityMultiplier = getRarityMultiplier(fishRarity);
-            double xpToAdd = baseXp * sizeMultiplier * rarityMultiplier;
+            double baseXp = config.getAuraSkillsBaseXp();
+            double rarityMultiplier = getRarityMultiplier(fishLevel);
+            double xpToAdd = calculateFishingXp(baseXp, fishSize, fishSizeMin, fishSizeMax, rarityMultiplier);
             
             if (addSkillXp(user, xpToAdd)) {
                 config.debugLog(plugin.getMessageManager().getMessageWithoutPrefix("aura_skills_added_xp", "Added %.1f fishing experience to %s", xpToAdd, player.getName()));
@@ -119,8 +128,8 @@ public class AuraSkills {
         if (user == null) return 0;
         
         try {
-            Class<?> userClass = user.getClass();
-            Method getLevelMethod = userClass.getMethod("getSkillLevel", skillsClass);
+            Class<?> userClass = skillsUserClass != null ? skillsUserClass : user.getClass();
+            Method getLevelMethod = findSkillMethod(userClass, "getSkillLevel");
             int level = (int) getLevelMethod.invoke(user, fishingSkill);
             config.debugLog(plugin.getMessageManager().getMessageWithoutPrefix("aura_skills_fishing_level", "%s fishing level: %s", player.getName(), level));
             return level;
@@ -156,34 +165,36 @@ public class AuraSkills {
     
     private boolean addSkillXp(Object user, double xp) {
         try {
-            Class<?> userClass = user.getClass();
-            
+            Class<?> userClass = skillsUserClass != null ? skillsUserClass : user.getClass();
+            if (skillClass != null) {
+                try {
+                    Method addXpMethod = findSkillMethod(userClass, "addSkillXp", skillClass, double.class);
+                    addXpMethod.invoke(user, fishingSkill, xp);
+                    return true;
+                } catch (NoSuchMethodException ignored) {
+                }
+            }
+
             try {
-                Method addXpMethod = userClass.getMethod("addSkillXp", skillsClass, double.class);
+                Method addXpMethod = findSkillMethod(userClass, "addSkillXp", skillsClass, double.class);
                 addXpMethod.invoke(user, fishingSkill, xp);
                 return true;
-            } catch (NoSuchMethodException e) {
-                for (Method m : userClass.getMethods()) {
-                    if (m.getName().equals("addSkillXp")) {
-                        Class<?>[] paramTypes = m.getParameterTypes();
-                        if (paramTypes.length == 2) {
-                            if (isNumber(paramTypes[1])) {
-                                Object[] args = createMethodArgs(paramTypes[1], xp);
-                                if (args != null) {
-                                    m.invoke(user, args);
-                                    return true;
-                                }
-                            }
-                        } else if (paramTypes.length == 3) {
-                            if (isNumber(paramTypes[1]) && paramTypes[2] == boolean.class) {
-                                Object[] args = createMethodArgs(paramTypes[1], xp, true);
-                                if (args != null) {
-                                    m.invoke(user, args);
-                                    return true;
-                                }
-                            }
-                        }
-                    }
+            } catch (NoSuchMethodException ignored) {
+            }
+
+            for (Method method : userClass.getMethods()) {
+                Class<?>[] paramTypes = method.getParameterTypes();
+                if (!method.getName().equals("addSkillXp") || paramTypes.length < 2
+                        || !paramTypes[0].isInstance(fishingSkill) || !isNumber(paramTypes[1])) {
+                    continue;
+                }
+                if (paramTypes.length == 2) {
+                    method.invoke(user, createMethodArgs(paramTypes[1], xp));
+                    return true;
+                }
+                if (paramTypes.length == 3 && paramTypes[2] == boolean.class) {
+                    method.invoke(user, createMethodArgs(paramTypes[1], xp, true));
+                    return true;
                 }
             }
         } catch (Exception e) {
@@ -191,11 +202,25 @@ public class AuraSkills {
         }
         return false;
     }
-    
+
+    static Method findSkillMethod(Class<?> userClass, String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+        return userClass.getMethod(methodName, parameterTypes);
+    }
+
+    private Method findSkillMethod(Class<?> userClass, String methodName) throws NoSuchMethodException {
+        if (skillClass != null) {
+            try {
+                return findSkillMethod(userClass, methodName, skillClass);
+            } catch (NoSuchMethodException ignored) {
+            }
+        }
+        return findSkillMethod(userClass, methodName, skillsClass);
+    }
+
     private boolean isNumber(Class<?> type) {
         return type == double.class || type == float.class || type == int.class || type == long.class;
     }
-    
+
     private Object[] createMethodArgs(Class<?> numType, double value, Object... extras) {
         Object numValue;
         if (numType == int.class) {
@@ -207,7 +232,7 @@ public class AuraSkills {
         } else {
             numValue = value;
         }
-        
+
         Object[] args = new Object[2 + extras.length];
         args[0] = fishingSkill;
         args[1] = numValue;
@@ -221,17 +246,22 @@ public class AuraSkills {
         return bonus;
     }
 
-    private double getRarityMultiplier(int rarity) {
-        String rarityName = getRarityNameByLevel(rarity);
-        return config.getRarityAuraSkillsXpMultiplier(rarityName);
+    private double getRarityMultiplier(String fishLevel) {
+        return config.getRarityAuraSkillsXpMultiplier(getRarityNameByLevel(fishLevel));
     }
 
-    private String getRarityNameByLevel(int rarity) {
-        if (rarity >= 5) return "legendary";
-        if (rarity == 4) return "epic";
-        if (rarity == 3) return "rare";
-        if (rarity == 2) return "uncommon";
-        return "common";
+    static double calculateFishingXp(double baseXp, double fishSize, double fishSizeMin,
+                                     double fishSizeMax, double rarityMultiplier) {
+        double averageFishSize = (fishSizeMin + fishSizeMax) / 2.0;
+        double sizeMultiplier = averageFishSize > 0 ? fishSize / averageFishSize : 1.0;
+        return baseXp * sizeMultiplier * rarityMultiplier;
+    }
+
+    static String getRarityNameByLevel(String fishLevel) {
+        if (fishLevel == null || fishLevel.trim().isEmpty()) return "common";
+        String rarityName = fishLevel.trim().toLowerCase(Locale.ROOT);
+        int weightSeparator = rarityName.indexOf(':');
+        return weightSeparator >= 0 ? rarityName.substring(0, weightSeparator).trim() : rarityName;
     }
 
     public boolean isAuraSkillsEnabled() {

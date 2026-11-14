@@ -154,8 +154,8 @@ public class MinigameManager {
                             
                             try {
                                 if (plugin.getAuraSkills() != null) {
-                                    int fishRarity = getRarityValue(session.fishLevel);
-                                    tempFishingXp = plugin.getAuraSkills().addFishingExperience(player, session.fishSize, fishRarity);
+                                    tempFishingXp = plugin.getAuraSkills().addFishingExperience(player, session.fishSize,
+                                            session.fishSizeMin, session.fishSizeMax, session.fishLevel);
                                     tempHasAuraSkills = (tempFishingXp > 0);
                                 }
                             } catch (Exception e) {
