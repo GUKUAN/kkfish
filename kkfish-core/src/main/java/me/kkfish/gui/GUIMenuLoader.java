@@ -154,10 +154,10 @@ public class GUIMenuLoader {
                 this.lore = section.getStringList("lore");
                 List<String> tempLeftActions = section.getStringList("left_click_actions");
                 List<String> tempRightActions = section.getStringList("right_click_actions");
-                if (tempLeftActions.isEmpty()) {
+                if (!section.contains("left_click_actions")) {
                     tempLeftActions = section.getStringList("left_click_commands");
                 }
-                if (tempRightActions.isEmpty()) {
+                if (!section.contains("right_click_actions")) {
                     tempRightActions = section.getStringList("right_click_commands");
                 }
                 this.leftClickActions = tempLeftActions;

@@ -55,12 +55,7 @@ public class FishValueCalculator {
         double valueBonus = 1.0;
         if (player != null) {
             String hookMaterial = plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString());
-            String hookType = hookMaterial != null ? hookMaterial.toLowerCase() : "wood";
-            switch (hookType) {
-                case "iron": valueBonus = 1.1; break;
-                case "gold": valueBonus = 1.2; break;
-                case "diamond": valueBonus = 1.3; break;
-            }
+            valueBonus = config.getHookValueMultiplier(hookMaterial);
         }
 
         double finalValue = baseValue * sizeMultiplier * rarityMultiplier * valueBonus;
@@ -101,12 +96,7 @@ public class FishValueCalculator {
         double valueBonus = 1.0;
         if (player != null) {
             String hookMaterial = plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString());
-            String hookType = hookMaterial != null ? hookMaterial.toLowerCase() : "wood";
-            switch (hookType) {
-                case "iron": valueBonus = 1.1; break;
-                case "gold": valueBonus = 1.2; break;
-                case "diamond": valueBonus = 1.3; break;
-            }
+            valueBonus = config.getHookValueMultiplier(hookMaterial);
         }
 
         double finalValue = baseValue * sizeMultiplier * rarityMultiplier * valueBonus;

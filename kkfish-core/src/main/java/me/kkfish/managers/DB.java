@@ -383,7 +383,7 @@ public class DB {
         final double locY = player.getLocation().getY();
         final double locZ = player.getLocation().getZ();
         final String worldName = player.getWorld().getName();
-        final boolean isLegendary = fishLevel != null && fishLevel.contains(plugin.getMessageManager().getMessageWithoutPrefix("rarity_name.legendary", "legendary"));
+        final boolean isLegendary = "legendary".equals(plugin.getCustomConfig().getRarityNameByLevel(fishLevel));
 
         writeExecutor.execute(() -> {
             try {

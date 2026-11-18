@@ -46,6 +46,7 @@ public class GameSession extends BukkitRunnable {
     private double greenBarPos = 0.5;
     private double greenBarVel = 0;
     private double greenBarWidth = 0.3;
+    private int fishIndicatorWidth = 1;
 
     // 进度
     private double progress;
@@ -62,7 +63,13 @@ public class GameSession extends BukkitRunnable {
     private final FishValueCalculator valueCalculator;
 
     public GameSession(kkfish plugin, Player player, Location hookLocation, WaterType waterType,
-                       double chargePercentage, String rodName, String baitName, double rareFishChance) {
+                        double chargePercentage, String rodName, String baitName, double rareFishChance) {
+        this(plugin, player, hookLocation, waterType, chargePercentage, rodName, baitName, rareFishChance,
+                plugin.getCustomConfig().getAvailableFishFromPool(waterType, hookLocation));
+    }
+
+    public GameSession(kkfish plugin, Player player, Location hookLocation, WaterType waterType,
+                       double chargePercentage, String rodName, String baitName, double rareFishChance, java.util.List<String> candidates) {
         this.plugin = plugin;
         this.config = plugin.getCustomConfig();
         this.player = player;
@@ -70,6 +77,7 @@ public class GameSession extends BukkitRunnable {
         this.waterType = waterType;
         this.difficulty = 1.0 - (chargePercentage / 100.0 * 0.3);
         this.cachedRodName = rodName;
+        this.greenBarWidth = getGreenBarWidth(config.getRodFloatAreaSize(rodName));
 
         this.invincibleTicks = 60;
 
@@ -87,28 +95,35 @@ public class GameSession extends BukkitRunnable {
         }
 
         // 3. 选择目标鱼
-        this.targetFish = fishSelector.selectRandomFish();
+        this.targetFish = fishSelector.selectRandomFish(candidates);
+        if (targetFish == null) throw new IllegalArgumentException("当前环境没有可捕获的鱼");
 
         // 4. 读取鱼的尺寸/振幅配置
         org.bukkit.configuration.file.FileConfiguration fishConfig = config.getFishConfig();
-        this.fishSizeMin = fishConfig.getDouble("fish." + targetFish + ".min-size", 1.0);
-        this.fishSizeMax = fishConfig.getDouble("fish." + targetFish + ".max-size", 3.0);
+        this.fishSizeMin = fishConfig.getDouble("fish." + targetFish + ".min-size", 20.0);
+        this.fishSizeMax = fishConfig.getDouble("fish." + targetFish + ".max-size", 60.0);
         double movementAmplitude = fishConfig.getDouble("fish." + targetFish + ".movement-amplitude", 1.0);
+        double activity = config.getFishActivity(targetFish);
 
-        // 5. 计算最终尺寸（应用 sizeBonus）
+        // 5. 计算最终尺寸（应用 sizeBonus）：鱼饵 × 鱼竿 × 鱼钩，最终不突破 max-size
         double sizeBonus = fishSelector.getSizeBonus();
+        sizeBonus *= config.getRodSizeMultiplier(rodName);
+        sizeBonus *= config.getHookSizeMultiplier(plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString()));
         double baseSize = fishSizeMin + random.nextDouble() * (fishSizeMax - fishSizeMin);
-        this.fishSize = Math.min(baseSize * sizeBonus, fishSizeMax);
+        this.fishSize = calculateFishSize(baseSize, sizeBonus, fishSizeMax);
 
         // 6. 选择等级
         this.fishLevel = fishSelector.selectRandomFishLevel(targetFish);
+        if (fishLevel == null) throw new IllegalArgumentException("目标鱼没有有效等级权重");
+        if (!Double.isFinite(difficulty) || difficulty <= 0) difficulty = 1.0;
 
-        // 7. 初始化鱼移动模拟器
-        double initialFishPos = Math.max(0.05, Math.min(0.95, greenBarPos + (random.nextDouble() - 0.5) * 0.1));
-        this.movementSimulator = new FishMovementSimulator(plugin, targetFish, movementAmplitude, random, initialFishPos);
-
-        // 8. 初始化渲染器
+        // 7. 初始化渲染器；鱼指示符宽度同时给进度判定使用
         this.renderer = new MinigameRenderer(plugin, player, waterType);
+        this.fishIndicatorWidth = renderer.getFishIndicatorWidth();
+
+        // 8. 初始化鱼移动模拟器
+        double initialFishPos = Math.max(0.05, Math.min(0.95, greenBarPos + (random.nextDouble() - 0.5) * 0.1));
+        this.movementSimulator = new FishMovementSimulator(plugin, targetFish, movementAmplitude, activity, random, initialFishPos);
 
         // 9. 初始化价值计算器
         this.valueCalculator = new FishValueCalculator(plugin, player, targetFish, fishSize, fishSizeMax, random);
@@ -116,6 +131,13 @@ public class GameSession extends BukkitRunnable {
         // 10. 初始进度
         int initialProgress = config.getMainConfig().getInt("fishing-settings.initial-progress", 10);
         this.progress = initialProgress / 100.0;
+    }
+
+    /**
+     * 尺寸结算：倍率叠加后仍以鱼配置的 max-size 为硬上限。
+     */
+    static double calculateFishSize(double baseSize, double sizeBonus, double maxSize) {
+        return Math.min(baseSize * sizeBonus, maxSize);
     }
 
     public void start() {
@@ -137,7 +159,7 @@ public class GameSession extends BukkitRunnable {
         }
         try {
             updateGreenBar();
-            movementSimulator.update(greenBarPos, greenBarWidth);
+            movementSimulator.update(greenBarPos, greenBarWidth, fishIndicatorWidth);
             updateProgress();
             renderer.render(greenBarPos, greenBarWidth, movementSimulator.getFishPos(), progress);
 
@@ -164,6 +186,7 @@ public class GameSession extends BukkitRunnable {
      * 更新绿条位置（重力 + 摩擦 + 边界反弹）。
      */
     private void updateGreenBar() {
+        greenBarWidth = getGreenBarWidth(config.getRodFloatAreaSize(cachedRodName));
         double gravity = 0.007;
         greenBarVel -= gravity;
 
@@ -189,11 +212,12 @@ public class GameSession extends BukkitRunnable {
 
         greenBarPos += greenBarVel;
 
-        if (greenBarPos < 0) {
-            greenBarPos = 0;
+        double halfWidth = greenBarWidth / 2;
+        if (greenBarPos < halfWidth) {
+            greenBarPos = halfWidth;
             greenBarVel = Math.abs(greenBarVel) * 0.3;
-        } else if (greenBarPos > 1) {
-            greenBarPos = 1;
+        } else if (greenBarPos > 1 - halfWidth) {
+            greenBarPos = 1 - halfWidth;
             greenBarVel = -Math.abs(greenBarVel) * 0.3;
         }
     }
@@ -202,16 +226,14 @@ public class GameSession extends BukkitRunnable {
      * 更新进度条（鱼在绿条内增加，否则减少；无敌期间不衰减）。
      */
     private void updateProgress() {
-        double baseWidth = 0.15;
         int floatAreaSize = config.getRodFloatAreaSize(cachedRodName);
-        greenBarWidth = baseWidth + (floatAreaSize - 3) * 0.03;
-        greenBarWidth = Math.max(0.08, Math.min(0.4, greenBarWidth));
+        greenBarWidth = getGreenBarWidth(floatAreaSize);
 
         boolean enableRarityImpact = config.getMainConfig().getBoolean("fishing-settings.progress-bar.rarity-impact.enabled", true);
         double raritySlowdownFactor = 1.0;
 
         if (enableRarityImpact) {
-            int fishRarity = config.getFishRarity(targetFish);
+            int fishRarity = config.getRarityOrder(config.getRarityNameByLevel(fishLevel));
             double slowdownPerLevel = config.getMainConfig().getDouble("fishing-settings.progress-bar.rarity-impact.slowdown-per-rarity-level", 0.15);
             double minSpeedRatio = config.getMainConfig().getDouble("fishing-settings.progress-bar.rarity-impact.min-increase-speed-ratio", 0.45);
 
@@ -219,7 +241,7 @@ public class GameSession extends BukkitRunnable {
             raritySlowdownFactor = Math.max(minSpeedRatio, raritySlowdownFactor);
         }
 
-        boolean isFishInGreenBar = Math.abs(greenBarPos - movementSimulator.getFishPos()) < greenBarWidth / 2;
+        boolean isFishInGreenBar = MinigameField.inBar(movementSimulator.getFishPos(), greenBarPos, greenBarWidth, fishIndicatorWidth);
 
         if (invincibleTicks > 0) {
             invincibleTicks--;
@@ -227,10 +249,6 @@ public class GameSession extends BukkitRunnable {
                 double increaseSpeed = config.getMainConfig().getDouble("fishing-settings.progress-bar.increase-speed", 0.015);
                 progress += increaseSpeed * (1.0 / difficulty) * raritySlowdownFactor;
                 if (progress > 1) progress = 1;
-            } else {
-                double decreaseSpeed = config.getMainConfig().getDouble("fishing-settings.progress-bar.decrease-speed", 0.01);
-                progress -= decreaseSpeed * difficulty;
-                if (progress < 0) progress = 0;
             }
             return;
         }
@@ -244,6 +262,10 @@ public class GameSession extends BukkitRunnable {
             progress -= decreaseSpeed * difficulty;
             if (progress < 0) progress = 0;
         }
+    }
+
+    static double getGreenBarWidth(int floatAreaSize) {
+        return Math.max(0, Math.min(100, floatAreaSize)) / 100.0;
     }
 
     private void endGame(boolean success) {
@@ -261,6 +283,10 @@ public class GameSession extends BukkitRunnable {
 
     public ItemStack createFishItem() {
         return plugin.getFish().createFishItem(targetFish, false, this.player, this.fishSize, this.fishLevel, valueCalculator.getCachedValue());
+    }
+
+    public String getRodName() {
+        return cachedRodName;
     }
 
     public boolean isCancelled() {

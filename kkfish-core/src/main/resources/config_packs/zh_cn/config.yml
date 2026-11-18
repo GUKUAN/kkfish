@@ -105,6 +105,8 @@ fishing-settings:
   bite-check-delay-min: 5000
   # 咬钩检查最大延迟（毫秒）
   bite-check-delay-max: 15000
+  # 诱鱼速度结算后的最小咬钩延迟（tick，20 tick = 1 秒）
+  min-bite-delay: 20
   # 咬钩提示超时时间（秒）
   bite-hint-timeout: 2
   # 鱼逃跑机制，影响两处逻辑：
@@ -393,6 +395,9 @@ item-templates:
         &c┃ 耐久度: &f%durability%
         &d┃ 充能速度: &f%charge_speed%
         &5┃ 咬钩加成: &f%bite_rate_bonus%
+        &5┃ 稀有鱼几率: &f%rare_fish_chance%
+        &d┃ 诱鱼速度: &f%lure_speed%
+        &d┃ 尺寸倍率: &f%size_multiplier%
         &6┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
         &e✨ 特殊效果:
         &7➤ %effects%
@@ -402,7 +407,9 @@ item-templates:
         &b🎣 鱼竿核心属性:
         &b├─ 难度: %difficulty% | 浮标范围: %float_area%
         &c├─ 耐久度: %durability%
-        &d└─ 充能速度: %charge_speed% | 咬钩加成: %bite_rate_bonus%
+        &d├─ 充能速度: %charge_speed% | 咬钩加成: %bite_rate_bonus%
+        &5├─ 稀有鱼几率: %rare_fish_chance%
+        &d└─ 诱鱼速度: %lure_speed% | 尺寸倍率: %size_multiplier%
         &e✨ 特殊效果: %effects%
   # 鱼钩物品模板
   hook-templates:

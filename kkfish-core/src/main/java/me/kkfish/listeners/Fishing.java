@@ -5,9 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -32,7 +30,6 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scoreboard.Scoreboard;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import me.kkfish.competition.CompetitionConfig;
@@ -44,10 +41,9 @@ import me.kkfish.managers.GUI;
 import me.kkfish.managers.DB;
 import me.kkfish.misc.MessageManager;
 import me.kkfish.misc.SoundManager;
-import me.kkfish.misc.minigame.MinigameManager;
 import me.kkfish.utils.ActionBarUtil;
 import me.kkfish.utils.ActionBarUtil.MessageType;
-import me.kkfish.utils.XSeriesUtil;
+import me.kkfish.utils.RodLoreUtil;
 
 public class Fishing implements Listener {
 
@@ -248,10 +244,7 @@ public class Fishing implements Listener {
 
         if (plugin.getCmd().hasFishingRod(player)) {
             // 优先主手，主手没有则取副手
-            ItemStack rod = player.getInventory().getItemInMainHand();
-            if (rod == null || rod.getType() == Material.AIR) {
-                rod = player.getInventory().getItemInOffHand();
-            }
+            ItemStack rod = plugin.getCustomConfig().getPlayerRod(player);
                 
             if (fish.isPlayerInMinigame(player.getUniqueId())) {
                 return;
@@ -380,6 +373,9 @@ public class Fishing implements Listener {
         Config config = plugin.getCustomConfig();
         MessageManager messageManager = kkfish.getInstance().getMessageManager();
         
+        if (rod == null) return;
+        boolean offHand = config.getRodType(player.getInventory().getItemInMainHand()) == null
+                && rod.equals(player.getInventory().getItemInOffHand());
         String rodType = config.getRodType(rod);
         int maxDurability = config.getRodDurability(rodType);
         
@@ -420,29 +416,7 @@ public class Fishing implements Listener {
             PersistentDataContainer pdc = meta.getPersistentDataContainer();
             pdc.set(new NamespacedKey(plugin, "rod_durability"), PersistentDataType.INTEGER, currentDurability);
             
-            String templateName = config.getRodTemplateName(rodType);
-            String template = config.getRodTemplate(templateName);
-            if (template == null || template.isEmpty()) {
-                template = "&6[===== 鱼竿属性 =====]\n" +
-                          "&b│ 难度系数: %difficulty%\n" +
-                          "&a│ 浮标区域: %float_area%\n" +
-                          "&c│ %rod_durability%: %durability%\n" +
-                          "&d│ 充能速度: %charge_speed%\n" +
-                          "&d│ 咬钩几率加成: %bite_rate_bonus%\n" +
-                          "&6[====================]\n" +
-                          " \n" +
-                          "&e✨ 特殊效果:\n" +
-                          "%effects%\n" +
-                          " \n" +
-                          "&7钓鱼快乐~";
-            }
-            
-            java.util.Map<String, String> variables = new java.util.HashMap<>();
-            variables.put("%name%", meta.getDisplayName());
-            variables.put("%difficulty%", String.valueOf(config.getRodDifficulty(rodType)));
-            variables.put("%float_area%", String.valueOf(config.getRodFloatAreaSize(rodType)));
-            variables.put("%rod_durability%", messageManager.getMessageWithoutPrefix("rod_durability", "Durability"));
-            
+            String durabilityText;
             if (maxDurability > 0) {
                 String unit = messageManager.getMessageWithoutPrefix("rod_durability_unit", "points");
                 int progressBarLength = 16;
@@ -454,7 +428,7 @@ public class Fishing implements Listener {
                 } else if (progressPercentage < 0.5) {
                     durabilityColor = ChatColor.YELLOW;
                 }
-                
+
                 StringBuilder barBuilder = new StringBuilder();
                 barBuilder.append(" ");
                 barBuilder.append(ChatColor.GRAY).append("[");
@@ -468,62 +442,22 @@ public class Fishing implements Listener {
                 }
                 barBuilder.append(ChatColor.GRAY);
                 barBuilder.append(" ]");
-                
-                variables.put("%durability%", currentDurability + unit + barBuilder.toString());
+
+                durabilityText = currentDurability + unit + barBuilder.toString();
             } else {
-                variables.put("%durability%", messageManager.getMessageWithoutPrefix("rod_durability_infinite", "Unlimited durability"));
+                durabilityText = messageManager.getMessageWithoutPrefix("rod_durability_infinite", "Unlimited durability");
             }
-            
-            double chargeSpeed = config.getRodChargeSpeed(rodType);
-            String speedText;
-            if (chargeSpeed != 1.0) {
-                String speedType = chargeSpeed > 1.0 ? 
-                        messageManager.getMessageWithoutPrefix("rod_charge_speed_fast", "faster") : 
-                        messageManager.getMessageWithoutPrefix("rod_charge_speed_slow", "slower");
-                speedText = String.format("%.1f倍 (" + speedType + ")", chargeSpeed);
-            } else {
-                speedText = messageManager.getMessageWithoutPrefix("rod_charge_speed_normal", "normal");
-            }
-            variables.put("%charge_speed%", speedText);
-            
-            double biteRateBonus = config.getRodBiteRateBonus(rodType);
-            variables.put("%bite_rate_bonus%", biteRateBonus > 0 ? 
-                    String.format("+%.1f%%", biteRateBonus * 100) : 
-                    messageManager.getMessageWithoutPrefix("rod_bite_rate_bonus_none", "none"));
-            
-            java.util.List<String> effects = config.getRodEffects(rodType);
-            StringBuilder effectsBuilder = new StringBuilder();
-            if (!effects.isEmpty()) {
-                for (String effect : effects) {
-                    effectsBuilder.append("&7  └─ &r").append(org.bukkit.ChatColor.translateAlternateColorCodes('&', effect)).append("\n");
-                }
-            } else {
-                effectsBuilder.append("&7  └─ " + messageManager.getMessageWithoutPrefix("rod_effects_none", "No special effects") + "\n");
-            }
-            variables.put("%effects%", effectsBuilder.toString());
-            
-            String formattedTemplate = template;
-            for (java.util.Map.Entry<String, String> entry : variables.entrySet()) {
-                formattedTemplate = formattedTemplate.replace(entry.getKey(), entry.getValue());
-            }
-            
-            java.util.List<String> newLore = new java.util.ArrayList<>();
-            String[] lines = formattedTemplate.split("\\n");
-            for (String line : lines) {
-                if (!line.trim().isEmpty()) {
-                    newLore.add(org.bukkit.ChatColor.translateAlternateColorCodes('&', line));
-                } else {
-                    newLore.add("");
-                }
-            }
-            
+
+            java.util.List<String> newLore = RodLoreUtil.build(config, messageManager, rodType, meta.getDisplayName(), durabilityText);
             meta.setLore(newLore);
             rod.setItemMeta(meta);
-            player.getInventory().setItemInMainHand(rod);
+            if (offHand) player.getInventory().setItemInOffHand(rod);
+            else player.getInventory().setItemInMainHand(rod);
         }
         
         if (currentDurability <= 0) {
-            player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
+            if (offHand) player.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
+            else player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
             player.sendMessage(messageManager.getMessage("rod_broken", "Your fishing rod is broken!"));
             return;
         }
@@ -605,7 +539,9 @@ public class Fishing implements Listener {
             event.setCancelled(true);
             
             try {
-                ItemStack mainHandItem = player.getInventory().getItemInMainHand().clone();
+                boolean offHand = !player.getInventory().getItemInMainHand().isSimilar(item)
+                        && player.getInventory().getItemInOffHand().isSimilar(item);
+                ItemStack mainHandItem = (offHand ? player.getInventory().getItemInOffHand() : player.getInventory().getItemInMainHand()).clone();
                 
                 if (mainHandItem != null && mainHandItem.getType() != org.bukkit.Material.AIR && mainHandItem.isSimilar(item)) {
                     int newAmount = mainHandItem.getAmount() - 1;
@@ -614,21 +550,18 @@ public class Fishing implements Listener {
                     
                     if (newAmount > 0) {
                         updatedItem.setAmount(newAmount);
-                        player.getInventory().setItemInMainHand(updatedItem);
+                        if (offHand) player.getInventory().setItemInOffHand(updatedItem);
+                        else player.getInventory().setItemInMainHand(updatedItem);
                     } else {
-                        player.getInventory().setItemInMainHand(null);
+                        if (offHand) player.getInventory().setItemInOffHand(null);
+                        else player.getInventory().setItemInMainHand(null);
                     }
                 }
             } catch (Exception e) {
                 kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("fishing_eat_error", "Error eating fish: %s", e.getMessage()));
             }
             
-            String fishName = null;
-            
-            String displayName = meta.getDisplayName();
-            if (displayName != null && !displayName.isEmpty()) {
-                fishName = ChatColor.stripColor(displayName);
-            }
+            String fishName = plugin.getCustomConfig().getItemConfigId(item, "fish", "fish_name");
             
             int foodLevelIncrease = 4;
             int saturationIncrease = 2;

@@ -1,7 +1,6 @@
 package me.kkfish.utils;
 
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,6 +61,12 @@ public class ConfigUpgrade {
         String oldVersion = target.getString(VERSION_KEY, UNVERSIONED);
         int added = 0;
 
+        if (target.isString("timezone")) {
+            String timezone = target.getString("timezone");
+            target.set("timezone", null);
+            target.set("timezone.value", timezone);
+        }
+
         if (compareVersions(oldVersion, currentVersion) < 0) {
             for (Migration m : MIGRATIONS) {
                 if (compareVersions(oldVersion, m.introducedIn) < 0) {
@@ -85,6 +90,17 @@ public class ConfigUpgrade {
         int added = 0;
         for (String key : template.getKeys(true)) {
             if (!target.contains(key)) {
+                boolean blocked = false;
+                int separator = key.lastIndexOf('.');
+                while (separator > 0) {
+                    String parent = key.substring(0, separator);
+                    if (target.contains(parent) && !target.isConfigurationSection(parent)) {
+                        blocked = true;
+                        break;
+                    }
+                    separator = key.lastIndexOf('.', separator - 1);
+                }
+                if (blocked) continue;
                 target.set(key, template.get(key));
                 added++;
             }

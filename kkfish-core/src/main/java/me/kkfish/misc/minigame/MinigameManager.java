@@ -1,25 +1,15 @@
 package me.kkfish.misc.minigame;
 
-import org.bukkit.Bukkit;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.NamespacedKey;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
-import me.kkfish.utils.NBTUtil;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import me.kkfish.utils.SchedulerUtil;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -28,7 +18,6 @@ import me.kkfish.utils.ActionBarUtil.MessageType;
 import me.kkfish.kkfish;
 import me.kkfish.managers.Config;
 import me.kkfish.fishing.WaterType;
-import me.kkfish.fishing.HookMechanicFactory;
 
 
 public class MinigameManager {
@@ -46,7 +35,7 @@ public class MinigameManager {
     }
     
     private void deductRodDurabilityByFish(Player player, String fishName, ItemStack fishItem, double fishSize, String fishLevel) {
-        ItemStack rod = player.getInventory().getItemInMainHand();
+        ItemStack rod = configManager.getPlayerRod(player);
         
         plugin.getFishingListener().deductRodDurability(player, rod);
     }
@@ -87,10 +76,25 @@ public class MinigameManager {
             waterType = WaterType.WATER;
         }
         
-        GameSession session = new GameSession(plugin, player, hookLocation, waterType, chargePercentage, rodName, baitName, rareFishChance);
-        gameSessions.put(playerId, session);
-        
-        session.start();
+        List<String> candidates = configManager.getAvailableFishFromPool(waterType, hookLocation);
+        if (candidates.isEmpty()) {
+            player.sendMessage(plugin.getMessageManager().getMessage(player, "no_available_fish", "§eNo fish can be caught in this pool under the current conditions."));
+            plugin.getFish().endSession(player);
+            return;
+        }
+        GameSession session = null;
+        try {
+            session = new GameSession(plugin, player, hookLocation, waterType, chargePercentage, rodName, baitName, rareFishChance, candidates);
+            gameSessions.put(playerId, session);
+            session.start();
+        } catch (RuntimeException e) {
+            gameSessions.remove(playerId);
+            if (session != null) session.cancel();
+            plugin.getFish().endSession(player);
+            kkfish.log("§e启动钓鱼小游戏失败: " + e.getMessage());
+            player.sendMessage(plugin.getMessageManager().getMessage(player, "minigame_start_failed", "§cUnable to start the fishing minigame. Please try again later."));
+            return;
+        }
         
         plugin.getSoundManager().playBiteSound(player.getLocation());
     }
@@ -134,6 +138,11 @@ public class MinigameManager {
 
             final double actualFishValue = session.getActualFishValue();
             final ItemStack fishItem = session.createFishItem();
+            if (fishItem == null) {
+                player.sendMessage(messageManager.getMessage(player, "no_available_fish", "§eNo fish can be caught in this pool under the current conditions."));
+                fishingManager.endSession(player);
+                return;
+            }
             final String fishDisplayName = fishItem.hasItemMeta() && fishItem.getItemMeta().hasDisplayName()
                 ? fishItem.getItemMeta().getDisplayName() : fishName;
             
@@ -145,33 +154,39 @@ public class MinigameManager {
                     fishingManager.animateFishToPlayer(player, fishStartLocation, session.hookLocation, fishItem, actualFishValue, session.waterType, new me.kkfish.managers.Fish.AnimationCompleteCallback() {
                     @Override
                     public void onAnimationComplete() {
-                        if (player.getInventory().firstEmpty() != -1) {
-                            player.getInventory().addItem(fishItem);
+                        if (!player.isOnline()) {
+                            plugin.getFish().endSession(player);
+                            return;
+                        }
+                        Map<Integer, ItemStack> overflow = player.getInventory().addItem(fishItem);
+                        if (!overflow.isEmpty()) {
+                            for (ItemStack item : overflow.values()) player.getWorld().dropItemNaturally(player.getLocation(), item);
+                            player.sendMessage(messageManager.getMessage("inventory_full", "§c背包已满，鱼掉落在地！"));
+                        }
                             
                             final int expReward = plugin.getCustomConfig().getFishExp(fishName);
                             boolean tempHasAuraSkills = false;
                             double tempFishingXp = -1;
                             
                             try {
-                                if (plugin.getAuraSkills() != null) {
-                                    tempFishingXp = plugin.getAuraSkills().addFishingExperience(player, session.fishSize,
-                                            session.fishSizeMin, session.fishSizeMax, session.fishLevel);
-                                    tempHasAuraSkills = (tempFishingXp > 0);
-                                }
-                            } catch (Exception e) {
-                                tempHasAuraSkills = false;
+                                tempFishingXp = fishingManager.giveFishingExperience(player, fishName, session.fishSize,
+                                        session.fishSizeMin, session.fishSizeMax, session.fishLevel);
+                                tempHasAuraSkills = tempFishingXp > 0;
+                             } catch (Exception e) {
+                                 tempHasAuraSkills = false;
+                                 kkfish.log("§e发放钓鱼经验失败: " + e.getMessage());
                             }
                             
                             final boolean hasAuraSkills = tempHasAuraSkills;
                             final double fishingXp = tempFishingXp;
                                
-                            String rodName = getRodNameByPlayer(player);
+                            String rodName = session.getRodName();
                             List<String> rodEffects = configManager.getRodEffects(rodName);
                             if (!rodEffects.isEmpty()) {
                                 applyRodEffects(player, rodEffects);
                             }
                             
-                            // Publish FishCaughtEvent - subscribers handle recording, competition scoring, and broadcast
+                            // 捕获事件携带原始数据，记录不再从描述文字反向解析。
                             if (eventBus != null) {
                                 boolean announce = configManager.isFishAnnouncementEnabled(fishName);
                                 int fishRarity = getRarityValue(session.fishLevel);
@@ -192,8 +207,6 @@ public class MinigameManager {
                                         messageManager.getMessage("catch_success", "§a你钓到了 %s§a！", fishDisplayName), 80, MessageType.MINIGAME);
 
                                     if (plugin.getCustomConfig().isVanillaExpEnabled() && expReward > 0) {
-                                        player.giveExp(expReward);
-
                                         if (!hasAuraSkills) {
                                             me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player,
                                                 messageManager.getMessage("exp_reward", "§a获得了 %s 经验值！", expReward), 60, MessageType.MINIGAME);
@@ -206,18 +219,6 @@ public class MinigameManager {
                                     }
                                 }
                             }, 5);
-                        } else {
-                            SchedulerUtil.runEntityTaskDelayed(plugin, player, new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    me.kkfish.utils.ActionBarUtil.sendActionBarPersistent(kkfish.getInstance(), player,
-                                        messageManager.getMessage("inventory_full", "§c背包已满，鱼掉落在地！"), 60, MessageType.MINIGAME);
-                                }
-                            }, 5);
-                            
-                            player.getWorld().dropItemNaturally(player.getLocation(), fishItem);
-                        }
-                        
                         recordFishingStats(player, false);
                         plugin.getFish().endSession(player);
                     }
@@ -293,95 +294,14 @@ public class MinigameManager {
         }
         
         private int getRarityValue(String fishLevel) {
-            if (fishLevel == null) {
-                return 1;
-            }
-            switch (fishLevel.toLowerCase()) {
-                case "legendary":
-                    return 5;
-                case "epic":
-                    return 4;
-                case "rare":
-                    return 3;
-                case "uncommon":
-                    return 2;
-                default:
-                    return 1;
-            }
+            return configManager.getRarityOrder(configManager.getRarityNameByLevel(fishLevel));
         }
         
     public String getRodNameByPlayer(Player player) {
-        ItemStack item = player.getInventory().getItemInMainHand();
-        
-        if (item == null || item.getType() == me.kkfish.utils.XSeriesUtil.parseMaterial("AIR")) {
-            configManager.debugLog("玩家" + player.getName() + "没有手持物品");
-            return "wood";
-        }
-        
-        if (item.getType() == me.kkfish.utils.XSeriesUtil.parseMaterial("FISHING_ROD")) {
-            configManager.debugLog("玩家" + player.getName() + "手持原版钓鱼竿");
-            return "default_rod";
-        }
-        
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
-            configManager.debugLog("玩家" + player.getName() + "手持物品无元数据: " + item.getType());
-            return "wood";
-        }
-        
-        String playerName = player.getName();
-        String itemType = item.getType().toString();
-        configManager.debugLog("玩家" + playerName + "手持物品: " + itemType + ", 有描述: " + meta.hasLore());
-        
-        Object rodNbt = NBTUtil.getNBTData(item, "kkfish_rod");
-        if (rodNbt != null && configManager.rodExists(rodNbt.toString())) {
-            return rodNbt.toString();
-        }
-
-        if (isCustomRod(item, meta, playerName)) {
-            return "default_rod";
-        }
-
-        configManager.debugLog("玩家" + playerName + "手持物品不是有效鱼竿: " + itemType);
-        return "wood";
+        String id = configManager.getRodType(configManager.getPlayerRod(player));
+        return id == null ? "wood" : id;
     }
-    private boolean isCustomRod(ItemStack item, ItemMeta meta, String playerName) {
-        boolean hasRodLore = false;
-        if (meta.hasLore()) {
-            List<String> lore = meta.getLore();
-            for (String line : lore) {
-                if (line != null && !line.isEmpty()) {
-                    String strippedLine = ChatColor.stripColor(line);
-                    if (strippedLine.contains("[鱼竿: ")) {
-                        hasRodLore = true;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        if (!hasRodLore) {
-            return false;
-        }
-        
-        try {
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            NamespacedKey tagsKey = new NamespacedKey(plugin, "Tags");
-            
-            if (container.has(tagsKey, PersistentDataType.STRING)) {
-                String tagsString = container.get(tagsKey, PersistentDataType.STRING);
-                if (tagsString != null && tagsString.contains("自定义鱼竿")) {
-                    configManager.debugLog("玩家" + playerName + "手持自定义钓鱼竿(类型: " + item.getType() + ")，已验证NBT标签");
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            configManager.debugLog("检查NBT Tags时出错: " + e.getMessage());
-        }
-        
-        return false;
-    }
-    
+
     private void applyRodEffects(Player player, List<String> effects) {
         for (String effectStr : effects) {
             try {

@@ -112,7 +112,7 @@ public class Fish {
         List<String> fishList;
         if (waterType != null) {
             String biome = player.getLocation().getBlock().getBiome().name();
-            String weather = player.getWorld().hasStorm() ? "RAIN" : "CLEAR";
+            String weather = player.getWorld().isThundering() ? "THUNDER" : player.getWorld().hasStorm() ? "RAIN" : "CLEAR";
             long time = player.getWorld().getTime();
             String season = null;
             if (plugin.isRealisticSeasonsEnabled()) {
@@ -124,7 +124,7 @@ public class Fish {
         }
 
         if (fishList.isEmpty()) {
-            return new String[] {"cod", "30.0", "common"};
+            return new String[0];
         }
 
         Map<String, Double> fishWeights = new LinkedHashMap<>();
@@ -176,7 +176,8 @@ public class Fish {
         double maxSize = fishConfig.getDouble("fish." + selectedFish + ".max-size", 60.0);
         double randomSize = minSize + Math.random() * (maxSize - minSize);
 
-        String fishLevel = config.getRandomFishLevel(selectedFish);
+        String fishLevel = config.getRandomFishLevel(selectedFish, player, 1.0 + rareFishChance, random);
+        if (fishLevel == null) return new String[0];
 
         return new String[] {selectedFish, String.valueOf(randomSize), fishLevel};
     }
@@ -300,6 +301,7 @@ public class Fish {
 
         String selectedFish = getRandomFish(player);
         if (selectedFish == null || selectedFish.isEmpty()) {
+            player.sendMessage(messageManager.getMessage(player, "no_available_fish", "§eNo fish can be caught in this pool under the current conditions."));
             return;
         }
 
@@ -309,7 +311,13 @@ public class Fish {
         double size = minSize + Math.random() * (maxSize - minSize);
         String fishLevel = config.getRandomFishLevel(selectedFish, player);
 
-        ItemStack fishItem = createFishItem(selectedFish, false, player, size, fishLevel);
+        ItemStack fishItem = createFishItem(selectedFish, false, player, size, fishLevel, null);
+        if (fishItem == null) {
+            player.sendMessage(messageManager.getMessage(player, "no_available_fish", "§eNo fish can be caught in this pool under the current conditions."));
+            return;
+        }
+        Object finalSize = me.kkfish.utils.NBTUtil.getNBTData(fishItem, "fish_size");
+        if (finalSize instanceof Number) size = ((Number) finalSize).doubleValue();
 
         Map<Integer, ItemStack> overflow = player.getInventory().addItem(fishItem);
         if (!overflow.isEmpty()) {
@@ -324,11 +332,27 @@ public class Fish {
             player.sendMessage(messageManager.getMessage("catch_success", "恭喜！你钓到了一条 %s！", fishName));
         }
 
-        int exp = config.getFishExp(selectedFish);
-        if (exp > 0) {
-            player.giveExp(exp);
-            player.sendMessage(messageManager.getMessage("fishing_exp_reward", "你获得了 %s 点钓鱼经验！", exp));
+        double skillsXp = giveFishingExperience(player, selectedFish, size, minSize, maxSize, fishLevel);
+        if (skillsXp > 0) {
+            player.sendMessage(messageManager.getMessage("fishing_exp_reward", "§b获得了 %s 钓鱼经验！", String.format("%.1f", skillsXp)));
+        } else if (config.isVanillaExpEnabled() && config.getFishExp(selectedFish) > 0) {
+            player.sendMessage(messageManager.getMessage("exp_reward", "§a获得了 %s 经验值！", config.getFishExp(selectedFish)));
         }
+        if (plugin.getEventBus() != null) {
+            String display = fishItem.hasItemMeta() ? fishItem.getItemMeta().getDisplayName() : selectedFish;
+            Object value = me.kkfish.utils.NBTUtil.getNBTData(fishItem, "fish_value");
+            plugin.getEventBus().publish(new me.kkfish.events.FishCaughtEvent(player, selectedFish, display, size, fishLevel,
+                    config.getRarityOrder(config.getRarityNameByLevel(fishLevel)), value instanceof Number ? ((Number) value).doubleValue() : 0,
+                    fishItem, config.isFishAnnouncementEnabled(selectedFish)));
+        }
+    }
+
+    public double giveFishingExperience(Player player, String fishName, double size, double minSize, double maxSize, String level) {
+        int exp = config.getFishExp(fishName);
+        if (config.isVanillaExpEnabled() && exp > 0) {
+            player.giveExp(exp);
+        }
+        return plugin.getAuraSkills() == null ? -1 : plugin.getAuraSkills().addFishingExperience(player, size, minSize, maxSize, level);
     }
 
     // ==================== 清理 ====================
@@ -480,8 +504,10 @@ public class Fish {
             }
         }
 
+        if (player != null) fishList.retainAll(config.getAvailableFishFromPool(WaterType.WATER, player.getLocation()));
+
         if (fishList.isEmpty()) {
-            return plugin.getMessageManager().getMessageWithoutPrefix("fish_unknown", "未知鱼");
+            return null;
         }
 
         double rareFishBonus = 1.0;
@@ -551,6 +577,13 @@ public class Fish {
     // ==================== 钓鱼记录 ====================
 
     public void recordFishCatch(Player player, String fishName, ItemStack fishItem) {
+        Object size = me.kkfish.utils.NBTUtil.getNBTData(fishItem, "fish_size");
+        Object level = me.kkfish.utils.NBTUtil.getNBTData(fishItem, "fish_level");
+        Object value = me.kkfish.utils.NBTUtil.getNBTData(fishItem, "fish_value");
+        if (size instanceof Number && level != null) {
+            recordFishCatch(player, fishName, level.toString(), ((Number) size).doubleValue(), value instanceof Number ? ((Number) value).doubleValue() : 0);
+            return;
+        }
         PlayerContext ctx = getContext(player);
         if (ctx == null) {
             return;
@@ -620,6 +653,13 @@ public class Fish {
             persistent.recordCatch(fishName, 0.0);
         }
 
+    }
+
+    public void recordFishCatch(Player player, String fishName, String level, double size, double value) {
+        PlayerContext ctx = getContext(player);
+        if (ctx == null) return;
+        ctx.getPersistent().recordCatch(fishName, size);
+        plugin.getDB().logFishing(player, fishName, level, size, (int) Math.round(value));
     }
 
     // ==================== 鱼咬钩状态 ====================

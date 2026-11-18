@@ -9,6 +9,37 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConfigUpgradeTest {
 
     @Test
+    void missingChildCannotReplaceExplicitScalarParent() {
+        YamlConfiguration target = new YamlConfiguration();
+        target.set("settings", false);
+        YamlConfiguration template = new YamlConfiguration();
+        template.set("settings.enabled", true);
+        ConfigUpgrade.fillMissingKeys(target, template);
+        assertEquals(false, target.get("settings"));
+    }
+
+    @Test
+    void missingChildrenCannotReplaceAnExplicitEmptyList() {
+        YamlConfiguration target = new YamlConfiguration();
+        target.set("settings", java.util.Collections.emptyList());
+        YamlConfiguration template = new YamlConfiguration();
+        template.set("settings.enabled", true);
+        ConfigUpgrade.fillMissingKeys(target, template);
+        assertTrue(target.isList("settings"));
+        assertTrue(target.getList("settings").isEmpty());
+    }
+
+    @Test
+    void legacyTimezoneKeepsItsValueDuringUpgrade() {
+        YamlConfiguration target = new YamlConfiguration();
+        target.set("timezone", "UTC");
+        YamlConfiguration template = new YamlConfiguration();
+        template.set("timezone.value", "Asia/Shanghai");
+        ConfigUpgrade.upgrade(target, template, "1.7.10");
+        assertEquals("UTC", target.getString("timezone.value"));
+    }
+
+    @Test
     void compareVersionsWorks() {
         assertTrue(ConfigUpgrade.compareVersions("1.7.10", "1.7.9") > 0);
         assertTrue(ConfigUpgrade.compareVersions("1.7.9", "1.7.10") < 0);

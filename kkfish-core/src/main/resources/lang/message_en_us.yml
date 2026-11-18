@@ -139,6 +139,9 @@ rod_charge_speed_slow: "slower"
 rod_charge_speed_normal: "normal"
 rod_bite_rate_bonus_none: "none"
 rod_effects_none: "No special effects"
+rod_lure_speed_line: '&d│ Lure Speed: &f'
+rod_size_multiplier_line: '&d│ Size Multiplier: &f'
+rod_rare_fish_chance_line: '&5│ Rare Fish Chance: &f'
 
 # Admin Help Sell
 sell_help_all_success_op: "&aHelped player %s sell all fish! Gained %s coins～"
@@ -352,6 +355,8 @@ hook_status_not_owned: "§cNot owned"
 hook_action_equipped: "§aEquipped"
 hook_action_equip: "§eClick to equip"
 hook_action_buy: "§eClick to buy"
+hook_effect_lure_speed: '&7Lure speed +'
+hook_effect_size_multiplier: '&7Size multiplier x'
 hook_no_permission: "§cYou don't have permission to use this hook!"
 hook_purchase_success: "§aSuccessfully purchased hook: %s!"
 hook_purchase_vault_unavailable: "§cEconomy system is not enabled, cannot purchase with coins!"
@@ -370,6 +375,7 @@ bait_usage_text: '&7Place in off-hand, consumed when casting with charge'
 bait_effect_rare: '&6Rare fish chance +'
 bait_effect_size: '&aFish size +'
 bait_effect_bite: '&9Bite chance +'
+bait_effect_lure: '&bLure speed +'
 bait_usage_tip: '&7Place in off-hand, consumed when casting with charge'
 
 # ==========================
@@ -698,3 +704,5 @@ log.resellang_apply_failed: "Failed to force-apply language pack: %s"
 log.config_pack_copy_failed: "Failed to copy config pack: %s"
 log.backup_created: "Backed up existing configs to: %s"
 log.backup_expired_removed: "Removed expired backup: %s (retention: %s)"
+no_available_fish: '&eNo fish can be caught in this pool under the current conditions.'
+minigame_start_failed: '&cUnable to start the fishing minigame. Please try again later.'

@@ -47,7 +47,7 @@ public class EventSubscriberRegistry implements AutoCloseable {
         if (fish == null) return;
         Player player = Bukkit.getPlayer(event.getPlayerId());
         if (player != null && player.isOnline()) {
-            fish.recordFishCatch(player, event.getFishName(), event.getFishItem());
+            fish.recordFishCatch(player, event.getFishName(), event.getFishLevel(), event.getFishSize(), event.getFishValue());
         }
     }
 

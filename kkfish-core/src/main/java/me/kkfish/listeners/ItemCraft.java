@@ -1,9 +1,7 @@
 package me.kkfish.listeners;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -20,6 +18,7 @@ import me.kkfish.kkfish;
 import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.managers.Config;
 import me.kkfish.misc.MessageManager;
+import me.kkfish.utils.RodLoreUtil;
 
 public class ItemCraft implements Listener {
 
@@ -81,8 +80,8 @@ public class ItemCraft implements Listener {
             return rod;
         }
         
-        String displayName = ChatColor.translateAlternateColorCodes('&', 
-                config.getRodConfig().getString("rods.default.display-name", "&f普通钓鱼竿"));
+        String displayName = ChatColor.translateAlternateColorCodes('&',
+                config.getRodConfig().getString(config.getRodPropertyPath(rodName, "display-name"), "&f普通钓鱼竿"));
         displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
         
@@ -97,39 +96,15 @@ public class ItemCraft implements Listener {
             }
         }
         
-        List<String> lore = new ArrayList<>();
-        
-        String templateName = config.getRodTemplateName(rodName);
-        String template = config.getRodTemplate(templateName);
-        if (template == null || template.isEmpty()) {
-            template = "&6[===== 鱼竿属性 =====]\n" +
-                      "&b│ 难度系数: %difficulty%\n" +
-                      "&a│ 浮标区域: %float_area%\n" +
-                      "&c│ 耐久度: %durability%\n" +
-                      "&d│ 充能速度: %charge_speed%\n" +
-                      "&d│ 咬钩几率加成: %bite_rate_bonus%\n" +
-                      "&6[====================]\n" +
-                      " \n" +
-                      "&e✨ 特殊效果:\n" +
-                      "%effects%\n" +
-                      " \n" +
-                      "&7钓鱼快乐~";
-        }
-        
-        Map<String, String> variables = new HashMap<>();
-        variables.put("%name%", displayName);
-        variables.put("%difficulty%", String.valueOf(config.getRodDifficulty(rodName)));
-        variables.put("%float_area%", String.valueOf(config.getRodFloatAreaSize(rodName)));
-        
-        int durability = config.getRodDurability(rodName);
         MessageManager messageManager = plugin.getMessageManager();
+        int durability = config.getRodDurability(rodName);
+        String durabilityText;
         if (durability > 0) {
             String unit = messageManager.getMessageWithoutPrefix("rod_durability_unit", "点");
             int progressBarLength = 16;
-            double progressPercentage = 1.0;
             int filledLength = progressBarLength;
             ChatColor durabilityColor = ChatColor.GREEN;
-            
+
             StringBuilder barBuilder = new StringBuilder();
             barBuilder.append(" ");
             barBuilder.append(ChatColor.GRAY).append("[");
@@ -139,53 +114,13 @@ public class ItemCraft implements Listener {
             }
             barBuilder.append(ChatColor.GRAY);
             barBuilder.append(" ]");
-            
-            variables.put("%durability%", durability + unit + barBuilder.toString());
+
+            durabilityText = durability + unit + barBuilder.toString();
         } else {
-            variables.put("%durability%", messageManager.getMessageWithoutPrefix("rod_durability_infinite", "无限耐久"));
+            durabilityText = messageManager.getMessageWithoutPrefix("rod_durability_infinite", "无限耐久");
         }
-        
-        double chargeSpeed = config.getRodChargeSpeed(rodName);
-        String speedText;
-        if (chargeSpeed != 1.0) {
-            String speedType = chargeSpeed > 1.0 ? 
-                    messageManager.getMessageWithoutPrefix("rod_charge_speed_fast", "加速") : 
-                    messageManager.getMessageWithoutPrefix("rod_charge_speed_slow", "减速");
-            speedText = String.format("%.1f倍 (" + speedType + ")", chargeSpeed);
-        } else {
-            speedText = messageManager.getMessageWithoutPrefix("rod_charge_speed_normal", "正常");
-        }
-        variables.put("%charge_speed%", speedText);
-        
-        double biteRateBonus = config.getRodBiteRateBonus(rodName);
-        variables.put("%bite_rate_bonus%", biteRateBonus > 0 ? 
-                String.format("+%.1f%%", biteRateBonus * 100) : 
-                messageManager.getMessageWithoutPrefix("rod_bite_rate_bonus_none", "无"));
-        
-        List<String> effects = config.getRodEffects(rodName);
-        StringBuilder effectsBuilder = new StringBuilder();
-        if (!effects.isEmpty()) {
-            for (String effect : effects) {
-                effectsBuilder.append("&7  └─ &r").append(ChatColor.translateAlternateColorCodes('&', effect)).append("\n");
-            }
-        } else {
-            effectsBuilder.append("&7  └─ " + messageManager.getMessageWithoutPrefix("rod_effects_none", "无特殊效果") + "\n");
-        }
-        variables.put("%effects%", effectsBuilder.toString());
-        
-        String formattedTemplate = template;
-        for (Map.Entry<String, String> entry : variables.entrySet()) {
-            formattedTemplate = formattedTemplate.replace(entry.getKey(), entry.getValue());
-        }
-        
-        String[] lines = formattedTemplate.split("\\n");
-        for (String line : lines) {
-            if (!line.trim().isEmpty()) {
-                lore.add(ChatColor.translateAlternateColorCodes('&', CustomItemHook.replaceFontImages(line)));
-            } else {
-                lore.add("");
-            }
-        }
+
+        List<String> lore = RodLoreUtil.build(config, messageManager, rodName, displayName, durabilityText);
         
         meta.setLore(lore);
         
@@ -210,6 +145,7 @@ public class ItemCraft implements Listener {
             }
         }
         
+        me.kkfish.utils.NBTUtil.setNBTData(rod, "kkfish_rod", rodName);
         return rod;
     }
 }

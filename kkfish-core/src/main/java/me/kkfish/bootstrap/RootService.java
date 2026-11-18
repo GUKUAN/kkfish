@@ -271,7 +271,7 @@ public class RootService implements AutoCloseable {
     }
 
     private void initMetrics() {
-        boolean bstatsEnabled = plugin.getConfig().getBoolean("bstats.enabled", true);
+        boolean bstatsEnabled = plugin.getCustomConfig().getMainConfig().getBoolean("bstats.enabled", true);
 
         if (metrics != null) {
             try {

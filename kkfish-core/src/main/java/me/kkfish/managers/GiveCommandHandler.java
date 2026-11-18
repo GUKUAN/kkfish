@@ -1,24 +1,21 @@
 package me.kkfish.managers;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataType;
 
 import me.kkfish.kkfish;
 import me.kkfish.integrations.CustomItemHook;
 import me.kkfish.misc.MessageManager;
+import me.kkfish.utils.RodLoreUtil;
 import me.kkfish.utils.XSeriesUtil;
 
 /**
@@ -115,11 +112,12 @@ public class GiveCommandHandler {
      */
     public ItemStack createRodItem(String rodName) {
         Config configManager = plugin.getCustomConfig();
+        if ("default_rod".equals(rodName)) rodName = "default";
         if (!configManager.rodExists(rodName)) {
             return null;
         }
 
-        String materialStr = configManager.getRodConfig().getString("rods." + rodName + ".material", "FISHING_ROD");
+        String materialStr = configManager.getRodConfig().getString(configManager.getRodPropertyPath(rodName, "material"), "FISHING_ROD");
         // 优先尝试 IA 自定义物品
         ItemStack rod;
         if (CustomItemHook.isCustomItemStr(materialStr)) {
@@ -137,7 +135,7 @@ public class GiveCommandHandler {
         }
 
         String displayName = ChatColor.translateAlternateColorCodes('&',
-                configManager.getRodConfig().getString("rods." + rodName + ".display-name", "&f" + rodName));
+                configManager.getRodConfig().getString(configManager.getRodPropertyPath(rodName, "display-name"), "&f" + rodName));
         displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
 
@@ -152,80 +150,17 @@ public class GiveCommandHandler {
             }
         }
 
-        List<String> lore = new ArrayList<>();
-
-        String templateName = configManager.getRodTemplateName(rodName);
-        String template = configManager.getRodTemplate(templateName);
-        if (template == null || template.isEmpty()) {
-            template = "&6[===== 鱼竿属性 =====]\n" +
-                      "&b│ 难度系数: %difficulty%\n" +
-                      "&a│ 浮标区域: %float_area%\n" +
-                      "&c│ 耐久度: %durability%\n" +
-                      "&d│ 充能速度: %charge_speed%\n" +
-                      "&d│ 咬钩几率加成: %bite_rate_bonus%\n" +
-                      "&6[====================]\n" +
-                      " \n" +
-                      "&e✨ 特殊效果:\n" +
-                      "%effects%\n" +
-                      " \n" +
-                      "&7钓鱼快乐~";
-        }
-
-        Map<String, String> variables = new HashMap<>();
-        variables.put("%name%", displayName);
-        variables.put("%difficulty%", String.valueOf(configManager.getRodDifficulty(rodName)));
-        variables.put("%float_area%", String.valueOf(configManager.getRodFloatAreaSize(rodName)));
-
         int durability = configManager.getRodDurability(rodName);
+        String durabilityText;
         if (durability > 0) {
             String unit = messageManager.getMessageWithoutPrefix("rod_durability_unit", "points");
             String full = messageManager.getMessageWithoutPrefix("rod_durability_full", "(full)");
-            variables.put("%durability%", durability + unit + " " + full);
+            durabilityText = durability + unit + " " + full;
         } else {
-            variables.put("%durability%", messageManager.getMessageWithoutPrefix("rod_durability_infinite", "Unlimited durability"));
+            durabilityText = messageManager.getMessageWithoutPrefix("rod_durability_infinite", "Unlimited durability");
         }
 
-        double chargeSpeed = configManager.getRodChargeSpeed(rodName);
-        String speedText;
-        if (chargeSpeed != 1.0) {
-            String speedType = chargeSpeed > 1.0 ?
-                    messageManager.getMessageWithoutPrefix("rod_charge_speed_fast", "faster") :
-                    messageManager.getMessageWithoutPrefix("rod_charge_speed_slow", "slower");
-            speedText = String.format("%.1f倍 (" + speedType + ")", chargeSpeed);
-        } else {
-            speedText = messageManager.getMessageWithoutPrefix("rod_charge_speed_normal", "normal");
-        }
-        variables.put("%charge_speed%", speedText);
-
-        double biteRateBonus = configManager.getRodBiteRateBonus(rodName);
-        variables.put("%bite_rate_bonus%", biteRateBonus > 0 ?
-                String.format("+%.1f%%", biteRateBonus * 100) :
-                messageManager.getMessageWithoutPrefix("rod_bite_rate_bonus_none", "none"));
-
-        List<String> effects = configManager.getRodEffects(rodName);
-        StringBuilder effectsBuilder = new StringBuilder();
-        if (!effects.isEmpty()) {
-            for (String effect : effects) {
-                effectsBuilder.append("&7  └─ &r").append(ChatColor.translateAlternateColorCodes('&', effect)).append("\n");
-            }
-        } else {
-            effectsBuilder.append("&7  └─ " + messageManager.getMessageWithoutPrefix("rod_effects_none", "No special effects") + "\n");
-        }
-        variables.put("%effects%", effectsBuilder.toString());
-
-        String formattedTemplate = template;
-        for (Map.Entry<String, String> entry : variables.entrySet()) {
-            formattedTemplate = formattedTemplate.replace(entry.getKey(), entry.getValue());
-        }
-
-        String[] lines = formattedTemplate.split("\\n");
-        for (String line : lines) {
-            if (!line.trim().isEmpty()) {
-                lore.add(ChatColor.translateAlternateColorCodes('&', CustomItemHook.replaceFontImages(line)));
-            } else {
-                lore.add("");
-            }
-        }
+        List<String> lore = RodLoreUtil.build(configManager, messageManager, rodName, displayName, durabilityText);
 
         meta.setLore(lore);
 
@@ -242,7 +177,7 @@ public class GiveCommandHandler {
             configManager.debugLog("无法为鱼竿物品添加Tags标记，但将继续创建物品: " + rodName);
         }
 
-        ConfigurationSection nbtSection = configManager.getRodConfig().getConfigurationSection("rods." + rodName + ".nbt");
+        ConfigurationSection nbtSection = configManager.getRodConfig().getConfigurationSection(configManager.getRodPropertyPath(rodName, "nbt"));
         if (nbtSection != null && !nbtSection.getKeys(false).isEmpty() && configManager.isCustomNBTSupportEnabled()) {
             for (String nbtKey : nbtSection.getKeys(false)) {
                 if (nbtKey.equalsIgnoreCase("CustomModelData")) {
@@ -259,6 +194,7 @@ public class GiveCommandHandler {
             }
         }
 
+        me.kkfish.utils.NBTUtil.setNBTData(rod, "kkfish_rod", rodName);
         return rod;
     }
 
@@ -298,17 +234,6 @@ public class GiveCommandHandler {
         displayName = CustomItemHook.replaceFontImages(displayName);
         meta.setDisplayName(displayName);
 
-        try {
-            java.lang.reflect.Method getPdcMethod = meta.getClass().getMethod("getPersistentDataContainer");
-            Object pdc = getPdcMethod.invoke(meta);
-            if (pdc != null) {
-                NamespacedKey baitNameKey = new NamespacedKey(plugin, "bait_name");
-                java.lang.reflect.Method setMethod = pdc.getClass().getMethod("set", NamespacedKey.class, PersistentDataType.class, Object.class);
-                setMethod.invoke(pdc, baitNameKey, PersistentDataType.STRING, baitName);
-            }
-        } catch (Exception e) {
-        }
-
         int customModelData = configManager.getBaitCustomModelData(baitName);
         if (customModelData > 0 || customModelData == -1) {
             try {
@@ -326,26 +251,12 @@ public class GiveCommandHandler {
         StringBuilder effectsBuilder = new StringBuilder();
         List<String> effects = configManager.getBaitEffects(baitName);
 
-        if (effects.size() > 0) {
+        if (!effects.isEmpty()) {
             if (configManager.getBaitConfig().contains("baits." + baitName + ".effects")) {
                 boolean isFirst = true;
                 for (String effectType : effects) {
                     double value = configManager.getBaitEffectValueByName(baitName, effectType);
-                    String effectDesc = "";
-
-                    if (effectType.equals("rare")) {
-                            effectDesc = ChatColor.translateAlternateColorCodes('&',
-                                messageManager.getMessageWithoutPrefix("bait_effect_rare", "Rare fish chance +") +
-                                String.format("%.1f%%", value * 100));
-                        } else if (effectType.equals("size")) {
-                            effectDesc = ChatColor.translateAlternateColorCodes('&',
-                                messageManager.getMessageWithoutPrefix("bait_effect_size", "Fish size +") +
-                                String.format("%.1f%%", value * 100));
-                        } else if (effectType.equals("bite")) {
-                            effectDesc = ChatColor.translateAlternateColorCodes('&',
-                                messageManager.getMessageWithoutPrefix("bait_effect_bite", "Bite chance +") +
-                                String.format("%.1f%%", value * 100));
-                        }
+                    String effectDesc = formatBaitEffect(effectType, value);
 
                     if (!effectDesc.isEmpty()) {
                         if (!isFirst) {
@@ -357,22 +268,8 @@ public class GiveCommandHandler {
                 }
             } else {
                 String effect = configManager.getBaitEffect(baitName);
-                double value = configManager.getBaitEffectValue(baitName);
-
                 if (!effect.equals("none")) {
-                    if (effect.equals("rare")) {
-                        effectsBuilder.append(ChatColor.translateAlternateColorCodes('&',
-                            messageManager.getMessageWithoutPrefix("bait_effect_rare", "Rare fish chance +") +
-                            String.format("%.1f%%", value * 100)));
-                    } else if (effect.equals("size")) {
-                        effectsBuilder.append(ChatColor.translateAlternateColorCodes('&',
-                            messageManager.getMessageWithoutPrefix("bait_effect_size", "Fish size +") +
-                            String.format("%.1f%%", value * 100)));
-                    } else if (effect.equals("bite")) {
-                        effectsBuilder.append(ChatColor.translateAlternateColorCodes('&',
-                            messageManager.getMessageWithoutPrefix("bait_effect_bite", "Bite chance +") +
-                            String.format("%.1f%%", value * 100)));
-                    }
+                    effectsBuilder.append(formatBaitEffect(effect, configManager.getBaitEffectValue(baitName)));
                 }
             }
         } else {
@@ -408,6 +305,32 @@ public class GiveCommandHandler {
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 
         bait.setItemMeta(meta);
+        me.kkfish.utils.NBTUtil.setNBTData(bait, "bait_name", baitName);
         return bait;
+    }
+
+    /**
+     * 鱼饵效果展示文本，未知类型返回空串交给调用方跳过。
+     */
+    private String formatBaitEffect(String effectType, double value) {
+        String label;
+        String fallback;
+        if ("rare".equals(effectType)) {
+            label = "bait_effect_rare";
+            fallback = "Rare fish chance +";
+        } else if ("size".equals(effectType)) {
+            label = "bait_effect_size";
+            fallback = "Fish size +";
+        } else if ("bite".equals(effectType)) {
+            label = "bait_effect_bite";
+            fallback = "Bite chance +";
+        } else if ("lure".equals(effectType)) {
+            label = "bait_effect_lure";
+            fallback = "Lure speed +";
+        } else {
+            return "";
+        }
+        return ChatColor.translateAlternateColorCodes('&',
+                messageManager.getMessageWithoutPrefix(label, fallback) + String.format("%.1f%%", value * 100));
     }
 }

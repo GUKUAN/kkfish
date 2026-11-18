@@ -1,15 +1,19 @@
 # kkfish Fishing Rod Configuration
+# 配置优先级：本鱼竿字段 > rods.default 同名字段 > 代码兜底；显式 0 和空列表不继承。
+# 兼容旧键 bite-rate-bonus、carp-fish-chance；新键明确填写时优先。
 # Rod Configuration Example
 # You can create custom fishing rods with various properties and effects
 # Example rod configuration (add under rods: node):
 # custom-legendary-rod:
 #   difficulty: 0.5 # Difficulty level (higher value = harder)
-#   float-area-size: 5 # Float area size percentage
+#   float-area-size: 5 # Float area width percentage (0-100)
 #   durability: 1000 # Durability
-#   enchantability: 30 # Enchantability level (reserved, not yet wired)
+#   enchantability: 30 # TODO: Not wired yet; this setting does not affect enchantments
 #   charge-speed: 0.5 # Charge speed multiplier (higher = faster)
 #   bite-chance-bonus: 0.5 # Bite chance bonus
 #   rare-fish-chance: 0.3 # Rare fish chance multiplier
+#   lure-speed: 0.2 # Lure speed bonus (adds with hook and bait)
+#   size-multiplier: 1.1 # Fish size multiplier (capped by max-size)
 #   material: "DIAMOND_FISHING_ROD" # Minecraft material type
 #   custom-model-data: -1 # Custom model data
 #   display-name: "&6&lLegendary Fishing Rod" # Display name in game
@@ -18,15 +22,18 @@
 
 # Fishing Rod List
 rods:
+  # TODO: enchantability is stored but not yet wired into enchantment behavior
   # Basic Fishing Rods
   default:
     difficulty: 1.0 # Difficulty level (higher value = harder)
-    float-area-size: 30 # Float area size percentage
+    float-area-size: 30 # Float area width percentage (0-100)
     durability: 65 # Durability
     enchantability: 15 # Enchantability level
     charge-speed: 1.0 # Charge speed multiplier (higher = faster charge, easier to overcharge)
     bite-chance-bonus: 0.0 # Bite chance bonus
     rare-fish-chance: 0.0 # Rare fish chance multiplier
+    lure-speed: 0.0 # Lure speed bonus (adds with hook and bait)
+    size-multiplier: 1.0 # Fish size multiplier (capped by max-size)
     material: "FISHING_ROD" # Minecraft material type
     custom-model-data: -1 # Custom model data
     template: "default" # Item description template
@@ -119,6 +126,8 @@ rods:
     charge-speed: 1.7
     bite-chance-bonus: 0.4
     rare-fish-chance: 0.3
+    lure-speed: 0.15 # Lure speed bonus
+    size-multiplier: 1.1 # Fish size multiplier
     material: "FISHING_ROD"
     custom-model-data: -1
     template: "default" # Item description template

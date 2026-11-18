@@ -67,7 +67,7 @@ A new generation fishing plugin inspired by **Stardew Valley** — charge, cast,
 2. **Drop it** into your server's `plugins/` folder and restart
 3. **Start fishing** — right-click to charge, release to cast, click when the fish bites!
 
-Full documentation: [Wiki](https://wiki.bestcraft.cc)
+Full documentation: [Wiki](https://wiki.bonebbs.cc)
 
 ---
 
@@ -114,7 +114,7 @@ The built jar will be at `kkfish-core/target/kkfish.jar`.
 
 <img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/comments.svg" width="18">
 
-- **Wiki**: [wiki.bestcraft.cc](https://wiki.bestcraft.cc)
+- **Wiki**: [wiki.bonebbs.cc](https://wiki.bonebbs.cc)
 - **SpigotMC**: [kkfish](https://www.spigotmc.org/resources/kkfish-1-12-1-21-stardew-valley-fishing-and-resource-pack.129074/)
 - **MINEBBS**: [kkfish](https://www.minebbs.com/resources/kkfish.15002/)
 - **QQ Group**: 819181552

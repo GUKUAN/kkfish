@@ -10,17 +10,19 @@
 #   value: 0.4  # +40% bite chance
 #   permissions: []
 #   # Other configuration items...
+# effect supports: rare (rare fish chance), size (fish size), bite (bite chance), lure (lure speed)
 # 
 # Example multi-effect bait configuration:
 # custom-magic-bait:
 #   material: "ENCHANTED_GOLDEN_APPLE"
 #   custom-model-data: -1
 #   display-name: "&5&lMagic Bait"
-#   effects: ["rare", "size", "bite"]  # Multiple effect types
+#   effects: ["rare", "size", "bite", "lure"]  # Multiple effect types
 #   effect-values:
 #     rare: 0.2  # +20% rare fish chance
 #     size: 0.3  # +30% fish size
 #     bite: 0.15  # +15% bite chance
+#     lure: 0.15  # +15% lure speed
 #   permissions: ["kkfish.baits.magic"]  # Permission required
 #   # Other configuration items...
 baits:
@@ -84,11 +86,12 @@ baits:
     material: "ENCHANTED_GOLDEN_APPLE"
     display-name: "§5§lMagic Bait"
     custom-model-data: -1
-    effects: ["rare", "size", "bite"]
+    effects: ["rare", "size", "bite", "lure"]
     effect-values:
       rare: 0.15
       size: 0.2
       bite: 0.1
+      lure: 0.1
     permissions: ["kkfish.baits.magic"]
 
 bait-crafting:

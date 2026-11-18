@@ -10,17 +10,19 @@
 #   value: 0.4  # +40% 咬钩几率
 #   permissions: []
 #   # 其他配置项...
+# effect 支持: rare（稀有鱼几率）、size（鱼尺寸）、bite（咬钩几率）、lure（诱鱼速度）
 # 
 # 多效果鱼饵配置示例:
 # custom-magic-bait:
 #   material: "ENCHANTED_GOLDEN_APPLE"
 #   custom-model-data: -1
 #   display-name: "&5&l魔法鱼饵"
-#   effects: ["rare", "size", "bite"]  # 多种效果类型
+#   effects: ["rare", "size", "bite", "lure"]  # 多种效果类型
 #   effect-values:
 #     rare: 0.2  # +20% 稀有鱼几率
 #     size: 0.3  # +30% 鱼尺寸
 #     bite: 0.15  # +15% 咬钩几率
+#     lure: 0.15  # +15% 诱鱼速度
 #   permissions: ["kkfish.baits.magic"]  # 所需权限
 #   # 其他配置项...
 baits:
@@ -84,11 +86,12 @@ baits:
     material: "ENCHANTED_GOLDEN_APPLE"
     display-name: "§5§l魔法鱼饵"
     custom-model-data: -1
-    effects: ["rare", "size", "bite"]
+    effects: ["rare", "size", "bite", "lure"]
     effect-values:
       rare: 0.15
       size: 0.2
       bite: 0.1
+      lure: 0.1
     permissions: ["kkfish.baits.magic"]
 
 bait-crafting:

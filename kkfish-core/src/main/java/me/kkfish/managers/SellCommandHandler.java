@@ -668,17 +668,7 @@ public class SellCommandHandler {
     }
 
     public String getItemNameFromItem(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) {
-            return null;
-        }
-
-        ItemMeta meta = item.getItemMeta();
-        if (!meta.hasDisplayName()) {
-            return null;
-        }
-
-        String displayName = ChatColor.stripColor(meta.getDisplayName());
-        return displayName;
+        return plugin.getCustomConfig().getItemConfigId(item, "fish", "fish_name");
     }
 
     public SellBatch collectSellItems(Player player) {

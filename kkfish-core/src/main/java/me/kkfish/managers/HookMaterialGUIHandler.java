@@ -236,6 +236,7 @@ public class HookMaterialGUIHandler {
         String description = config.getHookDescription(hookName);
         String rarity = config.getHookRarity(hookName);
         double price = config.getHookVaultPrice(hookName);
+        String effectText = formatHookEffect(hookName, description);
 
         // 设置lore（含玩家状态信息）
         List<String> lore = new ArrayList<>();
@@ -248,7 +249,7 @@ public class HookMaterialGUIHandler {
             replacedLine = replacedLine.replace("%hook_level%", getHookLevelByRarity(rarity));
             replacedLine = replacedLine.replace("%hook_price%", String.format("%.2f", price));
             replacedLine = replacedLine.replace("%hook_durability%", messageManager.getMessageWithoutPrefix("hook_durability_infinite", "无限"));
-            replacedLine = replacedLine.replace("%hook_effect%", description);
+            replacedLine = replacedLine.replace("%hook_effect%", effectText);
 
             if (replacedLine.contains("%hook_status%")) {
                 if (isEquipped) {
@@ -290,6 +291,26 @@ public class HookMaterialGUIHandler {
         item.setItemMeta(meta);
 
         return item;
+    }
+
+    /**
+     * 鱼钩效果文本：保留配置里的描述，再追加数值效果。
+     */
+    private String formatHookEffect(String hookName, String description) {
+        StringBuilder builder = new StringBuilder(description == null ? "" : description);
+        double lureSpeed = config.getHookLureSpeed(hookName);
+        if (lureSpeed > 0) {
+            if (builder.length() > 0) builder.append('\n');
+            builder.append(messageManager.getMessageWithoutPrefix("hook_effect_lure_speed", "&7Lure speed +"))
+                    .append(String.format("%.1f%%", lureSpeed * 100));
+        }
+        double sizeMultiplier = config.getHookSizeMultiplier(hookName);
+        if (config.shouldDisplayHookSizeMultiplier(hookName)) {
+            if (builder.length() > 0) builder.append('\n');
+            builder.append(messageManager.getMessageWithoutPrefix("hook_effect_size_multiplier", "&7Size multiplier x"))
+                    .append(String.format("%.2f", sizeMultiplier));
+        }
+        return builder.toString();
     }
 
     /**

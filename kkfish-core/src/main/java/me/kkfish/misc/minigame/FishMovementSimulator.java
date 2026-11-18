@@ -18,6 +18,7 @@ public class FishMovementSimulator {
     private final Random random;
     private final String targetFish;
     private final double movementAmplitude;
+    private final double activity;
 
     // 鱼位置（0~1）
     private double fishPos = 0.5;
@@ -38,10 +39,13 @@ public class FishMovementSimulator {
     private int lastDashTime = 0;
     private int dashCooldown;
 
+    // 鱼的落点范围：0~10 共 11 个点，正好铺满 0%~100% 的底栏
+    private static final int FIELD_EDGE = 10;
+
     // 历史/危险区
     private int[] dirHistory = new int[10];
     private int historyIndex = 0;
-    private double[] dangerZone = new double[10];
+    private double[] dangerZone = new double[FIELD_EDGE + 1];
     private long lastDangerUpdate = 0;
     private int[] positionHistory = new int[5];
 
@@ -52,28 +56,37 @@ public class FishMovementSimulator {
     private static final double ACCELERATION_FACTOR = 0.1;
     private static final double DECELERATION_FACTOR = 0.15;
 
-    public FishMovementSimulator(kkfish plugin, String targetFish, double movementAmplitude, Random random, double initialFishPos) {
+    public FishMovementSimulator(kkfish plugin, String targetFish, double movementAmplitude, double activity, Random random, double initialFishPos) {
         this.plugin = plugin;
         this.config = plugin.getCustomConfig();
         this.targetFish = targetFish;
         this.movementAmplitude = movementAmplitude;
+        this.activity = activity;
         this.random = random;
         this.fishPos = initialFishPos;
-        this.targetPos = (int) Math.round(fishPos * 10);
+        this.targetPos = (int) Math.round(fishPos * FIELD_EDGE);
         this.moveDir = random.nextBoolean() ? -1 : 1;
         this.isMoving = true;
-        this.dashCooldown = 80;
+        this.dashCooldown = scaleIntervalByActivity(80, this.activity);
+    }
+
+    static int scaleIntervalByActivity(int baseTicks, double activity) {
+        return Math.max(1, (int) Math.round(baseTicks / activity));
     }
 
     /**
      * 主移动更新：根据绿条位置和稀有度更新鱼的位置。
      */
     public void update(double greenBarPos, double greenBarWidth) {
-        int rarity = config.getFishRarity(targetFish);
-        int currentGridPos = (int) Math.round(fishPos * 10);
-        currentGridPos = Math.min(currentGridPos, 9);
+        update(greenBarPos, greenBarWidth, 1);
+    }
 
-        updateBehaviorAndDangerZones(currentGridPos, rarity, greenBarPos, greenBarWidth);
+    public void update(double greenBarPos, double greenBarWidth, int fishIndicatorWidth) {
+        int rarity = config.getFishRarity(targetFish);
+        int currentGridPos = (int) Math.round(fishPos * FIELD_EDGE);
+        currentGridPos = Math.max(0, Math.min(currentGridPos, FIELD_EDGE));
+
+        updateBehaviorAndDangerZones(currentGridPos, rarity, greenBarPos, greenBarWidth, fishIndicatorWidth);
 
         lastDashTime++;
 
@@ -94,12 +107,12 @@ public class FishMovementSimulator {
                 }
             }
 
-            int currentPos = (int) (fishPos * 10);
+            int currentPos = (int) (fishPos * FIELD_EDGE);
             int target = targetPos;
 
             int direction = currentPos < target ? 1 : -1;
 
-            double targetPosDouble = (double) target / 10.0;
+            double targetPosDouble = (double) target / FIELD_EDGE;
             double remainingDistance = Math.abs(targetPosDouble - fishPos);
 
             if (remainingDistance > 0.15) {
@@ -138,16 +151,19 @@ public class FishMovementSimulator {
             }
         }
 
-        boolean isInGreenBar = Math.abs(greenBarPos - fishPos) < greenBarWidth / 2;
+        boolean isInGreenBar = MinigameField.inBar(fishPos, greenBarPos, greenBarWidth, fishIndicatorWidth);
         if (isInGreenBar) {
             double escapeChance = getEscapeChanceByRarity(rarity);
             if (random.nextDouble() < escapeChance) {
-                escapeFromGreenBar(currentGridPos, rarity, greenBarPos);
+                // 用移动后的实际位置算逃逸起点，避免这一 tick 的位移让目标格跑偏
+                int escapeGridPos = (int) Math.round(fishPos * FIELD_EDGE);
+                escapeGridPos = Math.max(0, Math.min(escapeGridPos, FIELD_EDGE));
+                escapeFromGreenBar(escapeGridPos, rarity, greenBarPos);
             }
         }
     }
 
-    private void updateBehaviorAndDangerZones(int currentGridPos, int rarity, double greenBarPos, double greenBarWidth) {
+    private void updateBehaviorAndDangerZones(int currentGridPos, int rarity, double greenBarPos, double greenBarWidth, int fishIndicatorWidth) {
         long now = System.currentTimeMillis();
         if (now - lastDangerUpdate > 1000) {
             for (int i = 0; i < dangerZone.length; i++) {
@@ -156,7 +172,7 @@ public class FishMovementSimulator {
             lastDangerUpdate = now;
         }
 
-        boolean inGreenBar = Math.abs(greenBarPos - fishPos) < greenBarWidth / 2;
+        boolean inGreenBar = MinigameField.inBar(fishPos, greenBarPos, greenBarWidth, fishIndicatorWidth);
         if (inGreenBar) {
             dangerZone[currentGridPos] = Math.min(1.0, dangerZone[currentGridPos] + 0.1);
         }
@@ -189,7 +205,7 @@ public class FishMovementSimulator {
             }
         }
 
-        behaviorDuration = 20 + random.nextInt(40);
+        behaviorDuration = scaleIntervalByActivity(20 + random.nextInt(40), activity);
         behaviorChangeTimer = 0;
     }
 
@@ -207,7 +223,7 @@ public class FishMovementSimulator {
             baseCooldown = Math.max(MIN_COOLDOWN, baseCooldown);
         }
 
-        cooldown = baseCooldown;
+        cooldown = scaleIntervalByActivity(baseCooldown, activity);
     }
 
     private double getEscapeChanceByRarity(int rarity) {
@@ -287,9 +303,14 @@ public class FishMovementSimulator {
         int newTargetPos = currentGridPos;
         if (moveAmount > 0 && newDir != 0) {
             newTargetPos = currentGridPos + newDir * moveAmount;
+            if (newTargetPos < 0 || newTargetPos > FIELD_EDGE) {
+                // 撞到边界就掉头，否则目标被夹回原地会让鱼贴着边缘反复选路
+                newDir = getOppositeDirection(newDir);
+                newTargetPos = currentGridPos + newDir * moveAmount;
+            }
         }
 
-        newTargetPos = Math.max(0, Math.min(9, newTargetPos));
+        newTargetPos = Math.max(0, Math.min(FIELD_EDGE, newTargetPos));
 
         targetPos = newTargetPos;
         moveDir = newDir;
@@ -319,7 +340,7 @@ public class FishMovementSimulator {
 
         for (int i = 1; i <= 3; i++) {
             int pos = currentGridPos + i;
-            if (pos <= 9) {
+            if (pos <= FIELD_EDGE) {
                 rightDanger += dangerZone[pos];
                 rightCount++;
             }
@@ -369,14 +390,16 @@ public class FishMovementSimulator {
             escapeAmount = 1 + random.nextInt(3);
         }
 
-        int newGridPos = currentGridPos + (escapeDir * escapeAmount);
-
-        newGridPos = Math.max(0, Math.min(9, newGridPos));
+        int newGridPos = targetWithinField(currentGridPos, escapeDir, escapeAmount);
 
         if (dangerZone[newGridPos] > 0.7) {
-            escapeDir = getOppositeDirection(escapeDir);
-            newGridPos = currentGridPos + (escapeDir * escapeAmount);
-            newGridPos = Math.max(0, Math.min(9, newGridPos));
+            // 往反方向再躲一次；反方向也出界时保持当前目标
+            int dangerFreeDir = newGridPos > currentGridPos ? -1 : 1;
+            int dangerFreePos = targetWithinField(currentGridPos, dangerFreeDir, escapeAmount);
+            if (dangerFreePos != currentGridPos) {
+                escapeDir = dangerFreeDir;
+                newGridPos = dangerFreePos;
+            }
         }
 
         targetPos = newGridPos;
@@ -396,6 +419,18 @@ public class FishMovementSimulator {
         if (random.nextDouble() < dashChance) {
             startDash(rarity);
         }
+    }
+
+    /**
+     * 计算落在底栏内的目标格，越界时朝反方向走。
+     * 返回值保证在 0~FIELD_EDGE 之间，避免鱼在边缘原地打转。
+     */
+    private int targetWithinField(int currentGridPos, int direction, int amount) {
+        int target = currentGridPos + direction * amount;
+        if (target < 0 || target > FIELD_EDGE) {
+            target = currentGridPos - direction * amount;
+        }
+        return Math.max(0, Math.min(FIELD_EDGE, target));
     }
 
     public double getFishPos() {

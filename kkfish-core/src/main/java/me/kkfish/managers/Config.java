@@ -42,6 +42,8 @@ import me.kkfish.managers.ItemValue;
  */
 import me.kkfish.utils.ConfigUpgrade;
 import me.kkfish.utils.XSeriesUtil;
+import me.kkfish.utils.NBTUtil;
+import me.kkfish.integrations.CustomItemHook;
 
 public class Config {
 
@@ -437,30 +439,55 @@ public class Config {
     }
 
     public String getRodType(ItemStack item) {
-        if (item == null || !item.getType().equals(XSeriesUtil.parseMaterial("FISHING_ROD"))) {
+        if (item == null || item.getType() == Material.AIR) {
             return null;
         }
-        
+        Object rodId = NBTUtil.getNBTData(item, "kkfish_rod");
+        if (rodId != null && rodExists(rodId.toString())) {
+            return "default_rod".equals(rodId.toString()) ? "default" : rodId.toString();
+        }
         ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
-            return null;
-        }
-        
-        String displayName = meta.getDisplayName();
-        
+        String displayName = meta == null ? null : meta.getDisplayName();
         ConfigurationSection rodsSection = rodConfig.getConfigurationSection("rods");
-        if (rodsSection == null) {
-            return null;
-        }
-        for (String rodName : rodsSection.getKeys(false)) {
-            String configDisplayName = rodConfig.getString("rods." + rodName + ".display-name", rodName);
-            configDisplayName = ChatColor.translateAlternateColorCodes('&', configDisplayName);
-            
-            if (displayName != null && displayName.equals(configDisplayName)) {
-                return rodName;
+        if (rodsSection != null && displayName != null && !displayName.isEmpty()) {
+            for (String rodName : rodsSection.getKeys(false)) {
+                String name = rodConfig.getString(getRodPropertyPath(rodName, "display-name"), rodName);
+                name = CustomItemHook.replaceFontImages(ChatColor.translateAlternateColorCodes('&', name));
+                if (displayName.equals(name)) {
+                    String material = rodConfig.getString(getRodPropertyPath(rodName, "material"), "FISHING_ROD");
+                    if (CustomItemHook.isCustomItemStr(material) || item.getType() == XSeriesUtil.parseMaterial(material)) return rodName;
+                }
             }
         }
-        
+        if (item.getType() == Material.FISHING_ROD || NBTUtil.hasTag(item, "自定义鱼竿")) {
+            return "default";
+        }
+        return null;
+    }
+
+    public ItemStack getPlayerRod(Player player) {
+        if (player == null) return null;
+        ItemStack main = player.getInventory().getItemInMainHand();
+        if (getRodType(main) != null) return main;
+        ItemStack off = player.getInventory().getItemInOffHand();
+        return getRodType(off) != null ? off : null;
+    }
+
+    public String getItemConfigId(ItemStack item, String group, String key) {
+        if (item == null || !item.hasItemMeta()) return null;
+        FileConfiguration config = "fish".equals(group) ? fishConfig : baitConfig;
+        Object id = NBTUtil.getNBTData(item, key);
+        if (id != null && config.isConfigurationSection(group + "." + id)) return id.toString();
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null || !meta.hasDisplayName()) return null;
+        String display = meta.getDisplayName();
+        ConfigurationSection section = config.getConfigurationSection(group);
+        if (section == null) return null;
+        for (String name : section.getKeys(false)) {
+            String configured = config.getString(group + "." + name + ".display-name", name);
+            configured = CustomItemHook.replaceFontImages(ChatColor.translateAlternateColorCodes('&', configured));
+            if (display.equals(configured) || ChatColor.stripColor(display).equals(ChatColor.stripColor(configured))) return name;
+        }
         return null;
     }
 
@@ -471,6 +498,7 @@ public class Config {
     public FileConfiguration getBaitConfig() {
         return baitConfig;
     }
+
     
     public FileConfiguration getCompeteConfig() {
         return competeConfig;
@@ -521,7 +549,7 @@ public class Config {
                 for (String fishName : fishSection.getKeys(false)) {
                     if (fishConfig.contains("fish." + fishName + ".seasons")) {
                         List<String> allowedSeasons = fishConfig.getStringList("fish." + fishName + ".seasons");
-                        if (allowedSeasons.contains("all") || allowedSeasons.contains(season)) {
+                        if (matchesCondition(allowedSeasons, season)) {
                             availableFish.add(fishName);
                         }
                     } else {
@@ -559,47 +587,38 @@ public class Config {
     }
 
     public int getFishRarity(String fishName) {
-        if (fishConfig.contains("fish." + fishName + ".level")) {
-            List<Map<?, ?>> levels = fishConfig.getMapList("fish." + fishName + ".level");
-            for (Map<?, ?> levelMap : levels) {
-                for (Object key : levelMap.keySet()) {
-                    String levelName = key.toString();
-                    String rarityName = getRarityNameByLevel(levelName);
-                    return getRarityOrder(rarityName);
-                }
+        Map<String, Double> weights = getFishLevelWeights(fishName);
+        String primary = null;
+        double largest = 0;
+        for (Map.Entry<String, Double> entry : weights.entrySet()) {
+            if (entry.getValue() > largest) {
+                largest = entry.getValue();
+                primary = entry.getKey();
             }
         }
-        return fishConfig.getInt("fish." + fishName + ".rarity", 1);
+        return primary == null ? fishConfig.getInt("fish." + fishName + ".rarity", 1) : getRarityOrder(primary);
     }
     
     public List<String> getFishRarityNames(String fishName) {
         List<String> rarityNames = new ArrayList<>();
         
         if (fishConfig.contains("fish." + fishName + ".level")) {
-            List<Map<?, ?>> levels = fishConfig.getMapList("fish." + fishName + ".level");
+            Map<String, Double> levels = getFishLevelWeights(fishName);
             
             String mainRarity = "common";
-            int maxWeight = 0;
+            double maxWeight = 0;
             
-            for (Map<?, ?> levelMap : levels) {
-                for (Map.Entry<?, ?> entry : levelMap.entrySet()) {
-                    String levelName = entry.getKey().toString();
-                    
-                    try {
-                        int weight = Integer.parseInt(entry.getValue().toString());
-                        if (weight > maxWeight) {
-                            maxWeight = weight;
-                            mainRarity = levelName;
-                        }
-                    } catch (NumberFormatException e) {
-                    }
-                    
-                    if (!rarityNames.contains(levelName)) {
-                        rarityNames.add(levelName);
-                    }
+            for (Map.Entry<String, Double> entry : levels.entrySet()) {
+                String levelName = entry.getKey();
+                double weight = entry.getValue();
+                if (weight > maxWeight) {
+                    maxWeight = weight;
+                    mainRarity = levelName;
+                }
+                if (weight > 0) {
+                    rarityNames.add(levelName);
                 }
             }
-            
             if (rarityNames.contains(mainRarity)) {
                 rarityNames.remove(mainRarity);
                 rarityNames.add(0, mainRarity + "(主要)");
@@ -614,31 +633,9 @@ public class Config {
     }
 
     public double getFishActivity(String fishName) {
-        return fishConfig.getDouble("fish." + fishName + ".activity", 1.0);
-    }
-
-    public double getFishBiteRateMultiplier(String fishName) {
-        return fishConfig.getDouble("fish." + fishName + ".bite-rate-multiplier", 1.0);
-    }
-    
-    public double getFishRareChance(String fishName) {
-        if (fishConfig.contains("fish." + fishName + ".level")) {
-            List<Map<?, ?>> levels = fishConfig.getMapList("fish." + fishName + ".level");
-            double rareChance = 0;
-            for (Map<?, ?> levelMap : levels) {
-                for (Object key : levelMap.keySet()) {
-                    String levelName = key.toString();
-                    if (levelName.contains("legendary") || levelName.contains("epic") || levelName.contains("rare")) {
-                        try {
-                            rareChance += Double.parseDouble(levelMap.get(key).toString()) / 100.0;
-                        } catch (NumberFormatException e) {
-                        }
-                    }
-                }
-            }
-            return rareChance;
-        }
-        return fishConfig.getDouble("fish." + fishName + ".rare-fish-chance", 0.05);
+        double activity = fishConfig.getDouble("fish." + fishName + ".activity", 1.0);
+        if (!Double.isFinite(activity) || activity <= 0) return 1.0;
+        return Math.max(0.1, Math.min(activity, 10.0));
     }
 
     public String getRandomFishLevel(String fishName) {
@@ -646,136 +643,118 @@ public class Config {
     }
     
     public String getRandomFishLevel(String fishName, Player player) {
+        return getRandomFishLevel(fishName, player, 1.0, new Random());
+    }
+
+    public Map<String, Double> getFishLevelWeights(String fishName) {
+        Map<String, Double> weights = new LinkedHashMap<>();
+        Object raw = fishConfig.get("fish." + fishName + ".level");
+        List<?> entries = raw instanceof List ? (List<?>) raw : Arrays.asList(raw);
+        for (Object entry : entries) {
+            if (entry instanceof ConfigurationSection) entry = ((ConfigurationSection) entry).getValues(false);
+            if (entry instanceof Map) {
+                for (Map.Entry<?, ?> pair : ((Map<?, ?>) entry).entrySet()) {
+                    addLevelWeight(weights, pair.getKey(), pair.getValue(), fishName);
+                }
+            } else if (entry instanceof String) {
+                String text = ((String) entry).trim();
+                int separator = text.lastIndexOf(':');
+                addLevelWeight(weights, separator < 0 ? text : text.substring(0, separator),
+                        separator < 0 ? 1 : text.substring(separator + 1), fishName);
+            }
+        }
+        return weights;
+    }
+
+    private void addLevelWeight(Map<String, Double> weights, Object name, Object value, String fishName) {
+        if (name == null || value == null) return;
+        try {
+            double weight = Double.parseDouble(value.toString());
+            String id = getRarityNameByLevel(name.toString());
+            if (!Double.isFinite(weight) || weight < 0 || id.isEmpty()) throw new NumberFormatException();
+            weights.put(id, weights.getOrDefault(id, 0.0) + weight);
+        } catch (NumberFormatException e) {
+            kkfish.log("§e鱼 " + fishName + " 的等级权重无效: " + name + "=" + value);
+        }
+    }
+
+    public String getRandomFishLevel(String fishName, Player player, double rareMultiplier, Random random) {
         try {
             if (fishConfig.contains("fish." + fishName + ".level")) {
-                Object levelObj = fishConfig.get("fish." + fishName + ".level");
-                List<Map<?, ?>> levels = new ArrayList<>();
-                
-                if (levelObj instanceof List) {
-                    List<?> rawList = (List<?>) levelObj;
-                    for (Object item : rawList) {
-                        if (item instanceof Map) {
-                            levels.add((Map<?, ?>) item);
-                        }
-                    }
-                    if (levels.isEmpty() && rawList.size() > 0) {
-                        Object firstItem = rawList.get(0);
-                        if (firstItem instanceof String) {
-                            return firstItem.toString();
-                        }
-                    }
-                } else if (levelObj instanceof Map) {
-                    Map<?, ?> singleLevel = (Map<?, ?>) levelObj;
-                    levels.add(singleLevel);
-                } else if (levelObj instanceof String) {
-                    return levelObj.toString();
-                }
+                Map<String, Double> levels = getFishLevelWeights(fishName);
                 
                 if (levels.isEmpty()) {
-                    return "common";
+                    return null;
                 }
                 
-                int totalWeight = 0;
-                List<Map.Entry<String, Integer>> weightedEntries = new ArrayList<>();
+                double totalWeight = 0;
+                List<Map.Entry<String, Double>> weightedEntries = new ArrayList<>();
+                AuraSkills auraSkills = player == null ? null : plugin.getAuraSkills();
+                double skillBonus = auraSkills != null && auraSkills.isAuraSkillsEnabled()
+                        ? auraSkills.getRareFishBonus(auraSkills.getFishingLevel(player)) : 1.0;
                 
-                for (Map<?, ?> levelMap : levels) {
-                    for (Map.Entry<?, ?> entry : levelMap.entrySet()) {
-                                try {
-                                    String levelName = entry.getKey().toString();
-                                    int baseWeight = Integer.parseInt(entry.getValue().toString());
-                                    
-                                    int globalWeight = getGlobalLevelWeight(levelName);
-                                    int finalWeight = baseWeight * globalWeight;
-                                    
-                                    if (player != null) {
-                                        AuraSkills auraSkills = kkfish.getInstance().getAuraSkills();
-                                        if (auraSkills != null) {
-                                            if (isDebugMode()) kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_aura_skills_exists", "AuraSkills存在，isEnabled: %s", auraSkills.isAuraSkillsEnabled()));
-                                            if (auraSkills.isAuraSkillsEnabled()) {
-                                                int fishingLevel = auraSkills.getFishingLevel(player);
-                                                if (isDebugMode()) kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_player_fishing_level", "玩家 %s 的钓鱼等级: %s", player.getName(), fishingLevel));
-                                                
-                                                double bonusMultiplier = auraSkills.getRareFishBonus(fishingLevel);
-                                                
-                                                if (levelName.toLowerCase().equals("legendary")) {
-                                                    finalWeight = (int)Math.max(1, finalWeight * bonusMultiplier * 1.2);
-                                                } else if (levelName.toLowerCase().equals("epic")) {
-                                                    finalWeight = (int)Math.max(1, finalWeight * bonusMultiplier * 1.1);
-                                                } else if (levelName.toLowerCase().equals("rare")) {
-                                                    finalWeight = (int)Math.max(1, finalWeight * bonusMultiplier);
-                                                } else {
-                                                    finalWeight = (int)Math.max(50, finalWeight * (2.0 - bonusMultiplier));
-                                                }
-                                                    if (isDebugMode()) kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_fish_level_weight", "鱼 %s 的 %s 等级权重调整为: %s", fishName, levelName, finalWeight));
-                                            }
-                                        } else {
-                                            if (isDebugMode()) kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_aura_skills_not_exists", "AuraSkillsHandler不存在！"));
-                                        }
-                                    }
-                                    
-                                    weightedEntries.add(new AbstractMap.SimpleEntry<>(levelName, finalWeight));
-                                    totalWeight += finalWeight;
-                                } catch (NumberFormatException e) {
-                                    kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("config_fish_level_weight_error", "鱼 %s 的等级权重格式错误: %s", fishName, entry.getValue()));
-                                }
-                            }
+                for (Map.Entry<String, Double> entry : levels.entrySet()) {
+                    String levelName = entry.getKey();
+                    double finalWeight = entry.getValue() * Math.max(0, getGlobalLevelWeight(levelName));
+                    if (getRarityOrder(levelName) >= 3) finalWeight *= Math.max(0, rareMultiplier) * skillBonus;
+                    if (finalWeight <= 0 || !Double.isFinite(finalWeight)) continue;
+                    weightedEntries.add(new AbstractMap.SimpleEntry<>(levelName, finalWeight));
+                    totalWeight += finalWeight;
                 }
-                
                 if (totalWeight <= 0 || weightedEntries.isEmpty()) {
-                    return plugin.getMessageManager().getMessageWithoutPrefix("rarity_name.common", "普通");
+                    return null;
                 }
                 
-                Random random = new Random();
-                int randomValue = random.nextInt(totalWeight) + 1;
-                int currentWeight = 0;
+                double randomValue = random.nextDouble() * totalWeight;
+                double currentWeight = 0;
                 
-                for (Map.Entry<String, Integer> entry : weightedEntries) {
-                            currentWeight += entry.getValue();
-                            if (randomValue <= currentWeight) {
-                                String levelName = entry.getKey();
-                                if (levelName.contains(":")) {
-                                    levelName = levelName.split(":")[0];
-                                }
-                                return levelName;
-                            }
-                        }
+                for (Map.Entry<String, Double> entry : weightedEntries) {
+                    currentWeight += entry.getValue();
+                    if (randomValue < currentWeight) return entry.getKey();
+                }
+                return weightedEntries.get(weightedEntries.size() - 1).getKey();
             }
-            return getRarityDisplayName("common");
+            int rarity = fishConfig.getInt("fish." + fishName + ".rarity", 1);
+            return rarity == 5 ? "legendary" : rarity == 4 ? "epic" : rarity == 3 ? "rare" : rarity == 2 ? "uncommon" : "common";
         } catch (Exception e) {
             kkfish.log("§e" + plugin.getMessageManager().getMessageWithoutPrefix("config_fish_level_calc_error", "计算钓鱼等级时出错: %s", e.getMessage()));
-            return getRarityDisplayName("common");
+            return null;
         }
     }
     
-    private int getGlobalLevelWeight(String levelName) {
+    private double getGlobalLevelWeight(String levelName) {
         if (levelName.contains(":")) {
             levelName = levelName.split(":")[0];
         }
         
         levelName = levelName.toLowerCase();
         
-        return mainConfig.getInt("fishing-settings.rarity." + levelName + ".weight", 50);
+        return mainConfig.getDouble("fishing-settings.rarity." + levelName + ".weight", 50);
     }
 
     public boolean rodExists(String rodName) {
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.contains("rods.default");
+        return rodName != null && rodConfig.isConfigurationSection("rods." + ("default_rod".equals(rodName) ? "default" : rodName));
+    }
+
+    public String getRodPropertyPath(String rodName, String field) {
+        String id = "default_rod".equals(rodName) ? "default" : rodName;
+        String path = "rods." + id + "." + field;
+        if (rodConfig.contains(path)) return path;
+        int separator = field.indexOf('.');
+        while (separator > 0) {
+            String parent = "rods." + id + "." + field.substring(0, separator);
+            if (rodConfig.contains(parent) && !rodConfig.isConfigurationSection(parent)) return path;
+            separator = field.indexOf('.', separator + 1);
         }
-        return rodConfig.contains("rods." + rodName);
+        return "rods.default." + field;
     }
 
     public double getRodDifficulty(String rodName) {
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getDouble("rods.default.difficulty", 1.0);
-        }
-        return rodConfig.getDouble("rods." + rodName + ".difficulty", 1.0);
+        return rodConfig.getDouble(getRodPropertyPath(rodName, "difficulty"), 1.0);
     }
 
     public int getRodFloatAreaSize(String rodName) {
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getInt("rods.default.float-area-size", 30);
-        }
-        return rodConfig.getInt("rods." + rodName + ".float-area-size", 20);
+        return rodConfig.getInt(getRodPropertyPath(rodName, "float-area-size"), 30);
     }
 
     public boolean baitExists(String baitName) {
@@ -783,6 +762,10 @@ public class Config {
     }
 
     public String getBaitEffect(String baitName) {
+        if (baitConfig.contains("baits." + baitName + ".effects")) {
+            List<String> effects = getBaitEffects(baitName);
+            return effects.isEmpty() ? "none" : effects.get(0);
+        }
         if (baitConfig.contains("baits." + baitName + ".effect")) {
             return baitConfig.getString("baits." + baitName + ".effect", "none");
         }
@@ -816,13 +799,25 @@ public class Config {
     }
 
     public double getBaitEffectValueByName(String baitName, String effectType) {
+        if (baitName == null || !getBaitEffects(baitName).contains(effectType)) return 0.0;
         if (baitConfig.contains("baits." + baitName + ".effect-values")) {
             Object valueObj = baitConfig.get("baits." + baitName + ".effect-values." + effectType);
             if (valueObj instanceof Number) {
                 return ((Number) valueObj).doubleValue();
             }
         }
+        if (!baitConfig.contains("baits." + baitName + ".effects") && effectType.equals(getBaitEffect(baitName))) {
+            return getBaitEffectValue(baitName);
+        }
         return 0.0;
+    }
+
+    /**
+     * 鱼饵的诱鱼速度加成，effect 类型为 lure。
+     */
+    public double getBaitLureSpeed(String baitName) {
+        double value = getBaitEffectValueByName(baitName, "lure");
+        return Double.isFinite(value) && value > 0 ? value : 0.0;
     }
     
     public List<String> getAllBaitNames() {
@@ -910,18 +905,20 @@ public class Config {
     private List<String> filterFishByConditions(List<String> fishNames, String biome, String weather, long time, String season) {
         List<String> result = new ArrayList<>();
         for (String fishName : fishNames) {
+            if (!fishExists(fishName)) continue;
+            if (!hasAvailableFishLevel(fishName)) continue;
             boolean canSpawn = true;
 
             if (fishConfig.contains("fish." + fishName + ".biomes")) {
                 List<String> biomes = fishConfig.getStringList("fish." + fishName + ".biomes");
-                if (!biomes.isEmpty() && !biomes.contains(biome)) {
+                if (!matchesCondition(biomes, biome)) {
                     canSpawn = false;
                 }
             }
 
             if (canSpawn && fishConfig.contains("fish." + fishName + ".weather")) {
                 List<String> weathers = fishConfig.getStringList("fish." + fishName + ".weather");
-                if (!weathers.isEmpty() && !weathers.contains(weather)) {
+                if (!matchesCondition(weathers, weather)) {
                     canSpawn = false;
                 }
             }
@@ -942,7 +939,7 @@ public class Config {
 
             if (canSpawn && isSeasonalFishingEnabled() && season != null && fishConfig.contains("fish." + fishName + ".seasons")) {
                 List<String> seasons = fishConfig.getStringList("fish." + fishName + ".seasons");
-                if (!seasons.isEmpty() && !seasons.contains(season)) {
+                if (!matchesCondition(seasons, season)) {
                     canSpawn = false;
                 }
             }
@@ -952,6 +949,23 @@ public class Config {
             }
         }
         return result;
+    }
+
+    private boolean matchesCondition(List<String> values, String actual) {
+        if (values.isEmpty() || actual == null) return true;
+        for (String value : values) {
+            if ("ALL".equalsIgnoreCase(value) || "ANY".equalsIgnoreCase(value) || actual.equalsIgnoreCase(value)) return true;
+        }
+        return false;
+    }
+
+    public boolean hasAvailableFishLevel(String fishName) {
+        if (!fishConfig.contains("fish." + fishName + ".level")) return true;
+        for (Map.Entry<String, Double> entry : getFishLevelWeights(fishName).entrySet()) {
+            double weight = entry.getValue() * getGlobalLevelWeight(entry.getKey());
+            if (weight > 0 && Double.isFinite(weight)) return true;
+        }
+        return false;
     }
 
     public List<String> getAvailableFish(String biome, String weather, long time, String season) {
@@ -1055,10 +1069,7 @@ public class Config {
     }
     
     public String getRodTemplateName(String rodName) {
-        if (!rodConfig.contains("rods." + rodName)) {
-            return "default";
-        }
-        return rodConfig.getString("rods." + rodName + ".template", "default");
+        return rodConfig.getString(getRodPropertyPath(rodName, "template"), "default");
     }
     
     public String getHookTemplate(String templateName) {
@@ -1070,10 +1081,11 @@ public class Config {
     }
     
     public String getHookTemplateName(String hookName) {
-        if (!hookConfig.contains("hooks." + hookName)) {
+        String path = getHookConfigPath(hookName);
+        if (path == null) {
             return "default";
         }
-        return hookConfig.getString("hooks." + hookName + ".template", "default");
+        return hookConfig.getString(path + ".template", "default");
     }
     
     public String getBaitTemplate(String templateName) {
@@ -1311,10 +1323,7 @@ public class Config {
         if (!rodExists(rodName)) {
             return 0;
         }
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getInt("rods.default.durability", 65);
-        }
-        return rodConfig.getInt("rods." + rodName + ".durability", 0);
+        return rodConfig.getInt(getRodPropertyPath(rodName, "durability"), "default".equals(rodName) || "default_rod".equals(rodName) ? 65 : 0);
     }
     
 
@@ -1323,50 +1332,85 @@ public class Config {
         if (!rodExists(rodName)) {
             return 1.0;
         }
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getDouble("rods.default.charge-speed", 1.0);
-        }
-        return rodConfig.getDouble("rods." + rodName + ".charge-speed", 1.0);
+        double speed = rodConfig.getDouble(getRodPropertyPath(rodName, "charge-speed"), 1.0);
+        return speed > 0 && Double.isFinite(speed) ? speed : 1.0;
+    }
+
+    public String getRodChargeSpeedText(String rodName) {
+        return String.format(Locale.ROOT, "%.1f", getRodChargeSpeed(rodName));
     }
     
+    /** TODO: 当前没有生产调用点；配置不会影响 Bukkit 原版附魔结果。 */
+    /** TODO：当前没有生产调用点；配置不会影响 Bukkit 原版附魔结果。 */
     public int getRodEnchantability(String rodName) {
         if (!rodExists(rodName)) {
             return 15;
         }
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getInt("rods.default.enchantability", 15);
-        }
-        return rodConfig.getInt("rods." + rodName + ".enchantability", 15);
+        return rodConfig.getInt(getRodPropertyPath(rodName, "enchantability"), 15);
     }
     
     public double getRodBiteRateBonus(String rodName) {
         if (!rodExists(rodName)) {
             return 0.0;
         }
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getDouble("rods.default.bite-chance-bonus", 0.0);
+        ConfigurationSection rod = rodConfig.getConfigurationSection("rods." + ("default_rod".equals(rodName) ? "default" : rodName));
+        if (rod != null && !rod.contains("bite-chance-bonus") && !rod.contains("bite-rate-bonus")) {
+            rod = rodConfig.getConfigurationSection("rods.default");
         }
-        return rodConfig.getDouble("rods." + rodName + ".bite-rate-bonus", 0.0);
+        return getRodBiteRateBonus(rod);
+    }
+
+    static double getRodBiteRateBonus(ConfigurationSection rod) {
+        if (rod == null) {
+            return 0.0;
+        }
+        if (rod.contains("bite-chance-bonus")) {
+            return rod.getDouble("bite-chance-bonus");
+        }
+        return rod.getDouble("bite-rate-bonus", 0.0);
     }
 
     public double getRodRareFishChance(String rodName) {
         if (!rodExists(rodName)) {
             return 0.0;
         }
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getDouble("rods.default.rare-fish-chance", 0.0);
+        String id = "default_rod".equals(rodName) ? "default" : rodName;
+        String path = "rods." + id;
+        if (!rodConfig.contains(path + ".rare-fish-chance") && rodConfig.contains(path + ".carp-fish-chance")) {
+            return rodConfig.getDouble(path + ".carp-fish-chance", 0.0);
         }
-        return rodConfig.getDouble("rods." + rodName + ".rare-fish-chance", 0.0);
+        String selected = getRodPropertyPath(rodName, "rare-fish-chance");
+        return rodConfig.getDouble(selected, rodConfig.getDouble("rods.default.carp-fish-chance", 0.0));
+    }
+
+    /**
+     * 鱼竿的诱鱼速度加成。缺字段时沿 rods.default 回退，与其它鱼竿属性一致。
+     */
+    public double getRodLureSpeed(String rodName) {
+        double value = rodConfig.getDouble(getRodPropertyPath(rodName, "lure-speed"), 0.0);
+        return Double.isFinite(value) && value > 0 ? value : 0.0;
+    }
+
+    /**
+     * 鱼竿的鱼尺寸倍率。缺字段时沿 rods.default 回退，非法值按 1.0 处理。
+     */
+    public double getRodSizeMultiplier(String rodName) {
+        double value = rodConfig.getDouble(getRodPropertyPath(rodName, "size-multiplier"), 1.0);
+        return Double.isFinite(value) && value > 0 ? value : 1.0;
+    }
+
+    /**
+     * 诱鱼速度总加成：鱼竿 + 鱼钩 + 鱼饵，三者加算。
+     */
+    public double getLureSpeedBonus(String rodName, String hookName, String baitName) {
+        return getRodLureSpeed(rodName) + getHookLureSpeed(hookName) + getBaitLureSpeed(baitName);
     }
 
     public int getRodCustomModelData(String rodName) {
         if (!rodExists(rodName)) {
             return 0;
         }
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getInt("rods.default.custom-model-data", 0);
-        }
-        return rodConfig.getInt("rods." + rodName + ".custom-model-data", 0);
+        return rodConfig.getInt(getRodPropertyPath(rodName, "custom-model-data"), 0);
     }
     
     public int getBaitCustomModelData(String baitName) {
@@ -1388,10 +1432,7 @@ public class Config {
         if (!rodExists(rodName)) {
             return new ArrayList<>();
         }
-        if ("default_rod".equals(rodName)) {
-            return rodConfig.getStringList("rods.default.effects");
-        }
-        return rodConfig.getStringList("rods." + rodName + ".effects");
+        return rodConfig.getStringList(getRodPropertyPath(rodName, "effects"));
     }
     
 
@@ -1477,42 +1518,28 @@ public class Config {
     }
     
     public Map<String, Object> getHookConfig(String hookName) {
-        if (!hookExists(hookName)) {
-            return null;
-        }
-        ConfigurationSection pagesSection = hookConfig.getConfigurationSection("hooks");
-        if (pagesSection == null) {
-            return null;
-        }
-        for (String pageKey : pagesSection.getKeys(false)) {
-            if (pagesSection.contains(pageKey + "." + hookName)) {
-                return pagesSection.getConfigurationSection(pageKey + "." + hookName).getValues(false);
-            }
-        }
-        return null;
+        String path = getHookConfigPath(hookName);
+        ConfigurationSection section = path == null ? null : hookConfig.getConfigurationSection(path);
+        return section == null ? null : section.getValues(false);
     }
     
     public boolean hookExists(String hookName) {
-        if (hookConfig.contains("hooks")) {
-            ConfigurationSection pagesSection = hookConfig.getConfigurationSection("hooks");
-            for (String pageKey : pagesSection.getKeys(false)) {
-                ConfigurationSection pageSection = pagesSection.getConfigurationSection(pageKey);
-                if (pageSection != null && pageSection.contains(hookName)) {
-                    return true;
-                }
-            }
-        }
-        
-        return hookConfig.contains(hookName);
+        return getHookConfigPath(hookName) != null;
     }
     
     private String getHookConfigPath(String hookName) {
+        if (hookName == null) return null;
         String cached = hookPathCache.get(hookName);
         if (cached != null) return cached;
 
+        if (hookConfig.isConfigurationSection("hooks." + hookName)) {
+            return "hooks." + hookName;
+        }
         if (hookConfig.contains("hooks")) {
             ConfigurationSection pagesSection = hookConfig.getConfigurationSection("hooks");
+            if (pagesSection == null) return null;
             for (String pageKey : pagesSection.getKeys(false)) {
+                if (!pageKey.matches("\\d+")) continue;
                 ConfigurationSection pageSection = pagesSection.getConfigurationSection(pageKey);
                 if (pageSection != null && pageSection.contains(hookName)) {
                     String path = "hooks." + pageKey + "." + hookName;
@@ -1538,6 +1565,10 @@ public class Config {
         for (String pageKey : pagesSection.getKeys(false)) {
             ConfigurationSection pageSection = pagesSection.getConfigurationSection(pageKey);
             if (pageSection == null) continue;
+            if (!pageKey.matches("\\d+")) {
+                hookPathCache.put(pageKey, "hooks." + pageKey);
+                continue;
+            }
             for (String hookName : pageSection.getKeys(false)) {
                 hookPathCache.put(hookName, "hooks." + pageKey + "." + hookName);
             }
@@ -1623,6 +1654,39 @@ public class Config {
             return 0.0;
         }
         return hookConfig.getDouble(configPath + ".effects.rare-fish-chance", 0.0);
+    }
+
+    public double getHookSizeMultiplier(String hookName) {
+        double fallback = "diamond".equalsIgnoreCase(hookName) ? 1.3 : "gold".equalsIgnoreCase(hookName) ? 1.2
+                : "iron".equalsIgnoreCase(hookName) ? 1.15 : "stone".equalsIgnoreCase(hookName) ? 1.1 : 1.05;
+        String path = getHookConfigPath(hookName);
+        return path == null ? fallback : hookConfig.getDouble(path + ".effects.size-multiplier", fallback);
+    }
+
+    public boolean shouldDisplayHookSizeMultiplier(String hookName) {
+        String path = getHookConfigPath(hookName);
+        if (path == null || !hookConfig.contains(path + ".effects.size-multiplier")) return false;
+        double value = getHookSizeMultiplier(hookName);
+        return Double.isFinite(value) && value > 0 && Math.abs(value - 1.0) > 0.0001;
+    }
+
+    /**
+     * 鱼钩的诱鱼速度加成，读取 effects.lure-speed，缺省为 0。
+     */
+    public double getHookLureSpeed(String hookName) {
+        String path = getHookConfigPath(hookName);
+        if (path == null) {
+            return 0.0;
+        }
+        double value = hookConfig.getDouble(path + ".effects.lure-speed", 0.0);
+        return Double.isFinite(value) && value > 0 ? value : 0.0;
+    }
+
+    public double getHookValueMultiplier(String hookName) {
+        double fallback = "diamond".equalsIgnoreCase(hookName) ? 1.3 : "gold".equalsIgnoreCase(hookName) ? 1.2
+                : "iron".equalsIgnoreCase(hookName) ? 1.1 : 1.0;
+        String path = getHookConfigPath(hookName);
+        return path == null ? fallback : hookConfig.getDouble(path + ".effects.value-multiplier", fallback);
     }
     
     public boolean isHookVisibleInGui(String hookName) {
@@ -1781,7 +1845,7 @@ public class Config {
             rodConfig.set("rods.example-rod.float-area-size", 3);
             rodConfig.set("rods.example-rod.durability", 50);
             rodConfig.set("rods.example-rod.charge-speed", 1.0);
-            rodConfig.set("rods.example-rod.bite-rate-bonus", 0.0);
+            rodConfig.set("rods.example-rod.bite-chance-bonus", 0.0);
             rodConfig.set("rods.example-rod.custom-model-data", 0);
             rodConfig.set("rods.example-rod.effects", new ArrayList<>());
             kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("config_add_missing_rod", "添加缺失的鱼竿配置: %s", "example-rod"));
@@ -1831,19 +1895,18 @@ public class Config {
     }
 
     public List<String> getAvailableFishFromPool(WaterType waterType, String biome, String weather, long time, String season) {
-        List<String> poolFish = getPoolFish(waterType);
-        if (poolFish.isEmpty()) {
+        if (waterType == null || !poolConfig.contains(waterType.name().toLowerCase(Locale.ROOT))) {
             return getAvailableFish(biome, weather, time, season);
         }
+        return filterFishByConditions(getPoolFish(waterType), biome, weather, time, season);
+    }
 
-        List<String> existingPoolFish = getPoolFish(waterType);
-
-        List<String> availableFish = filterFishByConditions(existingPoolFish, biome, weather, time, season);
-        if (availableFish.isEmpty()) {
-            return getAvailableFish(biome, weather, time, season);
-        }
-
-        return availableFish;
+    public List<String> getAvailableFishFromPool(WaterType waterType, org.bukkit.Location location) {
+        if (location == null || location.getWorld() == null) return getAvailableFishFromPool(waterType, null, null, 0, null);
+        org.bukkit.World world = location.getWorld();
+        String weather = world.isThundering() ? "THUNDER" : world.hasStorm() ? "RAIN" : "CLEAR";
+        String season = plugin.isRealisticSeasonsEnabled() ? plugin.getCurrentSeason() : null;
+        return getAvailableFishFromPool(waterType, location.getBlock().getBiome().name(), weather, world.getTime(), season);
     }
 
     public boolean isLavaFishingEnabled() {
@@ -1979,16 +2042,23 @@ public class Config {
     }
 
     public String getRarityNameByLevel(String levelName) {
-        if (levelName == null) return "common";
-        levelName = levelName.toLowerCase();
-        if (levelName.contains("legendary")) return "legendary";
-        if (levelName.contains("epic")) return "epic";
-        if (levelName.contains("rare")) return "rare";
-        if (levelName.contains("uncommon")) return "uncommon";
-        return "common";
+        if (levelName == null || levelName.trim().isEmpty()) return "common";
+        String id = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', levelName)).split(":", 2)[0].trim().toLowerCase(Locale.ROOT);
+        if ("传说".equals(id)) return "legendary";
+        if ("史诗".equals(id)) return "epic";
+        if ("稀有".equals(id)) return "rare";
+        if ("罕见".equals(id)) return "uncommon";
+        if ("普通".equals(id)) return "common";
+        ConfigurationSection rarities = mainConfig.getConfigurationSection("fishing-settings.rarity");
+        if (rarities != null) for (String key : rarities.getKeys(false)) {
+            String display = mainConfig.getString("fishing-settings.rarity." + key + ".display-name", key);
+            if (id.equals(ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', display)).toLowerCase(Locale.ROOT))) return key;
+        }
+        return id;
     }
 
     public int getRarityOrder(String rarityName) {
+        if (rarityName == null) return 1;
         switch (rarityName) {
             case "legendary": return 5;
             case "epic": return 4;

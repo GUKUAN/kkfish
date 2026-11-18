@@ -1,11 +1,13 @@
 # kkfish 鱼类配置文件
+# 等级表支持 common:70 字符串及 common: 70 映射；最终权重 = 鱼等级权重 × 全局等级权重 × 稀有加成。
+# 只有 rare、epic、legendary 等稀有候选应用加成；不会升级到等级表以外的等级，零权重不会复活。
 # 鱼类配置示例
 # 你可以通过各种属性和行为创建自定义鱼类
 # 鱼类配置示例（添加到 fish: 节点下）:
 # custom-legendary-fish:
 #   level:
 #     - legendary:100
-#   activity: 2.0 # （预留字段，尚未接入）
+#   activity: 2.0 # 活跃度：控制行为切换与冷却频率，范围 0.1-10.0
 #   min-size: 50
 #   max-size: 150
 #   value: 1000
@@ -17,14 +19,13 @@
 #   weather: ["THUNDER"]
 #   time: ["NIGHT"]
 #   seasons: ["SUMMER"]
-#   bite-rate-multiplier: 0.3 # （预留字段，尚未接入）
 #   description: "一条稀有而强大的鱼"
 #   display-name: "&6&l自定义传说级鱼类"
 #   material: "TROPICAL_FISH"
 #   custom-model-data: -1
 #   enchant-glow: true
 #   effects: ["FIRE_RESISTANCE 3:60", "WATER_BREATHING 2:120"]
-#   movement-amplitude: 2.0
+#   movement-amplitude: 2.0 # 控制小游戏中的移动速度，数值越大移动越快（冲刺也会加速）
 #   command: ["-o say 恭喜 %player%！", "-c give %player% diamond 10"]
 #   saturation: 20
 #   announcement: true
@@ -47,7 +48,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["ANY"]
     seasons: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
-    bite-rate-multiplier: 1.1
     description: "一种常见的淡水鱼，肉质鲜美，常出没于河流中"
     display-name: "§f鲤鱼"
     material: "COD"
@@ -71,7 +71,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["ANY"]
     seasons: ["SPRING", "SUMMER", "AUTUMN"]
-    bite-rate-multiplier: 1.2
     description: "一种性情温和的淡水鱼，易于捕获，体态修长可爱"
     display-name: "§f草鱼"
     material: "SALMON"
@@ -96,7 +95,6 @@ fish:
     weather: ["CLEAR"]
     time: ["DAY", "DAWN", "DUSK"]
     seasons: ["SPRING", "SUMMER"]
-    bite-rate-multiplier: 0.8
     description: "一种美丽的观赏鱼，极为罕见，金色的鳞片在阳光下闪闪发光"
     display-name: "§6金鱼"
     material: "TROPICAL_FISH"
@@ -120,7 +118,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["DUSK", "DAWN"]
     seasons: ["SPRING", "SUMMER", "AUTUMN"]
-    bite-rate-multiplier: 0.9
     description: "一种强壮的肉食性鱼类，游泳速度极快"
     display-name: "§3鲈鱼"
     material: "COD"
@@ -148,7 +145,6 @@ fish:
     weather: ["THUNDER"]
     time: ["NIGHT"]
     seasons: ["SUMMER"]
-    bite-rate-multiplier: 0.3
     description: "传说中的神秘鱼类，鲜有人见过，据说食用后能获得神秘力量"
     display-name: "§4§l龙鱼"
     material: "PUFFERFISH"
@@ -173,7 +169,6 @@ fish:
     weather: ["THUNDER"]
     time: ["NIGHT"]
     seasons: ["SUMMER"]
-    bite-rate-multiplier: 0.5
     description: "一种在雷雨天气出现的怪鱼，身上带有微弱电流，触碰时会有刺痛感"
     display-name: "§b闪电鱼"
     material: "TROPICAL_FISH"
@@ -198,7 +193,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["ANY"]
     seasons: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
-    bite-rate-multiplier: 0.7
     description: "一种擅长伪装的鱼，常躲在岩石附近，看起来像一块石头"
     display-name: "§7石头鱼"
     material: "COD"
@@ -222,7 +216,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["DAY"]
     seasons: ["SPRING", "SUMMER"]
-    bite-rate-multiplier: 0.8
     description: "一种能短暂跃出水面的怪鱼，看起来像在飞翔"
     display-name: "§a飞鱼"
     material: "SALMON"
@@ -246,7 +239,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["NIGHT"]
     seasons: ["AUTUMN"]
-    bite-rate-multiplier: 0.4
     description: "传说中的神秘鱼类，据说食用后能长生不老，游动时散发着神秘的光芒"
     display-name: "§d§l徐福鱼"
     material: "TROPICAL_FISH"

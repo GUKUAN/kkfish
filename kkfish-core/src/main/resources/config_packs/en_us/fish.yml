@@ -1,11 +1,13 @@
 # kkfish Fish Configuration
+# 等级表支持 common:70 字符串及 common: 70 映射；最终权重 = 鱼等级权重 × 全局等级权重 × 稀有加成。
+# 只有 rare、epic、legendary 等稀有候选应用加成；不会升级到等级表以外的等级，零权重不会复活。
 # Fish Configuration Example
 # You can create custom fish with various properties and behaviors
 # Example fish configuration (add under fish: node):
 # custom-legendary-fish:
 #   level:
 #     - legendary:100
-#   activity: 2.0 # (reserved, not yet wired)
+#   activity: 2.0 # Activity controls behavior frequency, range 0.1-10.0
 #   min-size: 50
 #   max-size: 150
 #   value: 1000
@@ -17,14 +19,13 @@
 #   weather: ["THUNDER"]
 #   time: ["NIGHT"]
 #   seasons: ["SUMMER"]
-#   bite-rate-multiplier: 0.3 # (reserved, not yet wired)
 #   description: "A rare and powerful fish"
 #   display-name: "&6&lCustom Legendary Fish"
 #   material: "TROPICAL_FISH"
 #   custom-model-data: -1
 #   enchant-glow: true
 #   effects: ["FIRE_RESISTANCE 3:60", "WATER_BREATHING 2:120"]
-#   movement-amplitude: 2.0
+#   movement-amplitude: 2.0 # Controls minigame movement speed; higher values move faster, including during dashes
 #   command: ["-o say Congratulations %player%!", "-c give %player% diamond 10"]
 #   saturation: 20
 #   announcement: true
@@ -47,7 +48,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["ANY"]
     seasons: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
-    bite-rate-multiplier: 1.1
     description: "A common freshwater fish with delicious meat, commonly found in rivers"
     display-name: "§fCarp"
     material: "COD"
@@ -71,7 +71,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["ANY"]
     seasons: ["SPRING", "SUMMER", "AUTUMN"]
-    bite-rate-multiplier: 1.2
     description: "A gentle freshwater fish that's easy to catch, with a lovely slender body"
     display-name: "§fGrassCarp"
     material: "SALMON"
@@ -96,7 +95,6 @@ fish:
     weather: ["CLEAR"]
     time: ["DAY", "DAWN", "DUSK"]
     seasons: ["SPRING", "SUMMER"]
-    bite-rate-multiplier: 0.8
     description: "A beautiful ornamental fish that's very rare, with golden scales that sparkle in sunlight"
     display-name: "§6Goldfish"
     material: "TROPICAL_FISH"
@@ -120,7 +118,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["DUSK", "DAWN"]
     seasons: ["SPRING", "SUMMER", "AUTUMN"]
-    bite-rate-multiplier: 0.9
     description: "A strong predatory fish that swims very fast"
     display-name: "§3Bass"
     material: "COD"
@@ -148,7 +145,6 @@ fish:
     weather: ["THUNDER"]
     time: ["NIGHT"]
     seasons: ["SUMMER"]
-    bite-rate-multiplier: 0.3
     description: "A legendary mysterious fish that few have seen, said to grant mysterious powers to those who eat it"
     display-name: "§4§lDragonFish"
     material: "PUFFERFISH"
@@ -173,7 +169,6 @@ fish:
     weather: ["THUNDER"]
     time: ["NIGHT"]
     seasons: ["SUMMER"]
-    bite-rate-multiplier: 0.5
     description: "A strange fish that appears during thunderstorms, with a weak electric current that gives a tingly sensation when touched"
     display-name: "§bLightningFish"
     material: "TROPICAL_FISH"
@@ -198,7 +193,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["ANY"]
     seasons: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
-    bite-rate-multiplier: 0.7
     description: "A fish skilled at camouflage, often hiding near rocks and looking like a stone"
     display-name: "§7StoneFish"
     material: "COD"
@@ -222,7 +216,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["DAY"]
     seasons: ["SPRING", "SUMMER"]
-    bite-rate-multiplier: 0.8
     description: "A strange fish that can briefly jump out of the water, appearing to fly"
     display-name: "§aFlyingFish"
     material: "SALMON"
@@ -246,7 +239,6 @@ fish:
     weather: ["CLEAR", "RAIN"]
     time: ["NIGHT"]
     seasons: ["AUTUMN"]
-    bite-rate-multiplier: 0.4
     description: "A legendary mysterious fish said to grant immortality when eaten, glowing with a mysterious light when swimming"
     display-name: "§d§lXuFuFish"
     material: "TROPICAL_FISH"

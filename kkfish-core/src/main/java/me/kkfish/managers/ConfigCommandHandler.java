@@ -46,6 +46,7 @@ public class ConfigCommandHandler {
             return;
         }
         plugin.getCustomConfig().reloadConfigs();
+        plugin.getCustomConfig().checkAndAddMissingConfigs();
         sellHandler.clearValueCache();
         plugin.getMessageManager().loadMessages();
         plugin.getMessageManager().completeAllLanguageFiles();
@@ -58,8 +59,6 @@ public class ConfigCommandHandler {
         if (plugin.getGUI() != null) {
             plugin.getGUI().reloadMenuConfigs();
         }
-
-        plugin.getCustomConfig().checkAndAddMissingConfigs();
 
         plugin.initMetrics();
 
@@ -168,7 +167,6 @@ public class ConfigCommandHandler {
         fishConfig.set("fish." + fishName + ".exp", 5);
         fishConfig.set("fish." + fishName + ".saturation", 2);
         fishConfig.set("fish." + fishName + ".activity", 1.0);
-        fishConfig.set("fish." + fishName + ".bite-rate-multiplier", 1.0);
         fishConfig.set("fish." + fishName + ".biomes", Arrays.asList("ALL"));
         fishConfig.set("fish." + fishName + ".weather", Arrays.asList("ALL"));
         fishConfig.set("fish." + fishName + ".time", Arrays.asList("DAY", "NIGHT"));
@@ -214,7 +212,7 @@ public class ConfigCommandHandler {
         rodConfig.set("rods." + rodName + ".float-area-size", 20);
         rodConfig.set("rods." + rodName + ".durability", 100);
         rodConfig.set("rods." + rodName + ".charge-speed", 1.0);
-        rodConfig.set("rods." + rodName + ".bite-rate-bonus", 0.0);
+        rodConfig.set("rods." + rodName + ".bite-chance-bonus", 0.0);
         rodConfig.set("rods." + rodName + ".rare-fish-chance", 0.0);
         rodConfig.set("rods." + rodName + ".custom-model-data", item.getItemMeta().hasCustomModelData() ? item.getItemMeta().getCustomModelData() : 0);
 

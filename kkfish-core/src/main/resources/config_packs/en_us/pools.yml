@@ -1,4 +1,6 @@
 # kkfish Pools Configuration
+# 已配置鱼池会同时检查群系、天气、时间和季节；空池或无匹配项时结束本次钓鱼，不回退池外鱼。
+# 未配置该水域鱼池时，才使用符合环境的全局鱼表。
 # Pools group fish by water type. When fishing, the plugin draws from the pool matching the water type.
 # Supported water types:
 #   water - normal water (default)

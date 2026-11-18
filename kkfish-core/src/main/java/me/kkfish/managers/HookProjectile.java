@@ -96,42 +96,15 @@ public class HookProjectile {
 
     private String checkAndConsumeBait(Player player) {
         ItemStack offhandItem = player.getInventory().getItemInOffHand();
-        String baitName = null;
-        if (offhandItem != null && offhandItem.getType() != Material.AIR) {
-            ItemMeta meta = offhandItem.getItemMeta();
-            if (meta != null && meta.hasLore()) {
-                List<String> lore = meta.getLore();
-                for (String line : lore) {
-                    if (line.contains(plugin.getMessageManager().getMessageWithoutPrefix("bait_usage_tip", "放于副手，蓄力抛出时消耗"))) {
-                            String currentBaitName = null;
-                            PersistentDataContainer pdc = meta.getPersistentDataContainer();
-                            NamespacedKey baitNameKey = new NamespacedKey(plugin, "bait_name");
-                            if (pdc.has(baitNameKey, PersistentDataType.STRING)) {
-                                currentBaitName = pdc.get(baitNameKey, PersistentDataType.STRING);
-                            } else {
-                                String displayName = meta.getDisplayName();
-                                currentBaitName = org.bukkit.ChatColor.stripColor(displayName);
-                            }
-
-                            if (!plugin.getCustomConfig().hasBaitPermission(player, currentBaitName)) {
-                                player.sendMessage(plugin.getMessageManager().getMessage("bait_no_permission", "§d你没有权限使用这个鱼饵！"));
-                                break;
-                            }
-
-                            offhandItem.setAmount(offhandItem.getAmount() - 1);
-                            if (offhandItem.getAmount() <= 0) {
-                                player.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
-                            } else {
-                                player.getInventory().setItemInOffHand(offhandItem);
-                            }
-                            player.sendMessage(plugin.getMessageManager().getMessage("bait_used", "§a已消耗一个鱼饵，获得特殊效果！"));
-
-                            baitName = currentBaitName;
-                            break;
-                        }
-                }
-            }
+        String baitName = config.getItemConfigId(offhandItem, "baits", "bait_name");
+        if (baitName == null) return null;
+        if (!config.hasBaitPermission(player, baitName)) {
+            player.sendMessage(messageManager.getMessage("bait_no_permission", "§d你没有权限使用这个鱼饵！"));
+            return null;
         }
+        offhandItem.setAmount(offhandItem.getAmount() - 1);
+        player.getInventory().setItemInOffHand(offhandItem.getAmount() <= 0 ? new ItemStack(Material.AIR) : offhandItem);
+        player.sendMessage(messageManager.getMessage("bait_used", "§a已消耗一个鱼饵，获得特殊效果！"));
         return baitName;
     }
 

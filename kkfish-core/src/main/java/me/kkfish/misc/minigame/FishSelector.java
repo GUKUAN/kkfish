@@ -17,7 +17,6 @@ import me.kkfish.fishing.WaterType;
  */
 public class FishSelector {
 
-    private final kkfish plugin;
     private final Config config;
     private final Random random;
     private final Player player;
@@ -30,7 +29,6 @@ public class FishSelector {
     private double biteRateBonus = 1.0;
 
     public FishSelector(kkfish plugin, Player player, WaterType waterType, String baitName, double rareFishChance, Random random) {
-        this.plugin = plugin;
         this.config = plugin.getCustomConfig();
         this.player = player;
         this.waterType = waterType;
@@ -63,40 +61,25 @@ public class FishSelector {
             }
         }
 
-        // 兼容旧版单效果配置
-        if (effects.size() <= 1 && config.getBaitEffectValue(baitName) > 0) {
-            String oldEffect = config.getBaitEffect(baitName);
-            double oldValue = config.getBaitEffectValue(baitName);
-
-            if (oldEffect.equals("rare")) {
-                rareFishBonus = 1.0 + oldValue;
-            } else if (oldEffect.equals("size")) {
-                sizeBonus = 1.0 + oldValue;
-            } else if (oldEffect.equals("bite")) {
-                biteRateBonus = 1.0 + oldValue;
-            }
-        }
     }
 
     /**
      * 根据水域鱼池和稀有度权重随机选择目标鱼。
      */
     public String selectRandomFish() {
-        List<String> poolFish = config.getPoolFish(waterType);
-        List<String> fishList;
-        if (!poolFish.isEmpty()) {
-            fishList = poolFish;
-        } else {
-            fishList = config.getAllFishNames();
-        }
+        return selectRandomFish(config.getAvailableFishFromPool(waterType, player == null ? null : player.getLocation()));
+    }
+
+    public String selectRandomFish(List<String> fishList) {
         if (fishList.isEmpty()) {
-            return plugin.getMessageManager().getMessageWithoutPrefix("fish_unknown", "未知鱼");
+            return null;
         }
 
         LinkedHashMap<String, Double> fishWeights = new LinkedHashMap<>();
         double totalWeight = 0;
 
         for (String fish : fishList) {
+            if (!config.hasAvailableFishLevel(fish)) continue;
             int rarity = config.getFishRarity(fish);
 
             double weight = 1.0;
@@ -116,6 +99,7 @@ public class FishSelector {
             totalWeight += weight;
         }
 
+        if (totalWeight <= 0 || fishWeights.isEmpty()) return null;
         double randomValue = random.nextDouble() * totalWeight;
         double currentWeight = 0;
 
@@ -126,26 +110,14 @@ public class FishSelector {
             }
         }
 
-        return fishList.get(random.nextInt(fishList.size()));
+        return fishWeights.keySet().iterator().next();
     }
 
     /**
-     * 根据鱼的等级表随机选择等级，并应用稀有度加成（5% 概率升级）。
+     * 稀有加成只改变等级表内的权重，不生成表外等级。
      */
     public String selectRandomFishLevel(String fishName) {
-        String level = config.getRandomFishLevel(fishName, player);
-
-        if (rareFishBonus > 1.0 && random.nextDouble() < 0.05) {
-            if (level.contains("common")) {
-                return "rare";
-            } else if (level.contains("rare")) {
-                return "epic";
-            } else if (level.contains("epic")) {
-                return "legendary";
-            }
-        }
-
-        return level;
+        return config.getRandomFishLevel(fishName, player, rareFishBonus, random);
     }
 
     public double getRareFishBonus() {

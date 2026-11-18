@@ -55,6 +55,9 @@ public class NBTUtilAPI {
         try {
             Object nbtItem = Class.forName("de.tr7zw.nbtapi.NBTItem").getConstructor(ItemStack.class).newInstance(item);
             if ((boolean) Class.forName("de.tr7zw.nbtapi.NBTItem").getMethod("hasKey", String.class).invoke(nbtItem, key)) {
+                String getter = "fish_size".equals(key) ? "getDouble" : "fish_value".equals(key) ? "getInteger"
+                        : key.startsWith("fish_") || "kkfish_rod".equals(key) || "bait_name".equals(key) ? "getString" : null;
+                if (getter != null) return nbtItem.getClass().getMethod(getter, String.class).invoke(nbtItem, key);
                 return Class.forName("de.tr7zw.nbtapi.NBTItem").getMethod("getObject", String.class, Class.class).invoke(nbtItem, key, Object.class);
             }
         } catch (Exception e) {

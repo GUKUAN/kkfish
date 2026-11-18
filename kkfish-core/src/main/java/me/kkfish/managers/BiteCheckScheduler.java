@@ -78,6 +78,13 @@ public class BiteCheckScheduler {
 
         int delay = (int) (minDelay + Math.random() * (maxDelay - minDelay) * (1 - chargePercentage / 200));
 
+        // 诱鱼速度：鱼竿 + 鱼钩 + 鱼饵加算，延迟按 1 / (1 + bonus) 缩短
+        String rodName = minigameManager != null ? minigameManager.getRodNameByPlayer(player) : config.getRodType(config.getPlayerRod(player));
+        String hookMaterial = plugin.getDB() != null ? plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString()) : null;
+        double lureSpeedBonus = config.getLureSpeedBonus(rodName, hookMaterial, baitName);
+        int minBiteDelay = Math.max(1, mainConfig.getInt("fishing-settings.min-bite-delay", 20));
+        delay = applyLureSpeed(delay, lureSpeedBonus, minBiteDelay);
+
         final double finalChargePercentage = chargePercentage;
         final String finalBaitName = baitName;
 
@@ -94,6 +101,17 @@ public class BiteCheckScheduler {
         if (ctx != null) {
             ctx.getRuntime().setBiteCheckTask(task);
         }
+    }
+
+    /**
+     * 应用诱鱼速度并兜住最小延迟。
+     * 加算的 bonus 直接进分母，0.5 表示延迟缩短到原来的 2/3。
+     */
+    static int applyLureSpeed(int delay, double lureSpeedBonus, int minDelay) {
+        if (!Double.isNaN(lureSpeedBonus) && lureSpeedBonus > 0) {
+            delay = (int) Math.round(delay / (1.0 + lureSpeedBonus));
+        }
+        return Math.max(1, Math.max(delay, minDelay));
     }
 
     private void checkFishBite(Player player, double chargePercentage, String baitName) {
@@ -142,7 +160,7 @@ public class BiteCheckScheduler {
         biteRate *= (1.0 + hookBiteRateBonus);
         rareFishChance += hookRareFishChanceBonus;
 
-        biteRate = Math.min(biteRate, maxBiteChance);
+        biteRate = Math.max(0, Math.min(biteRate, Math.min(1, maxBiteChance)));
 
         return new double[]{biteRate, rareFishChance};
     }
@@ -155,15 +173,6 @@ public class BiteCheckScheduler {
 
             if (effectType.equals("bite")) {
                 biteRate *= (1.0 + value);
-            }
-        }
-
-        if (effects.size() <= 1 && config.getBaitEffectValue(baitName) > 0) {
-            String oldEffect = config.getBaitEffect(baitName);
-            double oldValue = config.getBaitEffectValue(baitName);
-
-            if (oldEffect.equals("bite")) {
-                biteRate *= (1.0 + oldValue);
             }
         }
 
@@ -227,7 +236,8 @@ public class BiteCheckScheduler {
         BukkitRunnable expireTask = new BukkitRunnable() {
             @Override
             public void run() {
-                removeBiteHint(playerId);
+                RuntimeData.BiteHintData current = ctx == null ? null : ctx.getRuntime().getBiteHintData();
+                if (current != null && current.getExpireTask() == this) removeBiteHint(playerId);
             }
         };
 
@@ -384,7 +394,8 @@ public class BiteCheckScheduler {
 
             sendFloatingText(player, hookLocation, hookedText, 20, 20, 20);
 
-            removeBiteHint(playerId, false);
+            data.cancelExpireTask();
+            ctx.getRuntime().setBiteHintData(null);
 
             minigameManager.startMinigame(player, data.getChargePercentage(), data.getBaitName(), data.getRareFishChance());
 

@@ -106,6 +106,8 @@ fishing-settings:
   bite-check-delay-min: 5000
   # Maximum bite check delay (ms)
   bite-check-delay-max: 15000
+  # Minimum bite delay after lure speed is applied (ticks, 20 ticks = 1 second)
+  min-bite-delay: 20
   # Bite hint timeout (seconds)
   bite-hint-timeout: 2
   # Fish escape mechanics, affecting two logic points:
@@ -395,6 +397,9 @@ item-templates:
         &c┃ Durability: &f%durability%
         &d┃ Charge Speed: &f%charge_speed%
         &5┃ Bite Rate Bonus: &f%bite_rate_bonus%
+        &5┃ Rare Fish Chance: &f%rare_fish_chance%
+        &d┃ Lure Speed: &f%lure_speed%
+        &d┃ Size Multiplier: &f%size_multiplier%
         &6┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
         &e✨ Special Effects:
         &7➤ %effects%
@@ -404,7 +409,9 @@ item-templates:
         &b🎣 Core Rod Properties:
         &b├─ Difficulty: %difficulty% | Float Range: %float_area%
         &c├─ Durability: %durability%
-        &d└─ Charge Speed: %charge_speed% | Bite Bonus: %bite_rate_bonus%
+        &d├─ Charge Speed: %charge_speed% | Bite Bonus: %bite_rate_bonus%
+        &5├─ Rare Fish Chance: %rare_fish_chance%
+        &d└─ Lure Speed: %lure_speed% | Size Multiplier: %size_multiplier%
         &e✨ Special Effects: %effects%
   # Hook item templates
   hook-templates:

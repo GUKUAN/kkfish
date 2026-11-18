@@ -45,17 +45,9 @@ public class FishItemFactory {
         FileConfiguration fishConfig = config.getFishConfig();
         double baseValue = fishConfig.getDouble("fish." + fishName + ".value", 10.0);
 
-        double sizeMultiplier = size / 30.0;
-
-        double rarityMultiplier;
-        switch (rarity) {
-            case 1: rarityMultiplier = 1.0; break;
-            case 2: rarityMultiplier = 1.2; break;
-            case 3: rarityMultiplier = 1.5; break;
-            case 4: rarityMultiplier = 2.0; break;
-            case 5: rarityMultiplier = 3.0; break;
-            default: rarityMultiplier = 1.0; break;
-        }
+        double sizeMultiplier = size / Math.max(1, fishConfig.getDouble("fish." + fishName + ".max-size", 60.0));
+        String level = rarity == 5 ? "legendary" : rarity == 4 ? "epic" : rarity == 3 ? "rare" : rarity == 2 ? "uncommon" : "common";
+        double rarityMultiplier = config.getRarityValueMultiplier(level);
 
         return baseValue * sizeMultiplier * rarityMultiplier;
     }
@@ -85,6 +77,7 @@ public class FishItemFactory {
     }
 
     public ItemStack createFishItem(String fishName, boolean forceRarity, Player player, double fishSize, String fishLevel, Double preCalculatedValue) {
+        if (!config.fishExists(fishName) || fishLevel == null) return null;
         FileConfiguration fishConfig = config.getFishConfig();
 
         String displayName = fishConfig.getString("fish." + fishName + ".display-name", fishName);
@@ -140,31 +133,12 @@ public class FishItemFactory {
             if (player != null) {
                 hookMaterial = plugin.getDB().getPlayerHookMaterial(player.getUniqueId().toString());
 
-                switch (hookMaterial != null ? hookMaterial.toLowerCase() : "wood") {
-                    case "wood":
-                        sizeBonus = 1.05;
-                        break;
-                    case "stone":
-                        sizeBonus = 1.1;
-                        break;
-                    case "iron":
-                        sizeBonus = 1.15;
-                        valueBonus = 1.1;
-                        break;
-                    case "gold":
-                        sizeBonus = 1.2;
-                        valueBonus = 1.2;
-                        break;
-                    case "diamond":
-                        sizeBonus = 1.3;
-                        valueBonus = 1.3;
-                        break;
-                    default:
-                        sizeBonus = 1.05;
-                        break;
-                }
+                String rodName = config.getRodType(config.getPlayerRod(player));
+                if (rodName == null) rodName = "default";
+                sizeBonus = config.getRodSizeMultiplier(rodName) * config.getHookSizeMultiplier(hookMaterial);
+                valueBonus = config.getHookValueMultiplier(hookMaterial);
 
-                fishSize = Math.min(fishSize * sizeBonus, maxSize);
+                if (preCalculatedValue == null) fishSize = Math.min(fishSize * sizeBonus, maxSize);
             }
 
             if (player != null && hookMaterial != null && !hookMaterial.equalsIgnoreCase("wood")) {
@@ -334,6 +308,10 @@ public class FishItemFactory {
             fishItem.setItemMeta(meta);
 
             boolean uuidStored = me.kkfish.utils.NBTUtil.setNBTData(fishItem, "fish_uuid", uuidStr);
+            me.kkfish.utils.NBTUtil.setNBTData(fishItem, "fish_name", fishName);
+            me.kkfish.utils.NBTUtil.setNBTData(fishItem, "fish_level", rarityName);
+            me.kkfish.utils.NBTUtil.setNBTData(fishItem, "fish_size", fishSize);
+            me.kkfish.utils.NBTUtil.setNBTData(fishItem, "fish_value", value);
 
             if (config.isDebugMode()) {
                 kkfish.log(plugin.getMessageManager().getMessageWithoutPrefix("debug_uuid_stored_to_nbt", "[Debug] 存储UUID到NBT: %s", uuidStored ? "成功" : "失败"));

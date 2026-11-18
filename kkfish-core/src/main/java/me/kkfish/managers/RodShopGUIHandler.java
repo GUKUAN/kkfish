@@ -82,9 +82,9 @@ public class RodShopGUIHandler {
      */
     private ItemStack buildBaseRodItem(GUIMenuLoader.MenuConfig menuConfig, String rodName) {
         FileConfiguration rodConfig = config.getRodConfig();
-        String displayName = rodConfig.getString("rods." + rodName + ".display-name", rodName);
-        String materialStr = rodConfig.getString("rods." + rodName + ".material", "FISHING_ROD");
-        int customModelData = rodConfig.getInt("rods." + rodName + ".custom-model-data", -1);
+        String displayName = rodConfig.getString(config.getRodPropertyPath(rodName, "display-name"), rodName);
+        String materialStr = rodConfig.getString(config.getRodPropertyPath(rodName, "material"), "FISHING_ROD");
+        int customModelData = config.getRodCustomModelData(rodName);
 
         // 优先尝试 IA 自定义物品
         ItemStack item;
@@ -154,7 +154,7 @@ public class RodShopGUIHandler {
         }
 
         FileConfiguration rodConfig = config.getRodConfig();
-        String displayName = rodConfig.getString("rods." + rodName + ".display-name", rodName);
+        String displayName = rodConfig.getString(config.getRodPropertyPath(rodName, "display-name"), rodName);
 
         // 移除颜色代码并转换为小写进行比较
         query = ChatColor.stripColor(query).toLowerCase();
@@ -231,11 +231,11 @@ public class RodShopGUIHandler {
         FileConfiguration rodConfig = config.getRodConfig();
 
         // 读取鱼竿配置数据
-        String displayName = rodConfig.getString("rods." + rodName + ".display-name", rodName);
-        double vaultPrice = rodConfig.getDouble("rods." + rodName + ".price.vault", 0.0);
-        int pointsPrice = rodConfig.getInt("rods." + rodName + ".price.points", 0);
-        int durability = rodConfig.getInt("rods." + rodName + ".durability", 0);
-        double difficulty = rodConfig.getDouble("rods." + rodName + ".difficulty", 1.0);
+        String displayName = rodConfig.getString(config.getRodPropertyPath(rodName, "display-name"), rodName);
+        double vaultPrice = rodConfig.getDouble(config.getRodPropertyPath(rodName, "price.vault"), 0.0);
+        int pointsPrice = rodConfig.getInt(config.getRodPropertyPath(rodName, "price.points"), 0);
+        int durability = config.getRodDurability(rodName);
+        double difficulty = config.getRodDifficulty(rodName);
 
         // 从缓存获取底座物品
         ItemStack baseItem = rodItemCache.get(rodName);
@@ -368,8 +368,8 @@ public class RodShopGUIHandler {
             return;
         }
 
-        double vaultPrice = rodConfig.getDouble("rods." + rodName + ".price.vault", 0.0);
-        int pointsPrice = rodConfig.getInt("rods." + rodName + ".price.points", 0);
+        double vaultPrice = rodConfig.getDouble(config.getRodPropertyPath(rodName, "price.vault"), 0.0);
+        int pointsPrice = rodConfig.getInt(config.getRodPropertyPath(rodName, "price.points"), 0);
         boolean hasVaultPrice = vaultPrice > 0;
         boolean hasPointsPrice = pointsPrice > 0;
 
@@ -392,8 +392,8 @@ public class RodShopGUIHandler {
             return;
         }
 
-        double vaultPrice = rodConfig.getDouble("rods." + rodName + ".price.vault", 0.0);
-        int pointsPrice = rodConfig.getInt("rods." + rodName + ".price.points", 0);
+        double vaultPrice = rodConfig.getDouble(config.getRodPropertyPath(rodName, "price.vault"), 0.0);
+        int pointsPrice = rodConfig.getInt(config.getRodPropertyPath(rodName, "price.points"), 0);
         boolean hasVaultPrice = vaultPrice > 0;
         boolean hasPointsPrice = pointsPrice > 0;
 
@@ -482,7 +482,7 @@ public class RodShopGUIHandler {
                 }
             }
 
-            String displayName = config.getRodConfig().getString("rods." + rodName + ".display-name", rodName);
+            String displayName = config.getRodConfig().getString(config.getRodPropertyPath(rodName, "display-name"), rodName);
             displayName = displayName.replace('§', '&');
             player.sendMessage(messageManager.getMessage("rod_purchase_success", "§a成功获得鱼竿: %s！", displayName));
 

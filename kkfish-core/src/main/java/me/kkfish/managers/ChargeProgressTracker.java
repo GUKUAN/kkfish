@@ -1,11 +1,8 @@
 package me.kkfish.managers;
 
-import java.util.Collections;
-import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.ChatColor;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -81,8 +78,8 @@ public class ChargeProgressTracker {
             return;
         }
 
-        ItemStack mainHandItem = player.getInventory().getItemInMainHand();
-        if (mainHandItem == null || mainHandItem.getType() == Material.AIR) {
+        ItemStack mainHandItem = config.getPlayerRod(player);
+        if (mainHandItem == null) {
             config.debugLog(messageManager.getMessageWithoutPrefix("debug_fishing_no_item", "玩家%s没有手持物品，操作被拒绝", player.getName()));
             return;
         }
@@ -102,11 +99,11 @@ public class ChargeProgressTracker {
     }
 
     private void startChargeProgressTask(Player player, String rodName) {
-        int maxChargeTime = config.getMainConfig().getInt("fishing-settings.max-charge-time", 3000);
+        int maxChargeTime = Math.max(1, config.getMainConfig().getInt("fishing-settings.max-charge-time", 3000));
 
         double chargeSpeedMultiplier = config.getRodChargeSpeed(rodName);
         if (chargeSpeedMultiplier != 1.0) {
-            maxChargeTime = (int) (maxChargeTime / chargeSpeedMultiplier);
+            maxChargeTime = Math.max(1, (int) Math.min(Integer.MAX_VALUE, maxChargeTime / chargeSpeedMultiplier));
         }
 
         final int adjustedMaxChargeTime = maxChargeTime;
@@ -164,7 +161,8 @@ public class ChargeProgressTracker {
             BukkitRunnable nextTask = new BukkitRunnable() {
                 @Override
                 public void run() {
-                    runContinuousTask(player, task, delayTicks);
+                    PlayerContext ctx = getContext(player);
+                    if (ctx != null && ctx.getRuntime().isCharging()) runContinuousTask(player, task, delayTicks);
                 }
             };
             SchedulerUtil.runEntityTaskDelayed(plugin, player, nextTask, delayTicks);
@@ -193,8 +191,11 @@ public class ChargeProgressTracker {
         }
 
         long chargeTime = runtime.getChargeDuration();
-        int maxChargeTime = config.getMainConfig().getInt("fishing-settings.max-charge-time", 3000);
-        double chargePercentage = Math.min(chargeTime * 100.0 / maxChargeTime, 100.0);
+        BukkitRunnable chargeTask = runtime.getActiveChargeTask();
+        int maxChargeTime = chargeTask instanceof ChargeProgressTask ? ((ChargeProgressTask) chargeTask).maxChargeTime
+                : Math.max(1, config.getMainConfig().getInt("fishing-settings.max-charge-time", 3000));
+        isOver100Percent = isOver100Percent || chargeTime >= maxChargeTime;
+        double chargePercentage = isOver100Percent ? 0 : Math.max(0, Math.min(chargeTime * 100.0 / maxChargeTime, 100.0));
 
         runtime.setChargeStartTime(0);
         runtime.setActiveChargeTask(null);

@@ -139,6 +139,9 @@ rod_charge_speed_slow: "减速"
 rod_charge_speed_normal: "正常"
 rod_bite_rate_bonus_none: "无"
 rod_effects_none: "无特殊效果"
+rod_lure_speed_line: '&d│ 诱鱼速度: &f'
+rod_size_multiplier_line: '&d│ 尺寸倍率: &f'
+rod_rare_fish_chance_line: '&5│ 稀有鱼几率: &f'
 
 # 管理员帮助出售
 sell_help_all_success_op: "&a已帮助玩家 %s 出售所有鱼类！获得了 %s 金币～"
@@ -353,6 +356,8 @@ hook_status_not_owned: "§c未拥有"
 hook_action_equipped: "§a已装备"
 hook_action_equip: "§e点击装备"
 hook_action_buy: "§e点击购买"
+hook_effect_lure_speed: '&7诱鱼速度 +'
+hook_effect_size_multiplier: '&7尺寸倍率 x'
 hook_no_permission: "§c你没有权限使用这个鱼钩！"
 hook_purchase_success: "§a成功购买鱼钩: %s！"
 hook_purchase_vault_unavailable: "§c经济系统未启用，无法使用金币购买！"
@@ -371,6 +376,7 @@ bait_usage_text: '&7放置在副手，蓄力抛竿时消耗'
 bait_effect_rare: '&6稀有鱼几率 +'
 bait_effect_size: '&a鱼尺寸 +'
 bait_effect_bite: '&9咬钩几率 +'
+bait_effect_lure: '&b诱鱼速度 +'
 bait_usage_tip: '&7放置在副手，蓄力抛竿时消耗'
 
 # ==========================
@@ -699,3 +705,5 @@ log.resellang_apply_failed: "强制应用语言组失败: %s"
 log.config_pack_copy_failed: "复制配置组失败: %s"
 log.backup_created: "已备份现有配置到: %s"
 log.backup_expired_removed: "已清理过期备份: %s（保留时长: %s）"
+no_available_fish: '&e当前水域和环境没有可捕获的鱼。'
+minigame_start_failed: '&c无法启动钓鱼小游戏，请稍后重试。'

@@ -13,6 +13,9 @@ import me.kkfish.utils.ConfigUpgrade;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -339,16 +342,6 @@ public class MessageManager {
             langFolder.mkdirs();
         }
 
-        File defaultLangFile = new File(langFolder, "message_en_us.yml");
-        if (!defaultLangFile.exists()) {
-            try {
-                plugin.saveResource("lang/message_en_us.yml", false);
-            } catch (IllegalArgumentException e) {
-                kkfish.log("§e" + "Default language file (en_us) not found");
-                return false;
-            }
-        }
-
         File targetLangFile = new File(langFolder, "message_" + targetLang + ".yml");
         if (!targetLangFile.exists()) {
             try {
@@ -359,17 +352,22 @@ public class MessageManager {
         }
 
         try {
-            FileConfiguration defaultConfig = YamlConfiguration.loadConfiguration(defaultLangFile);
+            FileConfiguration defaultConfig = loadLanguageTemplate("en_us");
+            if (defaultConfig == null) return false;
+            FileConfiguration languageTemplate = "en_us".equals(targetLang) ? defaultConfig : loadLanguageTemplate(targetLang);
             FileConfiguration targetConfig = YamlConfiguration.loadConfiguration(targetLangFile);
 
             // 修正旧版中文语言文件中参数顺序错误的 AuraSkills 提示，避免更新后继续刷屏。
+            boolean migrated = false;
             if ("已为 %s 添加 %.1f 点钓鱼经验".equals(targetConfig.getString("aura_skills_added_xp"))) {
                 targetConfig.set("aura_skills_added_xp", "已为 %2$s 添加 %1$.1f 点钓鱼经验");
+                migrated = true;
             }
 
-            // 以英文基准语言为模板，统一走 diff 补齐缺失键
-            int added = ConfigUpgrade.fillMissingKeys(targetConfig, defaultConfig);
-            if (added == 0) {
+            // 先用当前语言的内置模板补齐，再用英文补充该语言尚未翻译的键。
+            int added = languageTemplate == null ? 0 : ConfigUpgrade.fillMissingKeys(targetConfig, languageTemplate);
+            if (languageTemplate != defaultConfig) added += ConfigUpgrade.fillMissingKeys(targetConfig, defaultConfig);
+            if (added == 0 && !migrated) {
                 return true;
             }
 
@@ -379,6 +377,14 @@ public class MessageManager {
         } catch (Exception e) {
             kkfish.log(this.getMessageWithoutPrefix("log.message_complete_failed", "§eFailed to complete language file: " + e.getMessage(), e.getMessage()));
             return false;
+        }
+    }
+
+    private FileConfiguration loadLanguageTemplate(String language) throws IOException {
+        InputStream stream = plugin.getResource("lang/message_" + language + ".yml");
+        if (stream == null) return null;
+        try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+            return YamlConfiguration.loadConfiguration(reader);
         }
     }
 
@@ -396,9 +402,7 @@ public class MessageManager {
         for (File langFile : langFiles) {
             String fileName = langFile.getName();
             String langCode = fileName.replace("message_", "").replace(".yml", "");
-            if (!langCode.equals("en_us")) {
-                completeLanguageFile(langCode);
-            }
+            completeLanguageFile(langCode);
         }
     }
 }

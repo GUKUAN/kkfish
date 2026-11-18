@@ -34,14 +34,7 @@ public class MinigameRenderer {
      * @param progress      进度 (0~1)
      */
     public void render(double greenBarPos, double greenBarWidth, double fishPos, double progress) {
-        String stylePath;
-        if (waterType == WaterType.LAVA) {
-            stylePath = "styles.lava";
-        } else if (waterType == WaterType.VOID) {
-            stylePath = "styles.void";
-        } else {
-            stylePath = "styles.default";
-        }
+        String stylePath = stylePath();
 
         String progressBarChar = translateColor(stylePath + ".progress-char", "&9=");
         String progressBarEmptyChar = translateColor(stylePath + ".progress-bar-empty-char", "&7-");
@@ -51,19 +44,15 @@ public class MinigameRenderer {
         String fishIndicatorChar = translateColor(stylePath + ".fish-indicator-char", "&9|||");
 
         StringBuilder greenBar = new StringBuilder("[");
-        int totalBars = 30;
-        int greenBarCenter = (int) (greenBarPos * totalBars);
-        int fishPosInBar = (int) (fishPos * totalBars);
-
-        fishPosInBar = Math.min(fishPosInBar, totalBars - 1);
+        int totalBars = MinigameField.CELLS;
 
         String[] barSegments = new String[totalBars];
 
-        int greenBarLength = (int) (greenBarWidth * totalBars);
-        int edgeLeft = greenBarCenter - greenBarLength / 2;
-        int edgeRight = greenBarCenter + greenBarLength / 2;
+        int greenBarLength = MinigameField.barLength(greenBarWidth);
+        int edgeLeft = MinigameField.barLeft(greenBarPos, greenBarWidth);
+        int edgeRight = edgeLeft + greenBarLength - 1;
         for (int i = 0; i < totalBars; i++) {
-            if (Math.abs(i - greenBarCenter) <= greenBarLength / 2) {
+            if (greenBarLength > 0 && i >= edgeLeft && i <= edgeRight) {
                 if (i == edgeLeft || i == edgeRight) {
                     barSegments[i] = greenBarEdgeChar;
                 } else {
@@ -74,7 +63,13 @@ public class MinigameRenderer {
             }
         }
 
-        barSegments[fishPosInBar] = fishIndicatorChar;
+        // 鱼指示符可能多格宽（默认 |||），按可见宽度居中并限制在底栏内，避免顶出右括号
+        int fishWidth = MinigameField.clampFishWidth(ChatColor.stripColor(fishIndicatorChar).length());
+        int fishStart = MinigameField.fishStart(fishPos, fishWidth);
+        for (int i = fishStart; i < fishStart + fishWidth; i++) {
+            barSegments[i] = "";
+        }
+        barSegments[fishStart] = fishIndicatorChar;
 
         for (String segment : barSegments) {
             greenBar.append(segment);
@@ -90,6 +85,23 @@ public class MinigameRenderer {
         progressBar.append("]");
 
         player.sendTitle(greenBar.toString(), progressBar.toString(), 0, 10, 0);
+    }
+
+    /** 当前水域使用的样式节点。 */
+    private String stylePath() {
+        if (waterType == WaterType.LAVA) {
+            return "styles.lava";
+        }
+        if (waterType == WaterType.VOID) {
+            return "styles.void";
+        }
+        return "styles.default";
+    }
+
+    /** 当前风格下鱼指示符的可见宽度，进度判定要和这个宽度保持一致。 */
+    int getFishIndicatorWidth() {
+        String value = translateColor(stylePath() + ".fish-indicator-char", "&9|||");
+        return MinigameField.clampFishWidth(ChatColor.stripColor(value).length());
     }
 
     /**

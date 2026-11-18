@@ -247,7 +247,7 @@ public class AuraSkills {
     }
 
     private double getRarityMultiplier(String fishLevel) {
-        return config.getRarityAuraSkillsXpMultiplier(getRarityNameByLevel(fishLevel));
+        return config.getRarityAuraSkillsXpMultiplier(config.getRarityNameByLevel(fishLevel));
     }
 
     static double calculateFishingXp(double baseXp, double fishSize, double fishSizeMin,

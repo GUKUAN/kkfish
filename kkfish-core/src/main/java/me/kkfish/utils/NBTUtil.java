@@ -69,7 +69,7 @@ public class NBTUtil {
             Object pdc = getPdcMethod.invoke(meta);
 
             if (pdc != null) {
-                NamespacedKey tagsKey = new NamespacedKey("kkfish", "Tags");
+                NamespacedKey tagsKey = new NamespacedKey("kkfish", "tags");
 
                 Method setMethod = pdc.getClass().getMethod("set", NamespacedKey.class, PersistentDataType.class, Object.class);
                 setMethod.setAccessible(true);
@@ -119,6 +119,11 @@ public class NBTUtil {
     public static boolean setNBTData(ItemStack item, String key, Object value) {
         if (item == null) {
             return false;
+        }
+
+        // 插件身份与捕获数据固定保存在 PDC；原始自定义 NBT 仍交给 NBTAPI。
+        if (isVersionNewerOrEqual(1, 14) && (key.startsWith("fish_") || "kkfish_rod".equals(key) || "bait_name".equals(key))) {
+            return setNBTDataUsingPDC(item, key, value);
         }
 
         if (NBTUtilAPI.isNbtApiAvailable()) {
@@ -242,7 +247,7 @@ public class NBTUtil {
             Object pdc = getPdcMethod.invoke(meta);
 
             if (pdc != null) {
-                NamespacedKey tagsKey = new NamespacedKey("kkfish", "Tags");
+                NamespacedKey tagsKey = new NamespacedKey("kkfish", "tags");
 
                 Method hasMethod = pdc.getClass().getMethod("has", NamespacedKey.class, PersistentDataType.class);
                 hasMethod.setAccessible(true);
@@ -360,14 +365,14 @@ public class NBTUtil {
             return null;
         }
 
+        if (isVersionNewerOrEqual(1, 14) && item.hasItemMeta() && key.matches("[a-z0-9/._-]+")) {
+            Object value = getNBTDataUsingPDC(item, key);
+            if (value != null) return value;
+        }
         if (NBTUtilAPI.isNbtApiAvailable()) {
             return NBTUtilAPI.getNBTData(item, key);
         }
-
-        if (isVersionNewerOrEqual(1, 14) && item.hasItemMeta()) {
-            return getNBTDataUsingPDC(item, key);
-        }
-
+        if (isVersionNewerOrEqual(1, 14)) return null;
         return getNBTDataUsingTraditionalNBT(item, key);
     }
     
@@ -388,12 +393,11 @@ public class NBTUtil {
 
                 Method hasMethod = pdc.getClass().getMethod("has", NamespacedKey.class, PersistentDataType.class);
                 hasMethod.setAccessible(true);
-                boolean hasKey = (boolean) hasMethod.invoke(pdc, nsk, PersistentDataType.STRING);
-
-                if (hasKey) {
-                    Method getMethod = pdc.getClass().getMethod("get", NamespacedKey.class, PersistentDataType.class);
-                    getMethod.setAccessible(true);
-                    return getMethod.invoke(pdc, nsk, PersistentDataType.STRING);
+                Method getMethod = pdc.getClass().getMethod("get", NamespacedKey.class, PersistentDataType.class);
+                getMethod.setAccessible(true);
+                for (PersistentDataType<?, ?> type : new PersistentDataType[]{PersistentDataType.STRING, PersistentDataType.DOUBLE,
+                        PersistentDataType.INTEGER, PersistentDataType.LONG, PersistentDataType.FLOAT, PersistentDataType.BYTE, PersistentDataType.SHORT}) {
+                    if ((boolean) hasMethod.invoke(pdc, nsk, type)) return getMethod.invoke(pdc, nsk, type);
                 }
             }
         } catch (Exception e) {
@@ -436,8 +440,8 @@ public class NBTUtil {
                     boolean hasKey = (boolean) hasKeyMethod.invoke(nbtTag, key);
 
                     if (hasKey) {
-                        Method getStringMethod = nbtTag.getClass().getMethod("getString", String.class);
-                        return getStringMethod.invoke(nbtTag, key);
+                    String getter = "fish_size".equals(key) ? "getDouble" : "fish_value".equals(key) ? "getInt" : "getString";
+                    return nbtTag.getClass().getMethod(getter, String.class).invoke(nbtTag, key);
                     }
                 }
             }

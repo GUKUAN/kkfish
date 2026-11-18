@@ -67,7 +67,7 @@
 2. **放入**服务器 `plugins/` 文件夹并重启
 3. **开钓** — 右键蓄力、松手抛竿、鱼咬钩时点击！
 
-完整文档：[Wiki](https://wiki.bestcraft.cc)
+完整文档：[Wiki](https://wiki.bonebbs.cc)
 
 ---
 
@@ -112,7 +112,7 @@ mvn clean package
 
 <img src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/comments.svg" width="18">
 
-- **Wiki**: [wiki.bestcraft.cc](https://wiki.bestcraft.cc)
+- **Wiki**: [wiki.bonebbs.cc](https://wiki.bonebbs.cc)
 - **SpigotMC**: [kkfish](https://www.spigotmc.org/resources/kkfish-1-12-1-21-stardew-valley-fishing-and-resource-pack.129074/)
 - **MINEBBS**: [kkfish](https://www.minebbs.com/resources/kkfish.15002/)
 - **QQ 群**: 819181552
